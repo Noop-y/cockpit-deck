@@ -192,3 +192,14 @@ input[type=range] { accent-color: var(--amber); width: 100%; }
 .deck .pbtn.hit { transform: scale(.94); border-color: #FFB547; }
 #sim .pbtn { cursor: pointer; }
 .ico20 { width: 20px; height: 20px; }
+@keyframes cd-slide-u { from { transform: translateY(30%); opacity: .2; } to { transform: none; opacity: 1; } }
+@keyframes cd-slide-d { from { transform: translateY(-30%); opacity: .2; } to { transform: none; opacity: 1; } }
+@keyframes cd-bump-v { 0%, 100% { transform: none; } 30% { transform: translateY(-3%); } 65% { transform: translateY(2.4%); } }
+.deck .slide-u { animation: cd-slide-u .28s ease-out; }
+.deck .slide-d { animation: cd-slide-d .28s ease-out; }
+.deck .bump-v { animation: cd-bump-v .3s ease-out; }
+.deck .vdots { position: absolute; right: .45cqw; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: .7cqw; z-index: 2; }
+.deck .vdots i { display: block; width: .7cqw; height: .7cqw; border-radius: .4cqw; background: rgba(201,214,226,.35); }
+.deck .vname { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 1.6cqw 3.6cqw; border-radius: 1.6cqw; background: rgba(7,9,12,.82); border: 1px solid rgba(201,214,226,.2); color: #F2F5F8; font-size: 4cqw; text-transform: uppercase; letter-spacing: .3cqw; z-index: 3; pointer-events: none; animation: cd-fade .9s ease-out forwards; }
+@keyframes cd-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .deck .slide-u, .deck .slide-d, .deck .bump-v, .deck .vname { animation: none; } }

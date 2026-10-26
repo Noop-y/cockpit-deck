@@ -107,7 +107,7 @@ function defaultConfig() {
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
     discord: { clientId: '', clientSecret: '', autoConnect: false, shortcuts: [] },
-    device: { brightness: 80, sleepMin: 10, swipe: true, loop: false },
+    device: { brightness: 80, sleepMin: 10, swipe: true, swipeV: true, loop: false },
     settings: { startWithWindows: true }
   };
 }
@@ -223,10 +223,20 @@ function deckCell(c, look, opts) {
   if (prog != null) inner += `<div class="bar" style="width:${prog}%;background:${look.accent}"></div>`;
   return `<div class="dcell" style="background:${fill};border:${edge}${photoBg ? ';backdrop-filter:blur(6px)' : ''}" ${opts && opts.attrs ? opts.attrs : ''}>${inner}</div>`;
 }
-function deckFrame(look, inner, extra) {
+function deckFrame(look, inner, extra, overlay) {
   let bg = extra || '';
   if (!extra && look.bgType === 'photo' && look.bgPhoto) bg = `<div class="bgph" style="background-image:url('${look.bgPhoto}')"></div><div class="bgdim" style="opacity:${look.bgDim || 0}"></div>`;
-  return `<div class="deck" style="background:${look.bgType === 'photo' && look.bgPhoto ? '#000' : look.bgColor}">${bg}<div class="scr">${inner}</div></div>`;
+  return `<div class="deck" style="background:${look.bgType === 'photo' && look.bgPhoto ? '#000' : look.bgColor}">${bg}<div class="scr">${inner}</div>${overlay || ''}</div>`;
+}
+// repère vertical : la place de l'espace parmi ceux de l'accueil, et son nom quand on vient d'y arriver
+function spaceOverlay(space, sim) {
+  if (!sim || cfg.device.swipeV === false) return '';
+  const list = homeSpaces(); const i = list.findIndex(s => s.id === space.id);
+  if (i < 0 || list.length < 2) return '';
+  const look = lookFor(space);
+  const dots = `<div class="vdots">${list.map((s, k) => `<i style="${k === i ? `background:${look.accent};height:2.4cqw` : ''}"></i>`).join('')}</div>`;
+  const name = sim.flashName ? `<div class="vname disp">${esc(sim.flashName)}</div>` : '';
+  return dots + name;
 }
 // ---------- Lecteur (Spotify) ----------
 const isPlayer = (s) => s && s.layout === 'player';
@@ -256,7 +266,7 @@ function deckPlayer(space, sim) {
     <div class="dplayer${sim && sim.anim ? ' ' + sim.anim : ''}">${btn('prev', 'pside')}<div class="pmid">${cover}${info}</div>${btn('next', 'pside')}</div>
     <div class="pctrl">${o.volume !== false ? btn('vmoins', 'pvol') : ''}${btn('play', 'pbig', playing ? 'pause' : 'play')}${o.volume !== false ? btn('vplus', 'pvol') : ''}</div>`;
   const extra = o.coverBg !== false && has && m.cover ? `<div class="pbg" style="background-image:url('${m.cover}')"></div><div class="pbgdim"></div>` : '';
-  return deckFrame(look, inner, extra);
+  return deckFrame(look, inner, extra, spaceOverlay(space, sim));
 }
 function deckPage(space, pageIdx, sim) {
   if (isPlayer(space)) return deckPlayer(space, sim);
@@ -268,7 +278,7 @@ function deckPage(space, pageIdx, sim) {
     const st = sim ? sim.cells[`${space.id}|${pageIdx}|${i}`] || {} : {};
     return deckCell(c, look, { on: st.on || st.flash, prog: st.prog, attrs: sim && c ? `data-simcell="${i}"` : '' });
   }).join('');
-  return deckFrame(look, `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div><div class="dgrid${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div>`);
+  return deckFrame(look, `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div><div class="dgrid${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div>`, '', spaceOverlay(space, sim));
 }
 function deckHome(sim, pageArg) {
   const look = cfg.look;
@@ -594,7 +604,8 @@ function viewAppareil() {
       <div><div class="row" style="justify-content:space-between"><label class="lab" for="f-bri">Luminosité de l\u2019écran</label><span class="mono" style="color:var(--amber)">${d.brightness} %</span></div><input id="f-bri" type="range" min="10" max="100" step="5" value="${d.brightness}" data-field="bri"></div>
       <div><span class="lab">Mise en veille après</span>${seg('sleep', [[0, 'Jamais'], [5, '5 min'], [10, '10 min'], [30, '30 min']], d.sleepMin)}</div>
       <label class="chk"><input type="checkbox" data-act="dev-swipe" ${d.swipe !== false ? 'checked' : ''}>Changer de page en glissant le doigt vers la gauche ou la droite</label>
-      <label class="chk" style="${d.swipe === false ? 'opacity:.5' : ''}"><input type="checkbox" data-act="dev-loop" ${d.loop ? 'checked' : ''} ${d.swipe === false ? 'disabled' : ''}>Après la dernière page, revenir à la première</label>
+      <label class="chk"><input type="checkbox" data-act="dev-swipev" ${d.swipeV !== false ? 'checked' : ''}>Changer d\u2019espace en glissant le doigt vers le haut ou le bas (dans l\u2019ordre de l\u2019accueil)</label>
+      <label class="chk" style="${d.swipe === false && d.swipeV === false ? 'opacity:.5' : ''}"><input type="checkbox" data-act="dev-loop" ${d.loop ? 'checked' : ''} ${d.swipe === false && d.swipeV === false ? 'disabled' : ''}>Après la dernière page ou le dernier espace, revenir au premier</label>
       <div class="small muted">Ces réglages partent sur l\u2019écran au prochain envoi.</div></div>
     <div class="panel" style="flex:1 1 360px;min-width:0"><h2 class="disp">État</h2>
       <div style="line-height:1.6">${ui.deckOk ? '<span style="color:var(--cyan)">Le dernier envoi a réussi.</span>' : 'Aucun envoi réussi pendant cette session.'}</div>
@@ -679,7 +690,7 @@ function modalHTML() {
   if (m.type === 'sim') {
     const s = m.screen === 'home' ? null : spaceById(m.spaceId);
     return `<div class="modal" role="dialog" aria-label="Aperçu de l\u2019écran" style="width:min(1120px,100%)"><div class="modal-head"><h2 class="disp" style="font-size:25px">Aperçu de l\u2019écran</h2>
-      <div class="row"><span class="muted small">Touchez les cases comme sur le vrai écran${cfg.device.swipe !== false ? ', glissez vers la gauche ou la droite pour changer de page' : ''}. Rien n\u2019est envoyé au jeu.</span><button class="iconbtn" data-act="modal-close" aria-label="Fermer">✕</button></div></div>
+      <div class="row"><span class="muted small">Touchez les cases${cfg.device.swipe !== false ? ' · glissez ← → pour les pages' : ''}${cfg.device.swipeV !== false ? ', ↑ ↓ pour les espaces' : ''}. Rien n\u2019est envoyé au jeu.</span><button class="iconbtn" data-act="modal-close" aria-label="Fermer">✕</button></div></div>
       <div id="sim">${s ? deckPage(s, m.page, m) : deckHome(m)}</div></div>`;
   }
   return '';
@@ -962,6 +973,22 @@ function simTap(i) {
   }
 }
 // glisser vers la gauche : page suivante ; vers la droite : page précédente
+// glisser vers le haut : espace suivant de l'accueil ; vers le bas : espace précédent
+function simSwipeV(dir) {
+  const m = ui.modal;
+  const list = homeSpaces();
+  const n = list.length;
+  const cur = list.findIndex(s => s.id === m.spaceId);
+  if (!n || cur < 0) { simRender(); return; }
+  let next = cur + dir;
+  if (next < 0 || next >= n) next = cfg.device.loop && n > 1 ? (next + n) % n : cur;
+  if (next === cur) { m.anim = 'bump-v'; simRender(); m.anim = null; return; }
+  m.spaceId = list[next].id; m.page = 0; m.playing = null;
+  m.anim = dir > 0 ? 'slide-u' : 'slide-d';
+  m.flashName = list[next].name;
+  simRender(); m.anim = null;
+  clearTimeout(m.flashT); m.flashT = setTimeout(() => { m.flashName = null; simRender(); }, 900);
+}
 // lecteur : les boutons de l'aperçu pilotent vraiment la musique du PC
 function simPlayerBtn(k) {
   const m = ui.modal;
@@ -1027,6 +1054,7 @@ const ACTIONS = {
   'pl-volume': (d, el) => { curSpace().player.volume = el.checked; commit(); },
   'pl-coverbg': (d, el) => { curSpace().player.coverBg = el.checked; commit(); },
   'dev-swipe': (d, el) => { cfg.device.swipe = el.checked; commit(); },
+  'dev-swipev': (d, el) => { cfg.device.swipeV = el.checked; commit(); },
   'dev-loop': (d, el) => { cfg.device.loop = el.checked; commit(); },
   'space-menu': (d) => { ui.menu = ui.menu === d.id ? null : d.id; render(); },
   'open-space': (d) => { ui.spaceId = d.id; ui.page = 0; ui.cell = null; ui.view = 'editeur'; ui.menu = null; render(); },
@@ -1307,12 +1335,16 @@ document.addEventListener('pointerdown', (ev) => {
 document.addEventListener('pointermove', (ev) => {
   if (swipe && ui.modal && ui.modal.type === 'sim') {
     const dx = ev.clientX - swipe.x, dy = ev.clientY - swipe.y;
-    if (!swipe.moved && cfg.device.swipe !== false && Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy)) {
-      swipe.moved = true; clearInterval(simTimer);
-      Object.values(ui.modal.cells).forEach(st => { st.prog = null; });
-      simRender();
+    if (!swipe.moved) {
+      const horiz = cfg.device.swipe !== false && Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy);
+      const vert = cfg.device.swipeV !== false && ui.modal.screen !== 'home' && Math.abs(dy) > 18 && Math.abs(dy) > Math.abs(dx);
+      if (horiz || vert) {
+        swipe.moved = horiz ? 'h' : 'v'; clearInterval(simTimer);
+        Object.values(ui.modal.cells).forEach(st => { st.prog = null; });
+        simRender();
+      }
     }
-    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome, #sim .dplayer'); if (g) g.style.transform = `translateX(${dx * 0.5}px)`; }
+    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome, #sim .dplayer'); if (g) g.style.transform = swipe.moved === 'h' ? `translateX(${dx * 0.5}px)` : `translateY(${dy * 0.4}px)`; }
     return;
   }
   if (!cropDrag || !ui.modal) return;
@@ -1324,8 +1356,9 @@ document.addEventListener('pointerup', (ev) => {
   cropDrag = null;
   if (swipe && ui.modal && ui.modal.type === 'sim') {
     const w = swipe; swipe = null;
-    const dx = ev.clientX - w.x;
-    if (w.moved) { if (Math.abs(dx) > 60) simSwipe(dx < 0 ? 1 : -1); else simRender(); return; }
+    const dx = ev.clientX - w.x, dy = ev.clientY - w.y;
+    if (w.moved === 'h') { if (Math.abs(dx) > 60) simSwipe(dx < 0 ? 1 : -1); else simRender(); return; }
+    if (w.moved === 'v') { if (Math.abs(dy) > 50) simSwipeV(dy < 0 ? 1 : -1); else simRender(); return; }
     if (w.space) { const m = ui.modal; m.screen = 'space'; m.spaceId = w.space; m.page = 0; simRender(); return; }
     if (w.cell != null) simTap(w.cell);
     if (w.btn) simPlayerBtn(w.btn);

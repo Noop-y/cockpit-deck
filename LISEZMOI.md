@@ -1,4 +1,4 @@
-# The Deck 0.8 — fabriquer le fichier .exe
+# The Deck 0.9 — fabriquer le fichier .exe
 
 Ce dossier contient le logiciel The Deck complet. Il faut le transformer une fois en fichier `.exe` pour Windows. Deux façons, au choix.
 
@@ -15,8 +15,8 @@ GitHub fabrique le `.exe` pour vous sur ses ordinateurs. Comptez 10 minutes la p
 7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer The Deck pour Windows » démarre. Elle dure environ 5 minutes.
 8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **The-Deck-Windows** pour télécharger un zip.
 9. Dans ce zip, il y a deux fichiers :
-   - `The-Deck-Installation-0.8.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
-   - `The-Deck-Portable-0.8.0.exe` : se lance directement, sans installation.
+   - `The-Deck-Installation-0.9.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
+   - `The-Deck-Portable-0.9.0.exe` : se lance directement, sans installation.
 
 Pour une nouvelle version, il suffit de renvoyer les fichiers modifiés dans le même dépôt : GitHub refabrique le `.exe` tout seul.
 
@@ -40,6 +40,7 @@ Windows peut afficher « Windows a protégé votre ordinateur », car le logicie
 - Espace Spotify (lecteur) sur l'accueil : la jaquette en grand avec le titre et l'artiste, morceau précédent à gauche et suivant à droite (ou en glissant le doigt), lecture / pause et volume. Rien à connecter : le logiciel lit le morceau en cours avec les commandes multimédia de Windows (marche aussi avec les autres lecteurs). Bouton « Tester sur ce PC » dans l'espace. Quand l'écran est branché, le logiciel lui envoie en direct le morceau en cours et sa jaquette (voir PROTOCOLE.md).
 - Catégories personnelles : bouton « + Nouvelle catégorie » dans Mes espaces (nom, couleur, pictogramme), en plus de Jeux, Bureau, Streaming et Discord. Un espace peut changer de catégorie (menu ⋯).
 - Écran d'accueil : ordre et espaces affichés, 5 espaces par page ; au-delà, l'accueil a plusieurs pages.
+- Glisser le doigt vers le haut ou le bas pour passer à l'espace suivant ou précédent, dans l'ordre de l'écran d'accueil (Star Citizen → Bureau → … → Discord → Spotify). Un repère à droite de l'écran montre où l'on est.
 - Glisser le doigt vers la gauche ou la droite pour passer à la page suivante ou précédente, dans un espace comme sur l'accueil (réglable dans Appareil, avec retour à la première page en option). À essayer dans « Aperçu de l'écran ».
 - Apparence : fond (couleur ou photo), couleurs des cases au repos et appuyées, thèmes prêts.
 - Aperçu de l'écran : un simulateur pour essayer ses pages avant d'avoir l'écran.
