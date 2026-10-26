@@ -149,3 +149,11 @@ input[type=range] { accent-color: var(--amber); width: 100%; }
 .toast.ok { background: #0E2A1C; border-color: var(--green); color: #BFF0D4; }
 .toast.err { background: #2A1210; border-color: var(--red); color: #FFD4CC; }
 @media (prefers-reduced-motion: no-preference) { .toast { animation: tin .18s ease-out; } @keyframes tin { from { transform: translateY(-6px); opacity: 0; } } }
+.dbigs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.dbig { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 132px; padding: 14px 8px; border-radius: 14px; background: #11161C; border: 1.5px solid var(--cyan-line); color: var(--fg); text-align: center; }
+.dbig .disp { font-size: 19px; text-transform: uppercase; }
+.dbig .small { color: #9ADCFF; }
+.dbig.off { border-color: #7A3A33; background: #1C1113; }
+.dbig.off .small { color: #FF8A7A; }
+.dbig:disabled { opacity: .45; cursor: default; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--cyan); text-decoration: underline; font: inherit; cursor: pointer; }

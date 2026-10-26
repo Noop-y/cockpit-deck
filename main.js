@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Tray, Menu, shell, 
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const { DiscordRPC } = require('./discord-rpc');
 
 const ESPRESSIF_VID = 12346; // 0x303A, fabricant de l'ESP32-P4
 
@@ -14,6 +15,7 @@ const dataDir = () => app.getPath('userData');
 const configPath = () => path.join(dataDir(), 'config.json');
 const backupDir = () => path.join(dataDir(), 'sauvegardes');
 const psPath = () => path.join(dataDir(), 'placer-fenetre.ps1');
+let discord = null;
 
 // ---------- fenêtre ----------
 function createWindow() {
@@ -34,6 +36,8 @@ function createWindow() {
     }
   });
   win.loadFile(path.join(__dirname, 'src', 'index.html'));
+  // liens externes (portail Discord…) : navigateur par défaut
+  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
 
   // Port série (USB) : choisit automatiquement l'écran Cockpit Deck (ESP32-P4)
   const ses = win.webContents.session;
@@ -240,6 +244,14 @@ ipcMain.handle('shortcuts:set', (e, list) => {
   return results;
 });
 
+// ---------- Discord ----------
+ipcMain.handle('discord:connect', (e, creds, auto) => discord.connect(creds, auto));
+ipcMain.handle('discord:disconnect', () => { discord.disconnect(false); return discord.state; });
+ipcMain.handle('discord:state', () => discord.state);
+ipcMain.handle('discord:run', async (e, op, arg) => {
+  try { return { ok: true, message: await discord.run(op, arg) }; } catch (err) { return { ok: false, message: err.message }; }
+});
+
 // ---------- démarrage ----------
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -248,6 +260,8 @@ if (!gotLock) {
   app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
   app.whenReady().then(() => {
     ensurePsScript();
+    discord = new DiscordRPC(path.join(dataDir(), 'discord-jeton.json'));
+    discord.on('state', (st) => { if (win && !win.isDestroyed()) win.webContents.send('discord-state', st); });
     createWindow();
     createTray();
   });

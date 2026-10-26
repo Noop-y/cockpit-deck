@@ -1,7 +1,7 @@
 {
   "name": "cockpit-deck",
   "productName": "Cockpit Deck",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Logiciel de configuration de l'écran tactile Cockpit Deck",
   "main": "main.js",
   "author": "Cockpit Deck",
@@ -21,6 +21,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "discord-rpc.js",
       "src/**/*",
       "build/icon.png"
     ],

@@ -55,6 +55,9 @@ const PICTOS = {
   // Streaming
   scene: ['Scène', 'Streaming', 'scène obs vidéo', 'M3 5h18v12H3z M8 21h8 M10 9l5 2-5 2z'],
   micro: ['Micro', 'Streaming', 'micro voix', 'M9 4a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0z M5 11a7 7 0 0 0 14 0 M12 18v3'],
+  micromuet: ['Micro coupé', 'Streaming', 'micro coupé muet discord', 'M9 4a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0z M5 11a7 7 0 0 0 14 0 M12 18v3 M4 3l16 17'],
+  casque: ['Casque', 'Média', 'casque écouteurs sortie audio discord', 'M4 15v-3a8 8 0 0 1 16 0v3 M4 14h3v6H4z M17 14h3v6h-3z'],
+  casquemuet: ['Casque coupé', 'Média', 'casque coupé sourdine écouteurs discord', 'M4 15v-3a8 8 0 0 1 16 0v3 M4 14h3v6H4z M17 14h3v6h-3z M3 3l18 18'],
   webcam: ['Webcam', 'Streaming', 'caméra webcam', 'M12 4a6 6 0 1 0 0.01 0 M12 8a2 2 0 1 0 0.01 0 M8 20h8 M12 16v4'],
   chat: ['Chat', 'Streaming', 'chat bulle', 'M4 5h16v11H9l-5 4z'],
   live: ['Live', 'Streaming', 'live direct diffusion', 'M12 10a2 2 0 1 0 0.01 0 M7.8 7.8a6 6 0 0 0 0 8.4 M16.2 7.8a6 6 0 0 1 0 8.4 M4.9 4.9a10 10 0 0 0 0 14.2 M19.1 4.9a10 10 0 0 1 0 14.2'],
@@ -108,6 +111,7 @@ const CATEGORIES = {
 };
 
 const MEDIA_KEYS = [['volplus', 'Volume +'], ['volmoins', 'Volume −'], ['muet', 'Muet'], ['lecture', 'Lecture / pause'], ['suivante', 'Piste suivante'], ['precedente', 'Piste précédente']];
+const DISCORD_OPS = [['micro', 'Couper / rétablir le micro'], ['casque', 'Couper / rétablir le casque'], ['tout', 'Couper / rétablir micro + casque'], ['entree-suiv', 'Entrée audio suivante'], ['sortie-suiv', 'Sortie audio suivante'], ['entree', 'Choisir une entrée audio'], ['sortie', 'Choisir une sortie audio'], ['raccourci', 'Mon raccourci Discord']];
 const OBS_OPS = [['scene', 'Changer de scène'], ['mute', 'Couper / rétablir un son'], ['source', 'Montrer / cacher un élément'], ['stream', 'Lancer / arrêter le live'], ['record', 'Lancer / arrêter l’enregistrement'], ['replay', 'Sauvegarder le replay']];
 
 // ---------- modèles d'espaces ----------
@@ -119,7 +123,15 @@ const J = (name, icon, n, mode, ms, color) => cell(name, icon, { type: 'joy', bu
 const K = (name, icon, keys, mode) => cell(name, icon, { type: 'key', keys }, { mode: mode || 'tap', holdMs: 1500 });
 const M = (name, icon, media) => cell(name, icon, { type: 'media', media }, null, '#5CC8FF');
 const A = (name, icon, preset, screen, position) => cell(name, icon, { type: 'app', preset, exe: '', args: '', processName: '', screen: screen || 'gauche', position: position || 'plein', ifOpen: 'front' }, null, '#FFB547');
+const D = (name, icon, op, mode, color) => cell(name, icon, { type: 'discord', op, arg: '', argName: '' }, { mode: mode || 'tap', holdMs: 1500 }, color);
 const O = (name, icon, op, target, mode, color) => cell(name, icon, { type: 'obs', op, target: target || '' }, { mode: mode || 'tap', holdMs: 2000 }, color || '#5CC8FF');
+// Cases de la page Discord ; les raccourcis personnels sont ajoutés à la suite
+function discordCells(shortcuts) {
+  return [D('Micro', 'micromuet', 'micro', 'toggle', '#FF8A7A'), D('Casque', 'casquemuet', 'casque', 'toggle', '#FF8A7A'), D('Micro + casque', 'muet', 'tout', 'toggle', '#FF8A7A'),
+    D('Entrée suivante', 'micro', 'entree-suiv'), D('Sortie suivante', 'casque', 'sortie-suiv'),
+    A('Ouvrir Discord', 'discussion', 'discord', 'gauche', 'droite')]
+    .concat((shortcuts || []).map(x => cell(x.name, 'discussion', { type: 'discord', op: 'raccourci', arg: x.id, argName: x.name }, { mode: 'tap', holdMs: 1500 }, '#B79CFF')));
+}
 const pad = (cells) => { const c = cells.slice(0, 15); while (c.length < 15) c.push(null); return c; };
 
 const TEMPLATES = {
@@ -166,6 +178,8 @@ const TEMPLATES = {
     },
     { key: 'applis', name: 'Applications', desc: 'Navigateur, Discord… placés sur le bon écran', icon: 'web',
       pages: () => [{ name: 'APPLIS', cells: pad([A('Navigateur', 'web', 'edge', 'gauche', 'gauche'), A('Discord', 'discussion', 'discord', 'gauche', 'droite'), A('Explorateur', 'dossier', 'explorer', 'droite', 'plein')]) }] },
+    { key: 'discord', name: 'Discord', desc: 'Micro, casque, entrées et sorties audio', icon: 'discussion',
+      pages: () => [{ name: 'DISCORD', cells: pad(discordCells([])) }] },
     { key: 'vide', name: 'Bureau vide', desc: 'Une grille vide', icon: 'bureau', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }
   ],
   stream: [

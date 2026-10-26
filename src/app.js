@@ -35,7 +35,12 @@ const api = window.deck || (() => {
     env: async () => ({}),
     setStartWithWindows: async (on) => on,
     setShortcuts: async () => ({}),
-    onShortcut: () => {}
+    onShortcut: () => {},
+    discordConnect: async () => ({ status: 'error', message: 'Disponible dans le logiciel installé sur Windows.' }),
+    discordDisconnect: async () => ({ status: 'off', message: '' }),
+    discordState: async () => ({ status: 'off', message: '' }),
+    discordRun: async () => ({ ok: false, message: 'Disponible dans le logiciel installé sur Windows.' }),
+    onDiscordState: () => {}
   };
 })();
 
@@ -82,6 +87,7 @@ function defaultConfig() {
     homeOrder: [sc.id, bu.id, st.id],
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
+    discord: { clientId: '', clientSecret: '', autoConnect: false, shortcuts: [] },
     device: { brightness: 80, sleepMin: 10 },
     settings: { startWithWindows: true }
   };
@@ -101,6 +107,10 @@ const spaceById = (id) => cfg.spaces.find(s => s.id === id);
 const curSpace = () => spaceById(ui.spaceId);
 const curPage = () => { const s = curSpace(); return s ? s.pages[Math.min(ui.page, s.pages.length - 1)] : null; };
 const curCell = () => { const p = curPage(); return p && ui.cell != null ? p.cells[ui.cell] : null; };
+const shortcutById = (id) => (cfg.discord.shortcuts || []).find(x => x.id === id);
+const DSTATE0 = { status: 'off', message: '', mute: false, deaf: false, outVolume: 100, inputId: '', outputId: '', inputs: [], outputs: [] };
+let dstate = Object.assign({}, DSTATE0);
+const setD = (st) => { dstate = Object.assign({}, DSTATE0, st || {}); };
 const lookFor = (space) => (space && space.look) ? space.look : cfg.look;
 
 // Touches réservées (F13…F24) pour les actions faites par le PC : ouvrir une appli, OBS
@@ -109,7 +119,7 @@ function assignHotkeys() {
   const needs = [];
   cfg.spaces.forEach(s => s.pages.forEach(p => p.cells.forEach(c => {
     if (!c || !c.action) return;
-    const pc = c.action.type === 'app' || c.action.type === 'obs';
+    const pc = c.action.type === 'app' || c.action.type === 'obs' || (c.action.type === 'discord' && c.action.op !== 'raccourci');
     if (!pc) { delete c.action.hotkey; return; }
     if (c.action.hotkey && !used.has(c.action.hotkey) && PC_KEYS.includes(c.action.hotkey)) used.add(c.action.hotkey);
     else { delete c.action.hotkey; needs.push(c); }
@@ -137,6 +147,9 @@ async function runPcAction(c, fromTest) {
   } else if (a.type === 'obs') {
     try { await OBS.run(a); if (fromTest) toast('OBS : action envoyée.', 'ok'); }
     catch (e) { toast('OBS : ' + e.message, 'err'); }
+  } else if (a.type === 'discord') {
+    const r = await api.discordRun(a.op, a.arg);
+    if (fromTest || !r.ok) toast('Discord : ' + r.message, r.ok ? 'ok' : 'err');
   }
 }
 function resolveApp(a) {
@@ -154,6 +167,7 @@ function cellSub(c) {
   if (a.type === 'media') return 'MÉDIA';
   if (a.type === 'app') return 'APPLI';
   if (a.type === 'obs') return 'OBS';
+  if (a.type === 'discord') { if (a.op !== 'raccourci') return 'DISCORD'; const sc = shortcutById(a.arg); return sc ? (sc.keys || 'DISCORD') : 'DISCORD'; }
   if (a.type === 'page') return 'PAGE';
   return '';
 }
@@ -214,7 +228,7 @@ function deckHome(sim) {
 // Rendu : logiciel
 // ---------------------------------------------------------------------------
 function sidebar() {
-  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['connexions', 'Connexions'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
+  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['discord', 'Discord'], ['connexions', 'Connexions'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
   const v = ui.view === 'editeur' ? 'espaces' : ui.view;
   const obsDot = OBS.state.status === 'on' ? 'ok' : (OBS.state.status === 'error' ? 'err' : '');
   return `<nav class="side" aria-label="Menu">
@@ -223,6 +237,7 @@ function sidebar() {
     <div class="status">
       <span><i class="dot ${ui.deckOk ? 'ok' : ''}"></i>${ui.deckOk ? 'Écran reçu la configuration' : 'Écran : envoi non fait'}</span>
       <span><i class="dot ${obsDot}"></i>OBS ${OBS.state.status === 'on' ? 'connecté' : 'non connecté'}</span>
+      <span><i class="dot ${dstate.status === 'on' ? 'ok' : (dstate.status === 'error' ? 'err' : '')}"></i>Discord ${dstate.status === 'on' ? 'connecté' : 'non connecté'}</span>
       ${api.browser ? '<span class="muted">Mode aperçu (navigateur)</span>' : ''}
     </div>
   </nav>`;
@@ -332,6 +347,7 @@ function cellPanel() {
       ${OBS.state.status !== 'on' ? '<div class="note">Connectez OBS (menu Connexions) pour choisir dans la liste de vos scènes et sources.</div>' : ''}
       <div class="small muted">Touche réservée envoyée par l\u2019écran : <span class="tag">${esc(a.hotkey || '…')}</span></div>`;
   }
+  if (a.type === 'discord') act = discordCellFields(a);
   const b = c.behavior || { mode: 'tap', holdMs: 1500 };
   return `<div class="panel">
     <div class="row" style="justify-content:space-between"><h2 class="disp">Case ${ui.cell + 1} · ${esc(c.name || 'Sans nom')}</h2><span class="tag">sélectionnée</span></div>
@@ -339,7 +355,7 @@ function cellPanel() {
     <div><span class="lab">Image de la case</span>${seg('img-type', [['icon', 'Pictogramme'], ['photo', 'Photo'], ['text', 'Texte seul']], im.type)}</div>
     ${img}
     <div><label class="lab" for="f-type">Ce que fait la case</label><select id="f-type" class="inp" data-field="type">
-      ${[['joy', 'Bouton de manette (jeux)'], ['key', 'Touche ou raccourci clavier'], ['media', 'Touche multimédia'], ['app', 'Ouvrir une appli sur un écran'], ['obs', 'OBS (streaming)'], ['page', 'Changer de page'], ['none', 'Rien (case décorative)']].map(([v, l]) => `<option value="${v}" ${a.type === v ? 'selected' : ''}>${l}</option>`).join('')}
+      ${[['joy', 'Bouton de manette (jeux)'], ['key', 'Touche ou raccourci clavier'], ['media', 'Touche multimédia'], ['app', 'Ouvrir une appli sur un écran'], ['obs', 'OBS (streaming)'], ['discord', 'Discord (micro, casque, audio)'], ['page', 'Changer de page'], ['none', 'Rien (case décorative)']].map(([v, l]) => `<option value="${v}" ${a.type === v ? 'selected' : ''}>${l}</option>`).join('')}
     </select></div>
     ${act}
     <div><span class="lab">Comportement</span>${seg('beh', [['tap', 'Appui'], ['hold', 'Maintenir'], ['toggle', 'Bascule']], b.mode)}</div>
@@ -412,6 +428,74 @@ function viewConnexions() {
     </div>
     <div class="panel" style="flex:1 1 360px;min-width:0"><div class="row" style="justify-content:space-between"><h2 class="disp">Twitch</h2><span class="muted">Bientôt</span></div>
       <div class="muted" style="line-height:1.55">Les cases Marqueur, Clip, Pub et Titre du live arriveront dans une prochaine version. En attendant, l\u2019espace Streaming pilote déjà OBS : scènes, sons, éléments, live, enregistrement et replay.</div></div></div>`;
+}
+
+function discordCellFields(a) {
+  let arg = '';
+  if (a.op === 'entree' || a.op === 'sortie') {
+    const list = a.op === 'entree' ? dstate.inputs : dstate.outputs;
+    if (list.length) {
+      arg = `<select class="inp" data-field="darg"><option value="">Choisir…</option>${list.map(x => `<option value="${esc(x.id)}" ${a.arg === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}${a.arg && !list.some(x => x.id === a.arg) ? `<option value="${esc(a.arg)}" selected>${esc(a.argName || a.arg)} (absent)</option>` : ''}</select>`;
+    } else {
+      arg = `<div class="small mono">${a.arg ? esc(a.argName || a.arg) : 'Aucun appareil choisi'}</div><div class="note">Connectez Discord (menu Discord) pour choisir dans la liste de vos appareils audio.</div>`;
+    }
+    arg = `<div><span class="lab">${a.op === 'entree' ? 'Entrée audio (micro)' : 'Sortie audio (casque, haut-parleurs)'}</span>${arg}</div>`;
+  }
+  if (a.op === 'raccourci') {
+    const list = cfg.discord.shortcuts;
+    arg = list.length
+      ? `<div><span class="lab">Raccourci</span><select class="inp" data-field="darg">${list.map(x => `<option value="${x.id}" ${a.arg === x.id ? 'selected' : ''}>${esc(x.name)}${x.keys ? ' · ' + esc(x.keys) : ''}</option>`).join('')}</select></div>`
+      : '<div class="note">Vous n’avez pas encore de raccourci Discord. <button class="btn sm" data-act="nav" data-view="discord">Créer un raccourci</button></div>';
+  }
+  const pc = a.op !== 'raccourci';
+  return `<div><label class="lab" for="f-dop">Action Discord</label><select id="f-dop" class="inp" data-field="dop">${DISCORD_OPS.map(([v, l]) => `<option value="${v}" ${a.op === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    ${arg}
+    ${a.op === 'casque' ? '<div class="small muted">Discord ne sait pas couper le son sans couper aussi le micro : le logiciel met le volume de sortie de Discord à zéro, puis le remet comme avant.</div>' : ''}
+    ${pc && dstate.status !== 'on' ? '<div class="note">Connectez Discord (menu Discord) pour que cette case fonctionne.</div>' : ''}
+    ${pc ? `<div class="small muted">Touche réservée envoyée par l’écran : <span class="tag">${esc(a.hotkey || '…')}</span></div>` : '<div class="small muted">L’écran envoie directement la combinaison de touches du raccourci.</div>'}`;
+}
+
+function viewDiscord() {
+  const d = cfg.discord, st = dstate, on = st.status === 'on';
+  const col = on ? 'var(--cyan)' : (st.status === 'error' ? 'var(--red)' : (st.status === 'auth' ? 'var(--amber)' : 'var(--dim)'));
+  const label = on ? 'Connecté' : (st.message || 'Non connecté');
+  const headOff = st.outVolume === 0;
+  const big = (op, icon, title, isOff, offTxt, onTxt) => `<button class="dbig${isOff ? ' off' : ''}" data-act="discord-run" data-op="${op}" ${on ? '' : 'disabled'}>${svg(icon, 34, isOff ? '#FF8A7A' : '#9ADCFF', 1.7)}<span class="disp">${title}</span><span class="small">${isOff ? offTxt : onTxt}</span></button>`;
+  const devSel = (field, list, cur) => `<select class="inp" data-field="${field}" ${on && list.length ? '' : 'disabled'}>${list.length ? list.map(x => `<option value="${esc(x.id)}" ${x.id === cur ? 'selected' : ''}>${esc(x.name)}</option>`).join('') : '<option>Connectez Discord pour voir la liste</option>'}</select>`;
+  const scRows = d.shortcuts.map(sc => `<div class="lrow"><input class="inp grow" value="${esc(sc.name)}" data-field="sc-name" data-id="${sc.id}" maxlength="28" aria-label="Nom du raccourci">
+      <input class="inp mono" style="width:220px" readonly value="${esc(sc.keys || '')}" placeholder="Cliquez puis tapez les touches" data-field="keycap" data-sc="${sc.id}" aria-label="Touches du raccourci">
+      <button class="btn sm danger" data-act="sc-del" data-id="${sc.id}" aria-label="Supprimer le raccourci">✕</button></div>`).join('');
+  const bureau = cfg.spaces.find(x => x.category === 'bureau');
+  const target = ui.dpageSpace || (bureau || cfg.spaces[0] || {}).id;
+  return `<div class="head"><div><h1 class="disp">Discord</h1><div class="muted" style="margin-top:4px">Micro, casque, entrées et sorties audio, et vos propres raccourcis Discord.</div></div>
+    <div class="row"><select class="inp" style="width:220px" data-field="dpage-space" aria-label="Espace qui recevra la page">${cfg.spaces.map(x => `<option value="${x.id}" ${x.id === target ? 'selected' : ''}>Dans : ${esc(x.name)}</option>`).join('')}</select><button class="btn pri" data-act="discord-addpage">Ajouter la page Discord</button></div></div>
+    <div class="editor"><div style="flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:16px">
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2 class="disp">Commandes</h2><span style="color:${col}">${esc(label)}</span></div>
+        <div class="dbigs">
+          ${big('micro', st.mute || st.deaf ? 'micromuet' : 'micro', 'Micro', st.mute || st.deaf, 'Coupé', 'Ouvert')}
+          ${big('casque', headOff || st.deaf ? 'casquemuet' : 'casque', 'Casque', headOff || st.deaf, 'Coupé', 'Actif')}
+          ${big('tout', st.deaf ? 'muet' : 'son', 'Micro + casque', st.deaf, 'Tout est coupé', 'Tout couper')}
+        </div>
+        <div class="small muted">Micro et Casque se coupent chacun de leur côté. « Micro + casque » coupe les deux d’un coup, comme le bouton casque barré de Discord.</div>
+        <div><span class="lab">Entrée audio (micro)</span>${devSel('d-in', st.inputs, st.inputId)}</div>
+        <div><span class="lab">Sortie audio (casque, haut-parleurs)</span>${devSel('d-out', st.outputs, st.outputId)}</div>
+        ${on ? '' : '<div class="note">Connectez Discord ci-dessous pour utiliser ces commandes.</div>'}</div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><h2 class="disp">Mes raccourcis Discord</h2><button class="btn sm" data-act="sc-add">+ Ajouter un raccourci</button></div>
+        <div class="small muted" style="line-height:1.55">Pour tout le reste (appuyer pour parler, partager l’écran, caméra…) : dans Discord, ouvrez <b>Paramètres › Raccourcis clavier</b>, ajoutez un raccourci et choisissez une combinaison. Tapez la même ici. Ensuite, choisissez ce raccourci dans une case (action « Discord », puis « Mon raccourci Discord »).</div>
+        ${scRows || '<div class="muted small">Aucun raccourci pour l’instant.</div>'}
+        <div class="small muted">Conseil : prenez des combinaisons que rien d’autre n’utilise, par exemple Ctrl+Alt+Shift+M.</div></div></div>
+    <div class="panel" style="flex:1 1 380px;min-width:0"><div class="row" style="justify-content:space-between"><h2 class="disp">Connexion à Discord</h2><span style="color:${col}">${esc(label)}</span></div>
+      <div class="note" style="line-height:1.6">À faire une seule fois :<br>
+        1. Ouvrez le <button class="linkbtn" data-act="discord-dev">portail des développeurs Discord</button> et connectez-vous.<br>
+        2. Cliquez sur <b>New Application</b>, nommez-la « Cockpit Deck », acceptez puis <b>Create</b>.<br>
+        3. Dans <b>OAuth2</b>, copiez le <b>Client ID</b>, puis cliquez sur <b>Reset Secret</b> et copiez le <b>Client Secret</b>.<br>
+        4. Toujours dans OAuth2, sous <b>Redirects</b>, ajoutez <span class="mono">http://localhost</span> puis <b>Save Changes</b>.<br>
+        5. Collez les deux codes ici et cliquez sur <b>Connecter</b>. Discord affiche une demande : cliquez sur <b>Autoriser</b>.</div>
+      <div><label class="lab" for="f-dcid">Client ID</label><input id="f-dcid" class="inp mono" value="${esc(d.clientId)}" data-field="dc-id" placeholder="ex. 1234567890123456789"></div>
+      <div><label class="lab" for="f-dcsec">Client Secret</label><input id="f-dcsec" class="inp mono" type="password" value="${esc(d.clientSecret)}" data-field="dc-secret"></div>
+      <label class="chk"><input type="checkbox" data-act="discord-auto" ${d.autoConnect ? 'checked' : ''}>Se connecter automatiquement (et se reconnecter si Discord redémarre)</label>
+      <div class="row">${on || st.status === 'connecting' || st.status === 'auth' ? '<button class="btn" data-act="discord-off">Se déconnecter</button>' : '<button class="btn pri" data-act="discord-on">Connecter</button>'}</div>
+      <div class="small muted">Ces codes restent sur votre PC. Ils ne sont pas copiés quand vous exportez un espace.</div></div></div>`;
 }
 
 function viewAppareil() {
@@ -500,7 +584,7 @@ function modalHTML() {
 // Rendu global
 // ---------------------------------------------------------------------------
 function render() {
-  const views = { espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
+  const views = { discord: viewDiscord, espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
   const focusId = document.activeElement && document.activeElement.id;
   const selStart = document.activeElement && document.activeElement.selectionStart;
   const mainScroll = $('.main') ? $('.main').scrollTop : 0;
@@ -585,6 +669,14 @@ function cropResult() {
 // ---------------------------------------------------------------------------
 // Envoi vers l'écran (USB)
 // ---------------------------------------------------------------------------
+// Ce que l'écran doit faire : un raccourci Discord devient une simple touche clavier
+function deviceAction(a) {
+  if (a && a.type === 'discord' && a.op === 'raccourci') {
+    const sc = shortcutById(a.arg);
+    return { type: 'key', keys: sc ? sc.keys || '' : '' };
+  }
+  return a;
+}
 function deviceConfig() {
   const order = cfg.homeOrder.map(spaceById).filter(s => s && s.onHome);
   const strip = (look) => look ? { bgType: look.bgType, bgColor: look.bgColor, bgPhoto: look.bgType === 'photo' ? look.bgPhoto : null, bgDim: look.bgDim, idleEdge: look.idleEdge, accent: look.accent } : null;
@@ -597,7 +689,7 @@ function deviceConfig() {
       id: s.id, name: s.name, category: s.category, icon: s.icon, autoExe: s.autoExe, look: strip(s.look),
       pages: s.pages.map(p => ({ name: p.name, cells: p.cells.map(c => c ? {
         name: c.name, image: c.image.type === 'photo' ? { type: 'photo', photo: c.image.photo, showName: c.image.showName !== false, dim: c.image.dim || 0 } : { type: c.image.type, icon: c.image.icon, color: c.image.color },
-        action: c.action, behavior: c.behavior
+        action: deviceAction(c.action), behavior: c.behavior
       } : null) }))
     }))
   };
@@ -734,7 +826,7 @@ const ACTIONS = {
   'cell-clear': () => { confirmBox('Effacer cette case ?', 'Elle redeviendra vide.', 'Effacer', true, () => { curPage().cells[ui.cell] = null; commit(); }); },
   'cell-test': () => {
     const c = curCell(); const t = c.action && c.action.type;
-    if (t === 'app' || t === 'obs') runPcAction(c, true);
+    if (t === 'app' || t === 'obs' || (t === 'discord' && c.action.op !== 'raccourci')) runPcAction(c, true);
     else if (t === 'page') toast('Essayez-la dans « Aperçu de l\u2019écran ».');
     else toast('Cette case est envoyée par l\u2019écran lui-même : testez-la une fois l\u2019écran branché, ou dans « Aperçu de l\u2019écran ».');
   },
@@ -773,6 +865,27 @@ const ACTIONS = {
   'look-common': () => { const s = spaceById(ui.lookScope); s.look = null; commit(); },
   'preview-cell': (d) => { previewOn[+d.i] = !previewOn[+d.i]; render(); },
   'obs-on': () => { OBS.connect(cfg.obs); },
+  'discord-on': () => { api.discordConnect({ clientId: cfg.discord.clientId, clientSecret: cfg.discord.clientSecret }, cfg.discord.autoConnect).then(st => { setD(st); render(); }); },
+  'discord-off': () => { api.discordDisconnect().then(st => { setD(st); render(); }); },
+  'discord-auto': (d, el) => { cfg.discord.autoConnect = el.checked; commit(true); },
+  'discord-run': (d) => runDiscord(d.op),
+  'discord-dev': () => { window.open('https://discord.com/developers/applications'); },
+  'sc-add': () => { const n = cfg.discord.shortcuts.length + 1; cfg.discord.shortcuts.push({ id: uid(), name: 'Raccourci ' + n, keys: '' }); commit(); setTimeout(() => { const els = document.querySelectorAll('[data-field="sc-name"]'); const el = els[els.length - 1]; if (el) { el.focus(); el.select(); } }, 0); },
+  'sc-del': (d) => {
+    const sc = shortcutById(d.id); if (!sc) return;
+    const used = cfg.spaces.reduce((n, sp) => n + sp.pages.reduce((m, p) => m + p.cells.filter(x => x && x.action && x.action.type === 'discord' && x.action.arg === sc.id).length, 0), 0);
+    confirmBox('Supprimer « ' + sc.name + ' » ?', used ? `Il est utilisé par ${used} case${used > 1 ? 's' : ''} : elle${used > 1 ? 's' : ''} n’enverr${used > 1 ? 'ont' : 'a'} plus rien.` : 'Ce raccourci n’est utilisé par aucune case.', 'Supprimer', true, () => { cfg.discord.shortcuts = cfg.discord.shortcuts.filter(x => x.id !== sc.id); commit(); });
+  },
+  'discord-addpage': () => {
+    const id = ui.dpageSpace || (cfg.spaces.find(x => x.category === 'bureau') || cfg.spaces[0] || {}).id;
+    const sp = spaceById(id); if (!sp) { toast('Créez d’abord un espace.', 'err'); return; }
+    const cells = discordCells(cfg.discord.shortcuts);
+    if (cells.length > 15) toast('Seuls les 9 premiers raccourcis tiennent sur la page.', '', 6000);
+    sp.pages.push({ id: uid(), name: 'DISCORD', cells: pad(cells) });
+    commit(true);
+    ui.spaceId = sp.id; ui.page = sp.pages.length - 1; ui.cell = null; ui.view = 'editeur'; render();
+    toast('Page DISCORD ajoutée à « ' + sp.name + ' ».', 'ok');
+  },
   'obs-off': () => { OBS.disconnect(); },
   'obs-auto': (d, el) => { cfg.obs.autoConnect = el.checked; commit(true); },
   sleep: (d) => { cfg.device.sleepMin = +d.v; commit(); },
@@ -830,7 +943,7 @@ function onField(el, isChange) {
     case 'page': c.action.page = v === 'home' ? 'home' : +v; commit(); break;
     case 'type': {
       const t = v;
-      const base = { joy: { type: 'joy', button: 1 }, key: { type: 'key', keys: '' }, media: { type: 'media', media: 'volplus' }, app: { type: 'app', preset: 'autre', exe: '', args: '', processName: '', screen: 'gauche', position: 'plein', ifOpen: 'front' }, obs: { type: 'obs', op: 'scene', target: '' }, page: { type: 'page', page: 0 }, none: { type: 'none' } }[t];
+      const base = { joy: { type: 'joy', button: 1 }, key: { type: 'key', keys: '' }, media: { type: 'media', media: 'volplus' }, app: { type: 'app', preset: 'autre', exe: '', args: '', processName: '', screen: 'gauche', position: 'plein', ifOpen: 'front' }, obs: { type: 'obs', op: 'scene', target: '' }, discord: { type: 'discord', op: 'micro', arg: '', argName: '' }, page: { type: 'page', page: 0 }, none: { type: 'none' } }[t];
       c.action = clone(base); commit(); break;
     }
     case 'preset': c.action.preset = v; if (v !== 'autre') { c.action.exe = ''; c.action.args = ''; c.action.processName = ''; } commit(); break;
@@ -838,6 +951,19 @@ function onField(el, isChange) {
     case 'args': c.action.args = v; commit(true); break;
     case 'proc': c.action.processName = v; commit(true); break;
     case 'op': c.action.op = v; c.action.target = ''; commit(); break;
+    case 'dop': c.action.op = v; c.action.arg = ''; c.action.argName = ''; if (v === 'raccourci' && cfg.discord.shortcuts[0]) { c.action.arg = cfg.discord.shortcuts[0].id; c.action.argName = cfg.discord.shortcuts[0].name; } commit(); break;
+    case 'darg': {
+      c.action.arg = v;
+      const list = c.action.op === 'entree' ? dstate.inputs : (c.action.op === 'sortie' ? dstate.outputs : cfg.discord.shortcuts);
+      const it = list.find(x => x.id === v); if (it) c.action.argName = it.name;
+      commit(); break;
+    }
+    case 'dc-id': cfg.discord.clientId = v.trim(); commit(true); break;
+    case 'dc-secret': cfg.discord.clientSecret = v.trim(); commit(true); break;
+    case 'sc-name': { const sc = shortcutById(el.dataset.id); if (sc) { sc.name = v; cfg.spaces.forEach(sp => sp.pages.forEach(p => p.cells.forEach(x => { if (x && x.action && x.action.type === 'discord' && x.action.arg === sc.id) x.action.argName = v; }))); commit(true); } break; }
+    case 'dpage-space': ui.dpageSpace = v; break;
+    case 'd-in': if (v && isChange) runDiscord('entree', v); break;
+    case 'd-out': if (v && isChange) runDiscord('sortie', v); break;
     case 'target': c.action.target = v; commit(!isChange); if (isChange) refreshGridOnly(); break;
     case 'hold': c.behavior.holdMs = +v; commit(!isChange); if (!isChange) { const s = el.parentElement.querySelector('.mono'); if (s) s.textContent = (v / 1000).toFixed(1).replace('.', ',') + ' s'; } break;
     case 'lookscope': ui.lookScope = v; render(); break;
@@ -879,6 +1005,7 @@ document.addEventListener('keydown', (ev) => {
   if (names[ev.key] === null) return; // modificateur seul
   let key = names[ev.key] || (ev.code.startsWith('Key') ? ev.code.slice(3) : (ev.code.startsWith('Digit') ? ev.code.slice(5) : (ev.code.startsWith('Numpad') ? 'Pavé' + ev.code.slice(6) : ev.key.length === 1 ? ev.key.toUpperCase() : ev.key)));
   const combo = [ev.ctrlKey && 'Ctrl', ev.altKey && 'Alt', ev.shiftKey && 'Shift', ev.metaKey && 'Win', key].filter(Boolean).join('+');
+  if (el.dataset.sc) { const sc = shortcutById(el.dataset.sc); if (sc) { sc.keys = combo; el.value = combo; commit(true); } return; }
   curCell().action.keys = combo; el.value = combo; commit(true); refreshGridOnly();
 });
 
@@ -930,6 +1057,15 @@ document.addEventListener('wheel', (ev) => {
   cropDraw();
 }, { passive: false });
 
+api.onDiscordState((st) => {
+  setD(st);
+  if (ui.view === 'discord' || ui.view === 'editeur') render(); else { const s = $('.status'); if (s) render(); }
+});
+async function runDiscord(op, arg) {
+  const r = await api.discordRun(op, arg);
+  if (!r.ok) toast('Discord : ' + r.message, 'err');
+}
+
 OBS.onChange(() => { if (ui.view === 'connexions' || ui.view === 'editeur') render(); else { const s = $('.status'); if (s) render(); } });
 
 // ---------------------------------------------------------------------------
@@ -940,6 +1076,8 @@ function migrate(c) {
   const out = Object.assign({}, d, c);
   out.look = Object.assign({}, DEFAULT_LOOK, c.look || {});
   out.obs = Object.assign({}, d.obs, c.obs || {});
+  out.discord = Object.assign({}, d.discord, c.discord || {});
+  if (!Array.isArray(out.discord.shortcuts)) out.discord.shortcuts = [];
   out.device = Object.assign({}, d.device, c.device || {});
   out.settings = Object.assign({}, d.settings, c.settings || {});
   out.spaces = (c.spaces || []).filter(s => s && s.pages);
@@ -956,4 +1094,6 @@ function migrate(c) {
   assignHotkeys();
   render();
   if (cfg.obs.autoConnect) OBS.connect(cfg.obs);
+  setD(await api.discordState());
+  if (cfg.discord.autoConnect && cfg.discord.clientId && dstate.status !== 'on') api.discordConnect({ clientId: cfg.discord.clientId, clientSecret: cfg.discord.clientSecret }, true);
 })();

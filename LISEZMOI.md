@@ -1,4 +1,4 @@
-# Cockpit Deck 0.1 — fabriquer le fichier .exe
+# Cockpit Deck 0.2 — fabriquer le fichier .exe
 
 Ce dossier contient le logiciel Cockpit Deck complet. Il faut le transformer une fois en fichier `.exe` pour Windows. Deux façons, au choix.
 
@@ -15,8 +15,8 @@ GitHub fabrique le `.exe` pour vous sur ses ordinateurs. Comptez 10 minutes la p
 7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer Cockpit Deck pour Windows » démarre. Elle dure environ 5 minutes.
 8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **Cockpit-Deck-Windows** pour télécharger un zip.
 9. Dans ce zip, il y a deux fichiers :
-   - `Cockpit-Deck-Installation-0.1.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
-   - `Cockpit-Deck-Portable-0.1.0.exe` : se lance directement, sans installation.
+   - `Cockpit-Deck-Installation-0.2.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
+   - `Cockpit-Deck-Portable-0.2.0.exe` : se lance directement, sans installation.
 
 Pour une nouvelle version, il suffit de renvoyer les fichiers modifiés dans le même dépôt : GitHub refabrique le `.exe` tout seul.
 
@@ -43,6 +43,16 @@ Windows peut afficher « Windows a protégé votre ordinateur », car le logicie
 - Ouvrir une appli sur l'écran de gauche ou de droite, en plein écran ou sur une moitié (bouton Tester).
 - OBS : connexion, liste des scènes et des sources, changement de scène, sons, éléments, live, enregistrement, replay (bouton Tester).
 - Sauvegardes automatiques et restauration.
+- Discord (nouveau en 0.2) : micro seul, casque seul, micro + casque, choix de l'entrée et de la sortie audio dans une liste, entrée ou sortie suivante, et vos propres raccourcis Discord. Bouton « Ajouter la page Discord » pour créer une page prête dans un espace.
+
+## Discord : la connexion, à faire une fois
+
+1. Ouvrez discord.com/developers/applications, cliquez sur **New Application**, nommez-la « Cockpit Deck ».
+2. Dans **OAuth2** : copiez le **Client ID**, cliquez sur **Reset Secret** et copiez le **Client Secret**.
+3. Toujours dans OAuth2, sous **Redirects**, ajoutez `http://localhost` puis **Save Changes**.
+4. Dans Cockpit Deck, menu **Discord** : collez les deux codes, cliquez sur **Connecter**, puis sur **Autoriser** dans la fenêtre de Discord.
+
+Le casque seul est coupé en mettant le volume de sortie de Discord à zéro (Discord ne sait pas couper le son sans couper le micro), puis remis comme avant.
 
 ## Ce qui viendra avec le programme de l'écran
 
