@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss:">
+<title>Cockpit Deck</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toasts" aria-live="polite"></div>
+<input type="file" id="file-image" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden>
+<input type="file" id="file-import" accept=".deck,.json" hidden>
+<script src="data.js"></script>
+<script src="obs.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

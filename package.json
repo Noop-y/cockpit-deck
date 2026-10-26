@@ -1,0 +1,49 @@
+{
+  "name": "cockpit-deck",
+  "productName": "Cockpit Deck",
+  "version": "0.1.0",
+  "description": "Logiciel de configuration de l'écran tactile Cockpit Deck",
+  "main": "main.js",
+  "author": "Cockpit Deck",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "fr.cockpitdeck.app",
+    "productName": "Cockpit Deck",
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cockpit Deck",
+      "artifactName": "Cockpit-Deck-Installation-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Cockpit-Deck-Portable-${version}.${ext}"
+    }
+  }
+}

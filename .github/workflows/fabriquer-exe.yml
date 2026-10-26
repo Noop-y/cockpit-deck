@@ -1,0 +1,30 @@
+name: Fabriquer Cockpit Deck pour Windows
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installer les outils
+        run: npm install
+
+      - name: Fabriquer les fichiers .exe
+        run: npm run dist
+
+      - name: Mettre les .exe à télécharger
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cockpit-Deck-Windows
+          path: dist/*.exe
+          if-no-files-found: error
