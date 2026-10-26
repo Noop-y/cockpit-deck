@@ -78,6 +78,17 @@ function toast(msg, kind, ms) {
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
+// Anciennes cases (image « type » unique) -> photo / pictogramme / nom combinables
+function normImg(c) {
+  if (!c) return c;
+  const im = c.image || {};
+  if (im.usePhoto !== undefined && im.showIcon !== undefined) return c;
+  const t = im.type || 'icon';
+  c.image = { photo: im.photo || null, usePhoto: t === 'photo' && !!im.photo, icon: im.icon || 'etoile', showIcon: t === 'icon',
+    showName: t === 'photo' && im.photo ? im.showName !== false : true, color: im.color || '#9FB0C0', dim: im.dim != null ? im.dim : 0.35 };
+  if (c.edge === undefined) c.edge = null;
+  return c;
+}
 const PC_KEYS = (() => {
   const list = [];
   ['', 'Shift+', 'Control+', 'Alt+'].forEach(m => { for (let i = 13; i <= 24; i++) list.push(m + 'F' + i); });
@@ -88,6 +99,7 @@ function newSpace(category, tpl, name, exe, scenes) {
   const pages = tpl.pages(scenes).map(p => ({ id: uid(), name: p.name, cells: p.cells.map(c => c ? clone(c) : null) }));
   const sp = { id: uid(), name: name || tpl.name, category, icon: tpl.icon || catOf(category).icon, onHome: true, autoExe: exe || '', look: null, pages };
   if (tpl.layout === 'player') { sp.layout = 'player'; sp.player = { volume: true, coverBg: true }; }
+  if (tpl.layout === 'soundboard') { sp.layout = 'soundboard'; sp.sound = { sel: { moi: true, discord: true, jeu: false, stream: false } }; }
   return sp;
 }
 
@@ -97,12 +109,15 @@ function defaultConfig() {
   const st = newSpace('stream', TEMPLATES.stream[0], 'Stream', 'obs64.exe');
   const dc = newSpace('discord', TEMPLATES.discord[0], 'Discord', '');
   const sp = newSpace('spotify', TEMPLATES.spotify[0], 'Spotify', '');
+  const sb = newSpace('soundboard', TEMPLATES.soundboard[0], 'Soundboard', '');
   return {
     format: 'cockpit-deck', version: 1,
-    spaces: [sc, bu, st, dc, sp],
-    homeOrder: [sc.id, bu.id, st.id, dc.id, sp.id],
+    spaces: [sc, bu, st, dc, sp, sb],
+    homeOrder: [sc.id, bu.id, st.id, dc.id, sp.id, sb.id],
     discordSpaceAdded: true,
     spotifySpaceAdded: true,
+    soundboardAdded: true,
+    audio: { meOut: '', micIn: '', passMic: true, volMe: 80, volMic: 80, volStream: 80, master: 100, solo: false },
     cats: [],
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
@@ -196,6 +211,7 @@ function cellSub(c) {
   if (a.type === 'obs') return 'OBS';
   if (a.type === 'discord') { if (a.op !== 'raccourci') return 'DISCORD'; const sc = shortcutById(a.arg); return sc ? (sc.keys || 'DISCORD') : 'DISCORD'; }
   if (a.type === 'page') return 'PAGE';
+  if (a.type === 'sound') return a.file ? fmtDur(a.dur) : 'SON ?';
   return '';
 }
 function deckCell(c, look, opts) {
@@ -207,19 +223,19 @@ function deckCell(c, look, opts) {
   const fill = photoBg ? 'rgba(10,12,22,.6)' : (light ? 'rgba(255,255,255,.78)' : '#11161C');
   const idleTxt = light ? '#1B232C' : '#E6EDF3';
   const im = c.image || {};
-  const edge = on ? `2px solid ${look.accent}` : `1.5px solid ${photoBg && look.idleEdge === '#26303A' ? 'rgba(201,214,226,.28)' : look.idleEdge}`;
-  const txt = on ? look.accent : idleTxt;
-  const icoCol = on ? look.accent : (im.color || '#9FB0C0');
+  const hasPhoto = !!(im.usePhoto && im.photo);
+  const idleEdge = c.edge ? `2px solid ${c.edge}` : `1.5px solid ${photoBg && look.idleEdge === '#26303A' ? 'rgba(201,214,226,.28)' : look.idleEdge}`;
+  const edge = on ? `2px solid ${look.accent}` : idleEdge;
+  const txt = on ? look.accent : (hasPhoto ? '#fff' : idleTxt);
+  const icoCol = on ? look.accent : (hasPhoto ? '#fff' : (im.color || '#9FB0C0'));
   let inner = '';
-  if (im.type === 'photo' && im.photo) {
+  if (hasPhoto) {
     inner += `<div class="ph" style="background-image:url('${im.photo}')"></div>`;
-    if (im.showName !== false) inner += `<div class="shade" style="opacity:${0.4 + (im.dim || 0)}"></div>`;
-    inner += '<span></span>';
-    if (im.showName !== false) inner += `<div><div class="dnm disp" style="color:${on ? look.accent : '#fff'}">${esc(c.name)}</div></div>`;
-  } else {
-    inner += im.type === 'text' ? '<span></span>' : `<div class="dico">${svg(im.icon || 'plus', 24, icoCol)}</div>`;
-    inner += `<div><div class="dnm disp" style="color:${txt}${im.type === 'text' ? ';font-size:calc(var(--u) * 2.6)' : ''}">${esc(c.name)}</div></div>`;
+    if (im.showName || im.showIcon) inner += `<div class="shade" style="opacity:${0.4 + (im.dim || 0)}"></div>`;
   }
+  inner += im.showIcon ? `<div class="dico">${svg(im.icon || 'plus', 24, icoCol)}</div>` : '<span></span>';
+  const big = !im.showIcon && !hasPhoto;
+  inner += im.showName ? `<div><div class="dnm disp" style="color:${txt}${big ? ';font-size:calc(var(--u) * 2.6)' : ''}${hasPhoto ? ';text-shadow:0 1px 3px rgba(0,0,0,.6)' : ''}">${esc(c.name)}</div>${opts && opts.sub ? `<div class="dsub">${esc(opts.sub)}</div>` : ''}</div>` : '<span></span>';
   if (prog != null) inner += `<div class="bar" style="width:${prog}%;background:${look.accent}"></div>`;
   return `<div class="dcell" style="background:${fill};border:${edge}${photoBg ? ';backdrop-filter:blur(6px)' : ''}" ${opts && opts.attrs ? opts.attrs : ''}>${inner}</div>`;
 }
@@ -268,8 +284,82 @@ function deckPlayer(space, sim) {
   const extra = o.coverBg !== false && has && m.cover ? `<div class="pbg" style="background-image:url('${m.cover}')"></div><div class="pbgdim"></div>` : '';
   return deckFrame(look, inner, extra, spaceOverlay(space, sim));
 }
+// ---------- Soundboard ----------
+const isSoundboard = (s) => !!s && s.layout === 'soundboard';
+const fmtDur = (d) => d == null ? '…' : (d >= 60 ? Math.floor(d / 60) + ':' + String(Math.round(d % 60)).padStart(2, '0') : d.toFixed(1).replace('.', ',') + ' s');
+function newSoundCell(name, file) {
+  return cell(name, 'son', { type: 'sound', file: file || '', fileName: file ? file.split(/[\\/]/).pop() : '', dur: null, volume: 100, start: 0, end: null, mode: 'once', retrig: 'stop', fade: true, route: 'screen', dests: { moi: true, discord: true, jeu: false, stream: false } }, { mode: 'tap', holdMs: 1500 }, '#FF7EB6');
+}
+// sorties cochées : dans l'aperçu, propres à l'aperçu ; sinon, celles enregistrées pour l'écran
+function sbSel(space, sim) {
+  if (!space.sound) space.sound = { sel: { moi: true, discord: true, jeu: false, stream: false } };
+  if (!sim) return space.sound.sel;
+  sim.sbSel = sim.sbSel || {};
+  if (!sim.sbSel[space.id]) sim.sbSel[space.id] = Object.assign({}, space.sound.sel);
+  return sim.sbSel[space.id];
+}
+function deckSound(space, pageIdx, sim) {
+  const look = lookFor(space);
+  const page = space.pages[pageIdx] || space.pages[0];
+  const sel = sbSel(space, sim);
+  const none = !SOUND_DESTS.some(d => sel[d.k]);
+  const vol = sim && sim.sbVol != null ? sim.sbVol : cfg.audio.master;
+  const tabs = `<div class="dtabs"><div class="dtab home" ${sim ? 'data-sim="home"' : ''}>${svg('maison', 16, '#C9D6E2')}</div>` +
+    space.pages.map((p, i) => `<div class="dtab disp" ${sim ? `data-sim="page" data-i="${i}"` : ''} style="${i === pageIdx ? `border-color:${look.accent};color:${look.accent}` : ''}">${esc(p.name)}</div>`).join('') + '</div>';
+  const top = `<div class="dtop">${tabs}<div class="sbtop"><div class="sbbtn vol" ${sim ? 'data-simsb="vol"' : ''}>${pIcon('vplus')}${vol} %</div><div class="sbbtn stop" ${sim ? 'data-simsb="stop"' : ''}><i></i>Stop tout</div></div></div>`;
+  const dests = SOUND_DESTS.map(d => {
+    const on = !!sel[d.k];
+    return `<div class="sbdest${on ? ' on' : ''}" style="${on ? `border-color:${d.color}` : ''}" ${sim ? `data-simdest="${d.k}"` : ''}>
+      <div class="sbdtop"><svg viewBox="0 0 24 24" fill="none" stroke="${on ? d.color : '#5B6875'}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d.icon}"/></svg><span class="sbchk" style="${on ? `background:${d.color};border-color:${d.color}` : ''}">${on ? '✓' : ''}</span></div>
+      <div class="disp sbdname">${d.label}</div></div>`;
+  }).join('');
+  const cells = page.cells.slice(0, 12).map((c, i) => {
+    const id = `${space.id}|${pageIdx}|${i}`;
+    const playingNow = c && SOUND.isPlaying(id);
+    const a = (c && c.action) || {};
+    return deckCell(c, look, { on: playingNow, prog: playingNow ? SOUND.progress(id) : null, sub: c && a.type === 'sound' && a.file ? (a.mode === 'loop' ? 'en boucle' : fmtDur(a.dur != null ? (a.end || a.dur) - (a.start || 0) : null)) : '', attrs: sim && c ? `data-simcell="${i}"` : '' });
+  }).join('');
+  const inner = `${top}<div class="sbbody"><div class="sbdests"><div class="sblab disp">ENVOYER SUR</div>${dests}</div><div class="sbgrid${none ? ' dim' : ''}${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div></div>`;
+  return deckFrame(look, inner, '', spaceOverlay(space, sim));
+}
+async function ensureAudio() {
+  if (!SOUND.state.ready) await SOUND.refreshDevices();
+  await SOUND.setup(cfg.audio);
+}
+const warned = {};
+async function sbPlay(space, pi, ci, dests) {
+  const c = space.pages[pi] && space.pages[pi].cells[ci];
+  if (!c || !c.action || c.action.type !== 'sound') return;
+  const a = c.action;
+  const want = a.route === 'fixed' ? a.dests : dests;
+  if (!SOUND_DESTS.some(d => want[d.k])) { toast('Cochez au moins une sortie (Moi, Discord, Jeu ou Stream).', 'err'); return; }
+  if (api.browser) { toast('Les sons se jouent dans le logiciel installé sur Windows.'); return; }
+  try {
+    await ensureAudio();
+    await SOUND.play(`${space.id}|${pi}|${ci}`, a.file, a, want);
+    if ((want.discord || want.jeu) && !SOUND.state.cableOut && !warned.cable) { warned.cable = true; toast('Discord et Jeu : le micro virtuel n\u2019est pas installé (menu Sorties audio).', 'err', 7000); }
+    if (want.stream && OBS.state.status !== 'on' && !warned.obs) { warned.obs = true; toast('Stream : OBS n\u2019est pas connecté (menu Connexions).', 'err', 7000); }
+  } catch (e) { toast(e.message, 'err'); }
+}
+let sbTicker = null;
+SOUND.onChange(() => {
+  const simOpen = ui.modal && ui.modal.type === 'sim';
+  if (simOpen) simRender();
+  else if (ui.view === 'editeur' && isSoundboard(curSpace())) refreshSoundPlaying();
+  if (!sbTicker) sbTicker = setInterval(() => {
+    const any = ui.modal && ui.modal.type === 'sim' && $('#sim .bar');
+    if (any) simRender(); else { clearInterval(sbTicker); sbTicker = null; }
+  }, 200);
+  if (ui.view === 'audio') render();
+});
+function refreshSoundPlaying() {
+  const b = $('[data-act="snd-preview"]');
+  if (b) b.textContent = SOUND.isPlaying('__preview') ? 'Arrêter' : 'Préécouter';
+}
+
 function deckPage(space, pageIdx, sim) {
   if (isPlayer(space)) return deckPlayer(space, sim);
+  if (isSoundboard(space)) return deckSound(space, pageIdx, sim);
   const look = lookFor(space);
   const page = space.pages[pageIdx] || space.pages[0];
   const tabs = `<div class="dtabs"><div class="dtab home" ${sim ? 'data-sim="home"' : ''}>${svg('maison', 16, '#C9D6E2')}</div>` +
@@ -288,7 +378,7 @@ function deckHome(sim, pageArg) {
   const spaces = all.slice(pg * HOME_PER_PAGE, pg * HOME_PER_PAGE + HOME_PER_PAGE);
   const cards = spaces.map(s => {
     const cat = catOf(s.category);
-    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`}</div></div></div>`;
+    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
   });
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   cards.push(`<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}">${svg('reglages', 40, '#9FB0C0', 1.6)}<div><div class="t disp">Réglages</div><div class="s">Luminosité · veille</div></div></div>`);
@@ -300,7 +390,7 @@ function deckHome(sim, pageArg) {
 // Rendu : logiciel
 // ---------------------------------------------------------------------------
 function sidebar() {
-  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['connexions', 'Connexions'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
+  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['connexions', 'Connexions'], ['audio', 'Sorties audio'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
   const v = ui.view === 'editeur' ? 'espaces' : ui.view;
   const obsDot = OBS.state.status === 'on' ? 'ok' : (OBS.state.status === 'error' ? 'err' : '');
   return `<nav class="side" aria-label="Menu">
@@ -365,26 +455,29 @@ function viewEditeur() {
   const s = curSpace();
   if (!s) { ui.view = 'espaces'; return viewEspaces(); }
   if (isPlayer(s)) return viewPlayer(s);
+  const sound = isSoundboard(s);
   const page = curPage();
   const cat = catOf(s.category);
   const tabs = s.pages.map((p, i) => `<button class="ptab disp${i === ui.page ? ' on' : ''}" data-act="page" data-i="${i}">${esc(p.name)}</button>`).join('');
-  const cells = page.cells.map((c, i) => {
+  const cells = page.cells.slice(0, sound ? 12 : 15).map((c, i) => {
     if (!c) return `<button class="ecell empty${ui.cell === i ? ' sel' : ''}" data-act="cell" data-i="${i}" draggable="true" data-drag="${i}" aria-label="Case vide ${i + 1}">+</button>`;
     const im = c.image || {};
-    const ph = im.type === 'photo' && im.photo ? `<div class="ph" style="background-image:url('${im.photo}')"></div>` : '';
-    const ico = im.type === 'icon' ? svg(im.icon, 22, ui.cell === i ? '#5CC8FF' : (im.color || '#9FB0C0')) : '<span></span>';
-    return `<button class="ecell${ui.cell === i ? ' sel' : ''}" data-act="cell" data-i="${i}" draggable="true" data-drag="${i}">${ph}
-      <div class="top">${ico}<span class="bind">${esc(cellSub(c))}</span></div><div class="nm disp" style="${ph ? 'text-shadow:0 1px 3px #000' : ''}">${esc(c.name)}</div></button>`;
+    const ph = im.usePhoto && im.photo ? `<div class="ph" style="background-image:url('${im.photo}')"></div>${im.showName || im.showIcon ? '<div class="shade"></div>' : ''}` : '';
+    const ico = im.showIcon ? svg(im.icon, 22, ui.cell === i ? '#5CC8FF' : (ph ? '#fff' : (im.color || '#9FB0C0'))) : '<span></span>';
+    const edge = c.edge && ui.cell !== i ? ` style="border:2px solid ${c.edge}"` : '';
+    return `<button class="ecell${ui.cell === i ? ' sel' : ''}" data-act="cell" data-i="${i}" draggable="true" data-drag="${i}"${edge}>${ph}
+      <div class="top">${ico}<span class="bind">${esc(cellSub(c))}</span></div><div class="nm disp" style="${ph ? 'text-shadow:0 1px 3px #000' : ''}">${im.showName ? esc(c.name) : ''}</div></button>`;
   }).join('');
   return `<div class="head"><div><div class="crumb"><button data-act="nav" data-view="espaces">Mes espaces</button> › ${cat.label}</div><h1 class="disp">${esc(s.name)}</h1></div>
-    <div class="row"><button class="btn" data-act="simulate" data-id="${s.id}">Aperçu de l\u2019écran</button><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div></div>
+    <div class="row">${sound ? '<button class="btn" data-act="snd-import">Importer des sons…</button>' : ''}<button class="btn" data-act="simulate" data-id="${s.id}">Aperçu de l\u2019écran</button><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div></div>
     <div class="tabs">${tabs}<button class="ptab add disp" data-act="page-add">+ PAGE</button>
       <span style="flex:1"></span><button class="btn sm" data-act="page-rename">Renommer la page</button>
       <button class="btn sm" data-act="page-move" data-d="-1" ${ui.page === 0 ? 'disabled' : ''} aria-label="Déplacer la page à gauche">←</button>
       <button class="btn sm" data-act="page-move" data-d="1" ${ui.page === s.pages.length - 1 ? 'disabled' : ''} aria-label="Déplacer la page à droite">→</button>
       <button class="btn sm danger" data-act="page-del" ${s.pages.length < 2 ? 'disabled' : ''}>Supprimer la page</button></div>
-    <div class="editor"><div class="gridwrap"><div class="grid">${cells}</div>
-      <div class="small muted" style="margin-top:10px">Cliquez sur une case pour la régler. Faites glisser une case pour la déplacer.</div>${s.category === 'discord' ? discordSpacePanels() : ''}</div>
+    <div class="editor"><div class="gridwrap"${sound ? ' data-sounddrop="1"' : ''}><div class="grid"${sound ? ' style="grid-template-columns:repeat(4,minmax(0,1fr))"' : ''}>${cells}</div>
+      <div class="small muted" style="margin-top:10px">${sound ? 'Glissez des fichiers son (MP3, WAV, OGG…) sur la grille pour les ajouter. ' : ''}Cliquez sur une case pour la régler. Faites glisser une case pour la déplacer.</div>
+      ${sound ? '<div class="note" style="margin-top:12px">Sur l\u2019écran, les sorties se cochent dans la colonne de gauche (Moi, Discord, Jeu, Stream), puis on touche les sons. Réglez les sorties dans le menu <button class="linkbtn" data-act="nav" data-view="audio">Sorties audio</button>.</div>' : ''}${s.category === 'discord' ? discordSpacePanels() : ''}</div>
       <div class="cellpanel">${cellPanel()}</div></div>`;
 }
 
@@ -395,22 +488,88 @@ function swatches(act, list, current) {
   return `<div class="row" style="gap:10px">${list.map(([n, c]) => `<button class="sw${c === current ? ' on' : ''}" data-act="${act}" data-v="${c}" aria-label="${n}"><span style="background:${c}"></span>${n}</button>`).join('')}</div>`;
 }
 
+// Réglages d'apparence d'une case : photo, pictogramme et nom combinables, contour
+function imagePanel(c) {
+  const im = c.image;
+  const chip = (k, on, label) => `<button class="tgl${on ? ' on' : ''}" data-act="img-toggle" data-k="${k}" aria-pressed="${on}"><i>${on ? '✓' : ''}</i>${label}</button>`;
+  const none = !im.usePhoto && !im.showIcon && !im.showName;
+  return `<div><label class="lab" for="f-name">Nom</label><input id="f-name" class="inp" value="${esc(c.name)}" data-field="name" maxlength="28"></div>
+    <div><span class="lab">Sur la case, afficher</span><div class="row" style="gap:8px">${chip('photo', im.usePhoto, 'Photo')}${chip('icon', im.showIcon, 'Pictogramme')}${chip('name', im.showName, 'Nom')}</div>
+      ${none ? '<div class="small" style="color:var(--amber);margin-top:6px">Rien n\u2019est coché : la case sera vide sur l\u2019écran.</div>' : ''}</div>
+    ${im.usePhoto ? `<div class="row">${im.photo ? `<span style="width:96px;height:80px;border-radius:10px;background:url('${im.photo}') center/cover;border:1px solid var(--line)"></span>` : ''}
+      <button class="btn" data-act="photo-import">${im.photo ? 'Changer de photo' : 'Importer une photo…'}</button></div>
+      ${im.showName || im.showIcon ? `<div><span class="lab">Assombrir la photo sous le nom et le pictogramme</span>${seg('photo-dim', [[0, 'Aucun'], [0.2, 'Léger'], [0.4, 'Fort']], im.dim || 0)}</div>` : ''}` : ''}
+    ${im.showIcon ? `<div class="row"><button class="btn" data-act="picto-open" style="height:52px">${svg(im.icon, 26, im.usePhoto && im.photo ? '#E6EDF3' : im.color)}<span>Changer de pictogramme</span></button></div>
+      ${im.usePhoto && im.photo ? '<div class="small muted">Sur une photo, le pictogramme est blanc pour rester lisible.</div>' : `<div><span class="lab">Couleur du pictogramme</span>${swatches('icon-color', COLORS_ICON, im.color)}</div>`}` : ''}
+    <div><span class="lab">Couleur du contour</span><div class="row" style="gap:10px"><button class="sw${!c.edge ? ' on' : ''}" data-act="cell-edge" data-v="" aria-label="Comme l\u2019apparence"><span style="background:repeating-linear-gradient(45deg,#26303A 0 4px,#11161C 4px 8px)"></span>Auto</button>${COLORS_CELL_EDGE.map(([n, col]) => `<button class="sw${c.edge === col ? ' on' : ''}" data-act="cell-edge" data-v="${col}" aria-label="${n}"><span style="background:${col}"></span>${n}</button>`).join('')}</div></div>`;
+}
+// Réglages d'un son de la soundboard
+function soundPanel(c, img) {
+  const a = c.action && c.action.type === 'sound' ? c.action : (c.action = newSoundCell(c.name, null).action);
+  const dur = a.dur || 0;
+  const st = a.start || 0, en = a.end || dur;
+  const chip = (k, on, label, color) => `<button class="tgl${on ? ' on' : ''}" data-act="snd-dest" data-k="${k}" aria-pressed="${on}" style="${on ? `border-color:${color}` : ''}"><i style="${on ? `background:${color};border-color:${color}` : ''}">${on ? '✓' : ''}</i>${label}</button>`;
+  return `<div class="panel">
+    <div class="row" style="justify-content:space-between"><h2 class="disp">Son · ${esc(c.name || 'Sans nom')}</h2><span class="tag">sélectionné</span></div>
+    ${a.file ? `<div class="row"><div class="inp mono grow small" style="display:flex;align-items:center;overflow:hidden;white-space:nowrap">${esc(a.fileName)} · ${fmtDur(a.dur)}</div><button class="btn" data-act="snd-replace">Remplacer…</button></div>`
+      : '<div class="row"><button class="btn pri" data-act="snd-replace">Choisir un son…</button><span class="small muted">ou glissez un fichier sur la case</span></div>'}
+    ${a.file ? `<div><div class="row" style="justify-content:space-between"><span class="lab" style="margin:0">Découpe</span><span class="mono small" style="color:var(--amber)">${fmtDur(st)} → ${fmtDur(en)}</span></div>
+      <canvas id="sndwave" width="760" height="120" style="width:100%;height:60px;border-radius:10px;background:var(--field);border:1px solid var(--line2);margin-top:6px"></canvas>
+      <div class="row" style="gap:10px;margin-top:6px"><label class="small muted" style="flex:1">Début<input type="range" min="0" max="${dur}" step="0.05" value="${st}" data-field="snd-start" style="width:100%"></label><label class="small muted" style="flex:1">Fin<input type="range" min="0" max="${dur}" step="0.05" value="${en}" data-field="snd-end" style="width:100%"></label></div>
+      <div class="row"><button class="btn sm" data-act="snd-preview">${SOUND.isPlaying('__preview') ? 'Arrêter' : 'Préécouter'}</button><label class="chk"><input type="checkbox" data-act="snd-fade" ${a.fade !== false ? 'checked' : ''}>Fondu à la fin</label></div></div>
+      <div><div class="row" style="justify-content:space-between"><label class="lab" for="f-svol" style="margin:0">Volume de ce son</label><span class="mono small" style="color:var(--cyan)">${a.volume} %</span></div><input id="f-svol" type="range" min="0" max="150" step="5" value="${a.volume}" data-field="snd-vol"></div>` : ''}
+    ${img}
+    <div><span class="lab">Où part ce son</span>${seg('snd-route', [['screen', 'Selon les cases de l\u2019écran'], ['fixed', 'Toujours les mêmes']], a.route || 'screen')}
+      ${a.route === 'fixed' ? `<div class="row" style="gap:8px;margin-top:8px">${SOUND_DESTS.map(d => chip(d.k, !!a.dests[d.k], d.label, d.color)).join('')}</div>` : ''}</div>
+    <div class="row" style="gap:10px"><div class="grow"><label class="lab" for="f-smode">Lecture</label><select id="f-smode" class="inp" data-field="snd-mode">${[['once', 'Une fois'], ['loop', 'En boucle'], ['hold', 'Tant qu\u2019on appuie']].map(([v, l]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div class="grow"><label class="lab" for="f-sretrig">Si on rappuie</label><select id="f-sretrig" class="inp" data-field="snd-retrig">${[['stop', 'Arrêter'], ['restart', 'Recommencer'], ['overlap', 'Superposer']].map(([v, l]) => `<option value="${v}" ${a.retrig === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+    <div class="row"><button class="btn" data-act="cell-test">Tester</button><button class="btn danger" data-act="cell-clear">Effacer la case</button></div>
+  </div>`;
+}
+const peakCache = {};
+function drawSoundWave() {
+  const cv = $('#sndwave'); const c = curCell();
+  if (!cv || !c || !c.action || !c.action.file) return;
+  const a = c.action, f = a.file;
+  const paint = (pk) => {
+    const x = cv.getContext('2d'); const W = cv.width, H = cv.height, n = pk.peaks.length, bw = W / n;
+    const st = (a.start || 0) / pk.duration, en = (a.end || pk.duration) / pk.duration;
+    x.clearRect(0, 0, W, H);
+    pk.peaks.forEach((v, i) => { const t = i / n; x.fillStyle = t >= st && t <= en ? '#FFB547' : '#3A4652'; const h = Math.max(3, v * (H - 16)); x.fillRect(i * bw + 1, (H - h) / 2, Math.max(1, bw - 2), h); });
+    x.fillStyle = '#FFB547'; x.fillRect(st * W - 2, 4, 4, H - 8); x.fillRect(en * W - 2, 4, 4, H - 8);
+  };
+  if (peakCache[f]) { paint(peakCache[f]); return; }
+  SOUND.peaks(f, 120).then(pk => { peakCache[f] = pk; paint(pk); }).catch(() => {});
+}
+// ajoute des sons : dans les cases vides de la page, à partir de la case visée
+async function addSounds(list, fromIndex) {
+  if (!list || !list.length) return;
+  const s = curSpace(), page = curPage();
+  let k = fromIndex != null ? fromIndex : 0, added = 0, lastI = null;
+  for (const f of list) {
+    while (k < 12 && page.cells[k]) k++;
+    if (k >= 12) { toast(`La page est pleine : ${list.length - added} son(s) non ajouté(s). Ajoutez une page.`, 'err', 6000); break; }
+    page.cells[k] = newSoundCell(f.name.slice(0, 28), f.file); lastI = k; added++; k++;
+  }
+  if (lastI != null) ui.cell = lastI;
+  commit();
+  if (added) toast(added > 1 ? `${added} sons ajoutés.` : 'Son ajouté.', 'ok');
+  // durées
+  for (const c of page.cells) {
+    if (c && c.action && c.action.type === 'sound' && c.action.file && c.action.dur == null) {
+      try { const b = await SOUND.load(c.action.file); c.action.dur = Math.round(b.duration * 100) / 100; } catch (e) { /* illisible */ }
+    }
+  }
+  commit();
+}
+
 function cellPanel() {
   const c = curCell();
   if (ui.cell == null) return `<div class="panel"><h2 class="disp">Réglages de la case</h2><div class="muted">Cliquez sur une case de la grille pour la régler, ou sur une case vide (+) pour en créer une.</div></div>`;
   if (!c) return `<div class="panel"><h2 class="disp">Case ${ui.cell + 1} · vide</h2><div class="muted">Cette case n\u2019affiche rien sur l\u2019écran.</div><button class="btn pri" data-act="cell-create">Créer une case ici</button></div>`;
-  const im = c.image;
   const a = c.action || { type: 'none' };
-  let img = '';
-  if (im.type === 'icon') {
-    img = `<div class="row"><button class="btn" data-act="picto-open" style="height:52px">${svg(im.icon, 26, im.color)}<span>Changer de pictogramme</span></button></div>
-      <div><span class="lab">Couleur du pictogramme</span>${swatches('icon-color', COLORS_ICON, im.color)}</div>`;
-  } else if (im.type === 'photo') {
-    img = `<div class="row">${im.photo ? `<span style="width:96px;height:80px;border-radius:10px;background:url('${im.photo}') center/cover;border:1px solid var(--line)"></span>` : ''}
-      <button class="btn" data-act="photo-import">${im.photo ? 'Changer de photo' : 'Importer une photo…'}</button></div>
-      <label class="chk"><input type="checkbox" data-act="photo-name" ${im.showName !== false ? 'checked' : ''}>Écrire le nom en bas de la photo</label>
-      <div><span class="lab">Assombrir pour lire le nom</span>${seg('photo-dim', [[0, 'Aucun'], [0.2, 'Léger'], [0.4, 'Fort']], im.dim || 0)}</div>`;
-  }
+  const img = imagePanel(c);
+  if (isSoundboard(curSpace())) return soundPanel(c, img);
   let act = '';
   if (a.type === 'joy') act = `<div><label class="lab" for="f-joy">Numéro de bouton (1 à 32)</label><input id="f-joy" class="inp mono" type="number" min="1" max="32" value="${a.button || 1}" data-field="joy"></div>
       <div class="note">Dans le jeu, ouvrez les contrôles, cliquez sur l\u2019action voulue puis touchez cette case sur l\u2019écran.</div>`;
@@ -445,8 +604,6 @@ function cellPanel() {
   const b = c.behavior || { mode: 'tap', holdMs: 1500 };
   return `<div class="panel">
     <div class="row" style="justify-content:space-between"><h2 class="disp">Case ${ui.cell + 1} · ${esc(c.name || 'Sans nom')}</h2><span class="tag">sélectionnée</span></div>
-    <div><label class="lab" for="f-name">Nom affiché</label><input id="f-name" class="inp" value="${esc(c.name)}" data-field="name" maxlength="28"></div>
-    <div><span class="lab">Image de la case</span>${seg('img-type', [['icon', 'Pictogramme'], ['photo', 'Photo'], ['text', 'Texte seul']], im.type)}</div>
     ${img}
     <div><label class="lab" for="f-type">Ce que fait la case</label><select id="f-type" class="inp" data-field="type">
       ${[['joy', 'Bouton de manette (jeux)'], ['key', 'Touche ou raccourci clavier'], ['media', 'Touche multimédia'], ['app', 'Ouvrir une appli sur un écran'], ['obs', 'OBS (streaming)'], ['discord', 'Discord (micro, casque, audio)'], ['page', 'Changer de page'], ['none', 'Rien (case décorative)']].map(([v, l]) => `<option value="${v}" ${a.type === v ? 'selected' : ''}>${l}</option>`).join('')}
@@ -506,6 +663,53 @@ function previewDeck(space) {
   return deckFrame(look, `<div class="dtop"><div class="dtabs"><div class="dtab home">${svg('maison', 16, '#C9D6E2')}</div>${space.pages.map((p, i) => `<div class="dtab disp" style="${i === 0 ? `border-color:${look.accent};color:${look.accent}` : ''}">${esc(p.name)}</div>`).join('')}</div></div><div class="dgrid">${cells}</div>`);
 }
 
+function viewAudio() {
+  const A = cfg.audio, st = SOUND.state;
+  const cable = !!st.cableOut;
+  const cur = dstate.status === 'on' ? (dstate.inputs.find(x => x.id === dstate.inputId) || {}).name || '' : '';
+  const discordOk = /cable output/i.test(cur);
+  const CABLE = '« CABLE Output (VB-Audio Virtual Cable) »';
+  const outs = st.outputs.filter(o => !/cable input/i.test(o.label) && o.id !== 'default');
+  const mics = st.inputs.filter(o => !/cable output/i.test(o.label) && o.id !== 'default');
+  const micSel = A.micIn || SOUND.defaultMic();
+  const pill = (ok, txt) => `<span class="pill2 ${ok ? 'ok' : 'todo'}">${txt}</span>`;
+  const step = (n, done, title, body) => `<li><span class="stepn${done ? ' done' : ''}">${done ? '✓' : n}</span><span><b>${title}</b><br>${body}</span></li>`;
+  const vol = (field, v) => `<div class="row" style="gap:10px;flex-wrap:nowrap"><span class="small muted">Volume</span><input type="range" min="0" max="100" step="5" value="${v}" data-field="${field}" style="flex:1"><span class="mono small" style="width:44px">${v} %</span></div>`;
+  const destRow = (d, how, ok, state, extra) => `<div class="panel arow"><div class="row" style="gap:12px;flex-wrap:nowrap"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${d.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d.icon}"/></svg>
+    <div class="grow" style="min-width:0"><h2 class="disp" style="font-size:20px">${d.label}</h2><div class="small" style="color:var(--soft)">${how}</div></div>${pill(ok, state)}</div>${extra}</div>`;
+  const D = Object.fromEntries(SOUND_DESTS.map(d => [d.k, d]));
+  return `<div class="head"><div><h1 class="disp">Sorties audio</h1><div class="muted" style="margin-top:4px">Où partent les sons de la soundboard. Sur l\u2019écran, vous cochez ensuite parmi ces quatre sorties.</div></div></div>
+    ${api.browser ? '<div class="warn">Les sorties audio se règlent dans le logiciel installé sur Windows.</div>' : ''}
+    <section class="sbban" aria-label="À faire une seule fois">
+      <div class="sbbanh"><div class="disp">À faire une seule fois</div><div class="small">Pour que Discord et le jeu entendent les sons.</div></div>
+      <ol class="sbsteps">
+        ${step(1, cable, 'Installer le micro virtuel (gratuit)', cable ? 'Fait : ' + CABLE + ' existe sur ce PC.' : 'Téléchargez VB-CABLE, installez-le, redémarrez le PC.<br><span class="row" style="gap:6px;margin-top:6px"><button class="btn sm" data-act="aud-download">Télécharger VB-CABLE</button><button class="btn sm" data-act="aud-recheck">Revérifier</button></span>')}
+        ${step(2, discordOk, 'Dans Discord', 'Paramètres › Voix et vidéo › <b>Périphérique d\u2019entrée</b> : choisir ' + CABLE + '.' + (dstate.status === 'on' ? (discordOk ? ' <span style="color:#6FD39C">Réglé.</span>' : ' <span style="color:#FFCF85">Pas encore réglé.</span>') : ''))}
+        ${step(3, false, 'Dans le jeu', 'Options audio › <b>Micro / entrée vocale</b> : choisir ' + CABLE + '.')}
+      </ol>
+      <div class="sbbanr"><span><b>Rien d\u2019autre à changer</b> : casque, SteelSeries Sonar et OBS restent comme avant. Votre voix garde ses réglages (Sonar compris) : The Deck la reprend et ajoute les sons.</span>
+        <span><b>Revenir en arrière</b> : dans Discord et le jeu, remettez votre ancien micro${st.micLabel ? ' (' + esc(st.micLabel) + ')' : ''} comme entrée.</span></div>
+    </section>
+    <div class="editor"><div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px">
+      ${destRow(D.moi, 'Pour vous entendre vous-même', true, 'Prêt', `<div class="row" style="gap:10px"><select class="inp grow" data-field="aud-me"><option value="">Sortie par défaut de Windows</option>${outs.map(o => `<option value="${esc(o.id)}" ${A.meOut === o.id ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select><button class="btn sm" data-act="aud-test" data-k="moi">Tester</button></div>${vol('aud-volme', A.volMe)}
+        <div class="small muted">Avec SteelSeries Sonar : choisissez par exemple « Sonar – Aux ». En mode streamer, ce canal ne doit pas aller dans le mix Stream, sinon les sons arriveraient deux fois sur le stream.</div>`)}
+      ${destRow(D.discord, 'Passe par le micro virtuel ' + CABLE, cable && discordOk, cable ? (discordOk ? 'Entrée réglée' : (dstate.status === 'on' ? 'Entrée à changer dans Discord' : 'À choisir dans Discord')) : 'Micro virtuel à installer', '')}
+      ${destRow(D.jeu, 'Passe par le même micro virtuel (chat vocal du jeu)', false, cable ? 'Entrée à changer dans le jeu' : 'Micro virtuel à installer',
+        `<div class="row" style="gap:10px;flex-wrap:nowrap">${vol('aud-volmic', A.volMic).replace('class="row"', 'class="row grow"')}<button class="btn sm" data-act="aud-test" data-k="micro" ${cable ? '' : 'disabled'}>Tester</button></div><div class="small muted">Discord et le jeu reçoivent les mêmes sons : ce volume vaut pour les deux.</div>`)}
+      ${destRow(D.stream, 'Une source « ' + OBS.SOUND_INPUT + ' » ajoutée toute seule dans OBS, à la scène en cours', OBS.state.status === 'on', OBS.state.status === 'on' ? 'OBS connecté' : 'OBS non connecté', vol('aud-volstream', A.volStream))}
+    </div>
+    <div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:12px">
+      <div class="panel"><h2 class="disp">Ma voix</h2>
+        <label class="chk"><input type="checkbox" data-act="aud-pass" ${A.passMic ? 'checked' : ''}>Ma voix passe aussi par le micro virtuel</label>
+        <select class="inp" data-field="aud-mic" ${A.passMic ? '' : 'disabled'}>${mics.map(o => `<option value="${esc(o.id)}" ${micSel === o.id ? 'selected' : ''}>${esc(o.label)}${!A.micIn && o.id === micSel ? ' (détecté)' : ''}</option>`).join('') || '<option>Aucun micro trouvé</option>'}</select>
+        <div class="small muted">Ainsi, vos amis vous entendent toujours, avec les sons par-dessus.</div></div>
+      <div class="panel"><h2 class="disp">Général</h2>
+        <div><div class="row" style="justify-content:space-between"><span class="lab" style="margin:0">Volume général des sons</span></div>${vol('aud-master', A.master)}</div>
+        <label class="chk"><input type="checkbox" data-act="aud-solo" ${A.solo ? 'checked' : ''}>Un seul son à la fois (le nouveau coupe l\u2019ancien)</label>
+        <button class="btn" data-act="aud-folder">Ouvrir le dossier des sons</button>
+        <div class="small muted">Les sons importés sont copiés dans ce dossier, sur ce PC.</div></div>
+    </div></div>`;
+}
 function viewConnexions() {
   const o = cfg.obs;
   const st = OBS.state;
@@ -668,7 +872,7 @@ function modalHTML() {
       <div class="row" style="gap:8px">${PICTO_CATS.map(cn => `<button class="pill${ui.catFilter === cn ? ' on' : ''}" data-act="picto-cat" data-v="${cn}">${cn}</button>`).join('')}</div>
       <div class="editor"><div class="picgrid" style="flex:999 1 520px">${keys.map(k => `<button class="pic${k === sel ? ' on' : ''}" data-act="picto-pick" data-v="${k}">${svg(k, 28, k === sel ? '#5CC8FF' : '#C9D6E2')}<span>${esc(PICTOS[k][0])}</span></button>`).join('') || '<div class="muted">Aucun pictogramme ne correspond.</div>'}</div>
       <div style="flex:1 1 220px;display:flex;flex-direction:column;gap:14px"><span class="lab" style="margin:0">Aperçu sur l\u2019écran</span>
-        <div style="--u:10px;width:190px;height:160px;display:grid;padding:0;border-radius:14px;background:${lookFor(curSpace()).bgColor}">${deckCell(Object.assign({}, c, { image: Object.assign({}, c.image, { type: 'icon', icon: sel }) }), lookFor(curSpace()), {})}</div>
+        <div style="--u:10px;width:190px;height:160px;display:grid;padding:0;border-radius:14px;background:${lookFor(curSpace()).bgColor}">${deckCell(Object.assign({}, c, { image: Object.assign({}, c.image, { showIcon: true, icon: sel }) }), lookFor(curSpace()), {})}</div>
         <div class="row" style="margin-top:auto"><button class="btn grow" data-act="modal-close">Annuler</button><button class="btn pri grow" data-act="picto-ok">Choisir</button></div></div></div></div>`;
   }
   if (m.type === 'crop') {
@@ -700,13 +904,14 @@ function modalHTML() {
 // Rendu global
 // ---------------------------------------------------------------------------
 function render() {
-  const views = { espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
+  const views = { audio: viewAudio, espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
   const focusId = document.activeElement && document.activeElement.id;
   const selStart = document.activeElement && document.activeElement.selectionStart;
   const mainScroll = $('.main') ? $('.main').scrollTop : 0;
   $('#app').innerHTML = `<div class="layout">${sidebar()}<main class="main">${(views[ui.view] || viewEspaces)()}</main></div>`;
   $('.main').scrollTop = mainScroll;
   renderModal();
+  drawSoundWave();
   if (focusId) {
     const el = document.getElementById(focusId);
     if (el) { el.focus(); try { if (selStart != null && el.setSelectionRange) el.setSelectionRange(selStart, selStart); } catch (e) { /* ignoré */ } }
@@ -787,6 +992,7 @@ function cropResult() {
 // ---------------------------------------------------------------------------
 // Ce que l'écran doit faire : un raccourci Discord devient une simple touche clavier
 function deviceAction(a) {
+  if (a && a.type === 'sound') return { type: 'sound', mode: a.mode || 'once', route: a.route || 'screen', dests: a.route === 'fixed' ? a.dests : undefined };
   if (a && a.type === 'discord' && a.op === 'raccourci') {
     const sc = shortcutById(a.arg);
     return { type: 'key', keys: sc ? sc.keys || '' : '' };
@@ -802,10 +1008,12 @@ function deviceConfig() {
     look: strip(cfg.look),
     home: order.map(s => s.id),
     spaces: cfg.spaces.map(s => ({
+      sound: isSoundboard(s) ? { sel: sbSel(s) } : undefined,
       layout: s.layout || 'grid', player: isPlayer(s) ? Object.assign({ controls: { prev: 'precedente', next: 'suivante', play: 'lecture', vmoins: 'volmoins', vplus: 'volplus', swipeLeft: 'suivante', swipeRight: 'precedente' } }, s.player) : undefined,
       id: s.id, name: s.name, category: s.category, color: catOf(s.category).color, icon: s.icon, autoExe: s.autoExe, look: strip(s.look),
       pages: s.pages.map(p => ({ name: p.name, cells: p.cells.map(c => c ? {
-        name: c.name, image: c.image.type === 'photo' ? { type: 'photo', photo: c.image.photo, showName: c.image.showName !== false, dim: c.image.dim || 0 } : { type: c.image.type, icon: c.image.icon, color: c.image.color },
+        name: c.name, edge: c.edge || null,
+        image: { photo: c.image.usePhoto ? c.image.photo : null, icon: c.image.showIcon ? c.image.icon : null, showName: !!c.image.showName, color: c.image.color, dim: c.image.dim || 0 },
         action: deviceAction(c.action), behavior: c.behavior
       } : null) }))
     }))
@@ -841,6 +1049,19 @@ async function deckClose() {
   deckLink.writer = null; deckLink.reader = null;
   if (p) { try { await p.close(); } catch (e) { /* ignoré */ } }
 }
+// Ce que l'écran envoie au logiciel (voir PROTOCOLE.md)
+function onDeckMessage(m) {
+  if (!m || !m.t) return;
+  if (m.t === 'sound') {
+    const s = spaceById(m.space); if (!s) return;
+    const c = s.pages[m.page] && s.pages[m.page].cells[m.cell];
+    if (m.down === false) { if (c && c.action) SOUND.release(`${s.id}|${m.page}|${m.cell}`, c.action); return; }
+    if (m.dests) s.sound.sel = Object.assign({}, s.sound.sel, m.dests);
+    sbPlay(s, m.page, m.cell, m.dests || sbSel(s));
+  }
+  if (m.t === 'sound-stop') SOUND.stopAll();
+  if (m.t === 'volume' && typeof m.value === 'number') { cfg.audio.master = Math.max(0, Math.min(100, m.value)); commit(true); SOUND.setup(cfg.audio); }
+}
 async function deckReadLoop(port) {
   let buf = '';
   const dec = new TextDecoder();
@@ -856,6 +1077,7 @@ async function deckReadLoop(port) {
         const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
         if (!line) continue;
         deckLink.waiters.slice().forEach(w => w(line));
+        if (line[0] === '{') { try { onDeckMessage(JSON.parse(line)); } catch (e) { /* ligne illisible */ } }
       }
     }
   } catch (e) { /* écran débranché */ }
@@ -951,7 +1173,9 @@ let simTimer = null;
 const simCellAt = (i) => { const m = ui.modal, s = spaceById(m.spaceId); const c = s && s.pages[m.page] && s.pages[m.page].cells[i]; return c ? { s, c, st: (m.cells[`${s.id}|${m.page}|${i}`] = m.cells[`${s.id}|${m.page}|${i}`] || {}) } : null; };
 // appui long : la barre se remplit dès que le doigt est posé
 function simDown(i) {
-  const x = simCellAt(i); if (!x || ((x.c.behavior || {}).mode || 'tap') !== 'hold') return;
+  const x0 = simCellAt(i);
+  if (x0 && isSoundboard(x0.s)) { if (x0.c.action && x0.c.action.mode === 'hold') sbPlay(x0.s, ui.modal.page, i, sbSel(x0.s, ui.modal)); return; }
+  const x = x0; if (!x || ((x.c.behavior || {}).mode || 'tap') !== 'hold') return;
   const t0 = Date.now(), ms = x.c.behavior.holdMs || 1500, st = x.st;
   clearInterval(simTimer);
   simTimer = setInterval(() => {
@@ -963,6 +1187,11 @@ function simDown(i) {
 // appui court et bascule : au moment où le doigt se lève (sauf s'il a glissé)
 function simTap(i) {
   const x = simCellAt(i); if (!x) return;
+  if (isSoundboard(x.s)) {
+    const a = x.c.action || {};
+    if (a.mode === 'hold') { SOUND.release(`${x.s.id}|${ui.modal.page}|${i}`, a); return; }
+    sbPlay(x.s, ui.modal.page, i, sbSel(x.s, ui.modal)); return;
+  }
   const m = ui.modal, { s, c, st } = x, mode = (c.behavior || {}).mode || 'tap';
   if (mode === 'hold') return;
   if (mode === 'toggle') { st.on = !st.on; simRender(); return; }
@@ -1028,7 +1257,7 @@ function confirmBox(title, text, ok, danger, fn) { ui.modal = { type: 'confirm',
 function textBox(title, value, fn) { ui.modal = { type: 'text', title, value, fn }; renderModal(); setTimeout(() => { const el = $('#f-modaltext'); if (el) { el.focus(); el.select(); } }, 0); }
 
 const ACTIONS = {
-  nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'parametres') api.listBackups().then(b => { ui.backups = b; render(); }); render(); },
+  nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'audio' && !api.browser) ensureAudio().then(render); if (d.view === 'parametres') api.listBackups().then(b => { ui.backups = b; render(); }); render(); },
   'cat-new': () => { ui.modal = { type: 'cat', id: null, label: '', icon: 'etoile', color: '#B79CFF' }; renderModal(); setTimeout(() => { const el = $('#f-catname'); if (el) el.focus(); }, 0); },
   'cat-edit': (d) => { const c = cfg.cats.find(x => x.id === d.id); ui.modal = { type: 'cat', id: c.id, label: c.label, icon: c.icon, color: c.color }; renderModal(); },
   'cat-color': (d) => { ui.modal.color = d.v; renderModal(); },
@@ -1050,6 +1279,35 @@ const ACTIONS = {
   'space-movecat': (d) => { ui.menu = null; ui.modal = { type: 'movecat', id: d.id }; render(); },
   'movecat-ok': (d) => { const sp = spaceById(ui.modal.id); sp.category = d.v; ui.modal = null; commit(); toast('« ' + sp.name + ' » est maintenant dans ' + catOf(d.v).label + '.', 'ok'); },
   'home-pv': (d) => { ui.homePv = Math.max(0, Math.min(homePages() - 1, (ui.homePv || 0) + +d.d)); render(); },
+  'snd-import': async () => { if (api.browser) { toast('Disponible dans le logiciel installé sur Windows.'); return; } addSounds(await api.soundImport(), ui.cell); },
+  'snd-replace': async () => {
+    if (api.browser) { toast('Disponible dans le logiciel installé sur Windows.'); return; }
+    const l = await api.soundImport(); if (!l || !l.length) return;
+    const c = curCell(); const a = c.action;
+    a.file = l[0].file; a.fileName = l[0].file.split(/[\\/]/).pop(); a.dur = null; a.start = 0; a.end = null;
+    if (!c.name || /^Nouveau son/.test(c.name)) c.name = l[0].name.slice(0, 28);
+    commit();
+    try { const b = await SOUND.load(a.file); a.dur = Math.round(b.duration * 100) / 100; commit(); } catch (e) { toast(e.message, 'err'); }
+  },
+  'snd-preview': async () => {
+    const a = curCell().action;
+    if (SOUND.isPlaying('__preview')) { SOUND.stop('__preview'); return; }
+    try { await ensureAudio(); await SOUND.preview(a.file, a); } catch (e) { toast(e.message, 'err'); }
+  },
+  'snd-fade': (d, el) => { curCell().action.fade = el.checked; commit(true); },
+  'snd-route': (d) => { curCell().action.route = d.v; commit(); },
+  'snd-dest': (d) => { const a = curCell().action; a.dests[d.k] = !a.dests[d.k]; commit(); },
+  'aud-recheck': async () => { await SOUND.refreshDevices(); await ensureAudio(); render(); toast(SOUND.state.cableOut ? 'Micro virtuel trouvé.' : 'Micro virtuel introuvable. Redémarrez le PC après l\u2019installation.', SOUND.state.cableOut ? 'ok' : 'err'); },
+  'aud-download': () => { if (api.openLink) api.openLink('https://vb-audio.com/Cable/'); else window.open('https://vb-audio.com/Cable/'); },
+  'aud-pass': (d, el) => { cfg.audio.passMic = el.checked; commit(); ensureAudio(); },
+  'aud-solo': (d, el) => { cfg.audio.solo = el.checked; commit(true); ensureAudio(); },
+  'aud-folder': () => { if (api.soundOpenFolder) api.soundOpenFolder(); },
+  'aud-test': async (d) => {
+    if (api.browser) { toast('Disponible dans le logiciel installé sur Windows.'); return; }
+    await ensureAudio();
+    const ok = SOUND.beep(d.k);
+    toast(ok ? 'Bip envoyé.' : 'Cette sortie n\u2019est pas prête.', ok ? 'ok' : 'err');
+  },
   'media-key': (d) => { api.mediaKey(d.k).then(ok => { if (!ok) toast(api.browser ? 'Disponible dans le logiciel installé sur Windows.' : 'Commande non envoyée.', 'err'); }); },
   'pl-volume': (d, el) => { curSpace().player.volume = el.checked; commit(); },
   'pl-coverbg': (d, el) => { curSpace().player.coverBg = el.checked; commit(); },
@@ -1075,7 +1333,7 @@ const ACTIONS = {
   'space-import': async () => {
     const s = await api.importSpace(); if (!s) return;
     if (s.error) { toast(s.error, 'err'); return; }
-    s.id = uid(); (s.pages || []).forEach(p => { p.id = uid(); (p.cells || []).forEach(c => { if (c && c.action) delete c.action.hotkey; }); });
+    s.id = uid(); (s.pages || []).forEach(p => { p.id = uid(); (p.cells || []).forEach(c => { normImg(c); if (c && c.action) delete c.action.hotkey; }); });
     if (!catKeys().includes(s.category)) s.category = 'jeu';
     cfg.spaces.push(s); cfg.homeOrder.push(s.id); commit(); toast('Espace « ' + s.name + ' » importé.', 'ok');
   },
@@ -1091,25 +1349,37 @@ const ACTIONS = {
   simulate: (d) => openSim(d.id || null),
   send: () => sendToDeck(),
   page: (d) => { ui.page = +d.i; ui.cell = null; render(); },
-  'page-add': () => { const s = curSpace(); s.pages.push({ id: uid(), name: 'PAGE ' + (s.pages.length + 1), cells: Array(15).fill(null) }); ui.page = s.pages.length - 1; ui.cell = null; commit(); },
+  'page-add': () => { const s = curSpace(); s.pages.push({ id: uid(), name: 'PAGE ' + (s.pages.length + 1), cells: Array(isSoundboard(s) ? 12 : 15).fill(null) }); ui.page = s.pages.length - 1; ui.cell = null; commit(); },
   'page-rename': () => { const p = curPage(); textBox('Renommer la page', p.name, (v) => { if (v.trim()) { p.name = v.trim().toUpperCase(); commit(); } }); },
   'page-move': (d) => { const s = curSpace(); const j = ui.page + +d.d; if (j < 0 || j >= s.pages.length) return; const [p] = s.pages.splice(ui.page, 1); s.pages.splice(j, 0, p); ui.page = j; commit(); },
   'page-del': () => { const s = curSpace(), p = curPage(); confirmBox('Supprimer la page « ' + p.name + ' » ?', 'Ses cases seront supprimées.', 'Supprimer', true, () => { s.pages.splice(ui.page, 1); ui.page = Math.max(0, ui.page - 1); ui.cell = null; commit(); }); },
   cell: (d) => { ui.cell = +d.i; render(); },
-  'cell-create': () => { curPage().cells[ui.cell] = { name: 'Nouvelle case', image: { type: 'icon', icon: 'etoile', color: '#9FB0C0', photo: null, showName: true, dim: 0.2 }, action: { type: 'joy', button: 1 }, behavior: { mode: 'tap', holdMs: 1500 } }; commit(); },
+  'cell-create': () => {
+    const s = curSpace();
+    curPage().cells[ui.cell] = isSoundboard(s) ? newSoundCell('Nouveau son', null) : cell('Nouvelle case', 'etoile', { type: 'joy', button: 1 }, { mode: 'tap', holdMs: 1500 });
+    commit();
+  },
   'cell-clear': () => { confirmBox('Effacer cette case ?', 'Elle redeviendra vide.', 'Effacer', true, () => { curPage().cells[ui.cell] = null; commit(); }); },
   'cell-test': () => {
     const c = curCell(); const t = c.action && c.action.type;
+    if (t === 'sound') { const s = curSpace(); sbPlay(s, ui.page, ui.cell, sbSel(s)); return; }
     if (t === 'app' || t === 'obs' || (t === 'discord' && c.action.op !== 'raccourci')) runPcAction(c, true);
     else if (t === 'page') toast('Essayez-la dans « Aperçu de l\u2019écran ».');
     else toast('Cette case est envoyée par l\u2019écran lui-même : testez-la une fois l\u2019écran branché, ou dans « Aperçu de l\u2019écran ».');
   },
-  'img-type': (d) => { const c = curCell(); c.image.type = d.v; if (d.v === 'icon' && !c.image.icon) c.image.icon = 'etoile'; commit(); if (d.v === 'photo' && !c.image.photo) ACTIONS['photo-import'](); },
+  'img-toggle': (d) => {
+    const im = curCell().image;
+    if (d.k === 'photo') { im.usePhoto = !im.usePhoto; commit(); if (im.usePhoto && !im.photo) ACTIONS['photo-import'](); return; }
+    if (d.k === 'icon') { im.showIcon = !im.showIcon; if (!im.icon) im.icon = 'etoile'; }
+    if (d.k === 'name') im.showName = !im.showName;
+    commit();
+  },
+  'cell-edge': (d) => { curCell().edge = d.v || null; commit(); },
   'icon-color': (d) => { curCell().image.color = d.v; commit(); },
   'picto-open': () => { ui.modal = { type: 'picto', pick: null }; ui.search = ''; ui.catFilter = 'Tous'; renderModal(); },
   'picto-cat': (d) => { ui.catFilter = d.v; renderModal(); },
   'picto-pick': (d) => { ui.modal.pick = d.v; renderModal(); },
-  'picto-ok': () => { const c = curCell(); if (ui.modal.pick) { c.image.icon = ui.modal.pick; c.image.type = 'icon'; } ui.modal = null; commit(); },
+  'picto-ok': () => { const c = curCell(); if (ui.modal.pick) { c.image.icon = ui.modal.pick; c.image.showIcon = true; } ui.modal = null; commit(); },
   'photo-import': () => { ui.pickFor = 'cell'; $('#file-image').click(); },
   'photo-name': (d, el) => { curCell().image.showName = el.checked; commit(); },
   'photo-dim': (d) => { curCell().image.dim = +d.v; commit(); },
@@ -1117,7 +1387,7 @@ const ACTIONS = {
   'crop-ok': () => {
     const data = cropResult(), m = ui.modal; ui.modal = null;
     if (m.kind === 'bg') { const l = editLook(); l.bgPhoto = data; l.bgType = 'photo'; }
-    else { const c = curCell(); c.image.photo = data; c.image.type = 'photo'; }
+    else { const c = curCell(); c.image.photo = data; c.image.usePhoto = true; }
     commit();
   },
   'app-screen': (d) => { curCell().action.screen = d.v; commit(); },
@@ -1263,6 +1533,24 @@ function onField(el, isChange) {
     case 'crop-zoom': ui.modal.zoom = +v; cropDraw(); break;
     case 'modal-text': ui.modal.value = v; break;
     case 'cat-name': ui.modal.label = v; break;
+    case 'snd-vol': c.action.volume = +v; commit(true); { const sp = el.parentElement.querySelector('.mono'); if (sp) sp.textContent = v + ' %'; } break;
+    case 'snd-start': case 'snd-end': {
+      const a = c.action; const val = +v;
+      if (f === 'snd-start') a.start = Math.min(val, (a.end || a.dur || val) - 0.1); else a.end = Math.max(val, (a.start || 0) + 0.1);
+      commit(true); drawSoundWave();
+      if (isChange) render();
+      break;
+    }
+    case 'snd-mode': c.action.mode = v; commit(); break;
+    case 'snd-retrig': c.action.retrig = v; commit(); break;
+    case 'aud-me': cfg.audio.meOut = v; commit(true); ensureAudio(); break;
+    case 'aud-mic': cfg.audio.micIn = v; commit(true); ensureAudio(); break;
+    case 'aud-volme': case 'aud-volmic': case 'aud-volstream': case 'aud-master': {
+      const key = { 'aud-volme': 'volMe', 'aud-volmic': 'volMic', 'aud-volstream': 'volStream', 'aud-master': 'master' }[f];
+      cfg.audio[key] = +v; commit(true); SOUND.setup(cfg.audio);
+      const sp = el.parentElement.querySelector('.mono'); if (sp) sp.textContent = v + ' %';
+      break;
+    }
     default: break;
   }
 }
@@ -1298,9 +1586,17 @@ document.addEventListener('keydown', (ev) => {
 
 // glisser-déposer des cases
 document.addEventListener('dragstart', (ev) => { const el = ev.target.closest && ev.target.closest('[data-drag]'); if (el) { ev.dataTransfer.setData('text/plain', el.dataset.drag); ev.dataTransfer.effectAllowed = 'move'; } });
-document.addEventListener('dragover', (ev) => { const el = ev.target.closest && ev.target.closest('[data-drag]'); if (el) { ev.preventDefault(); el.classList.add('dragover'); } });
+document.addEventListener('dragover', (ev) => {
+  if (ev.dataTransfer && Array.from(ev.dataTransfer.types || []).includes('Files') && ev.target.closest && ev.target.closest('[data-sounddrop]')) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; return; } const el = ev.target.closest && ev.target.closest('[data-drag]'); if (el) { ev.preventDefault(); el.classList.add('dragover'); } });
 document.addEventListener('dragleave', (ev) => { const el = ev.target.closest && ev.target.closest('[data-drag]'); if (el) el.classList.remove('dragover'); });
 document.addEventListener('drop', (ev) => {
+  if (ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files.length && ev.target.closest && ev.target.closest('[data-sounddrop]')) {
+    ev.preventDefault();
+    if (api.browser || !api.soundImportFiles) { toast('Disponible dans le logiciel installé sur Windows.'); return; }
+    const target = ev.target.closest('[data-drag]');
+    api.soundImportFiles(ev.dataTransfer.files).then(l => { if (!l.length) toast('Aucun fichier son reconnu (MP3, WAV, OGG, FLAC, M4A).', 'err'); else addSounds(l, target ? +target.dataset.drag : null); });
+    return;
+  }
   const el = ev.target.closest && ev.target.closest('[data-drag]'); if (!el) return;
   ev.preventDefault();
   const from = +ev.dataTransfer.getData('text/plain'), to = +el.dataset.drag;
@@ -1327,6 +1623,14 @@ document.addEventListener('pointerdown', (ev) => {
     if (nav.dataset.sim === 'page') m.page = +nav.dataset.i;
     simRender(); return;
   }
+  const sd = ev.target.closest('[data-simdest]');
+  if (sd) { const sp = spaceById(m.spaceId); const sel = sbSel(sp, m); sel[sd.dataset.simdest] = !sel[sd.dataset.simdest]; simRender(); return; }
+  const sbb = ev.target.closest('[data-simsb]');
+  if (sbb) {
+    if (sbb.dataset.simsb === 'stop') SOUND.stopAll();
+    if (sbb.dataset.simsb === 'vol') { const steps = [100, 75, 50, 25]; const cur = m.sbVol != null ? m.sbVol : cfg.audio.master; m.sbVol = steps[(steps.indexOf(cur) + 1) % steps.length] || 100; cfg.audio.master = m.sbVol; commit(true); SOUND.setup(cfg.audio); }
+    simRender(); return;
+  }
   const sc = ev.target.closest('[data-simcell]');
   const pb = ev.target.closest('[data-simbtn]');
   swipe = { x: ev.clientX, y: ev.clientY, moved: false, cell: sc ? +sc.dataset.simcell : null, space: nav ? nav.dataset.id : null, btn: pb ? pb.dataset.simbtn : null };
@@ -1344,7 +1648,7 @@ document.addEventListener('pointermove', (ev) => {
         simRender();
       }
     }
-    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome, #sim .dplayer'); if (g) g.style.transform = swipe.moved === 'h' ? `translateX(${dx * 0.5}px)` : `translateY(${dy * 0.4}px)`; }
+    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome, #sim .dplayer, #sim .sbgrid'); if (g) g.style.transform = swipe.moved === 'h' ? `translateX(${dx * 0.5}px)` : `translateY(${dy * 0.4}px)`; }
     return;
   }
   if (!cropDrag || !ui.modal) return;
@@ -1357,6 +1661,7 @@ document.addEventListener('pointerup', (ev) => {
   if (swipe && ui.modal && ui.modal.type === 'sim') {
     const w = swipe; swipe = null;
     const dx = ev.clientX - w.x, dy = ev.clientY - w.y;
+    if (w.moved && w.cell != null) { const x = simCellAt(w.cell); if (x && isSoundboard(x.s) && x.c.action) SOUND.release(`${x.s.id}|${ui.modal.page}|${w.cell}`, x.c.action); }
     if (w.moved === 'h') { if (Math.abs(dx) > 60) simSwipe(dx < 0 ? 1 : -1); else simRender(); return; }
     if (w.moved === 'v') { if (Math.abs(dy) > 50) simSwipeV(dy < 0 ? 1 : -1); else simRender(); return; }
     if (w.space) { const m = ui.modal; m.screen = 'space'; m.spaceId = w.space; m.page = 0; simRender(); return; }
@@ -1411,6 +1716,7 @@ function migrate(c) {
   out.device = Object.assign({}, d.device, c.device || {});
   out.settings = Object.assign({}, d.settings, c.settings || {});
   out.spaces = (c.spaces || []).filter(s => s && s.pages);
+  out.spaces.forEach(s => s.pages.forEach(p => p.cells.forEach(normImg)));
   out.homeOrder = (c.homeOrder || []).filter(id => out.spaces.some(s => s.id === id));
   // version 0.3 : Discord devient un espace de l'accueil, comme les autres
   if (!c.discordSpaceAdded) {
@@ -1422,6 +1728,12 @@ function migrate(c) {
     }
   }
   // version 0.7 : espace Spotify (lecteur) sur l'accueil
+  out.audio = Object.assign({}, d.audio, c.audio || {});
+  // version 1.0 : espace Soundboard
+  if (!c.soundboardAdded) {
+    out.soundboardAdded = true;
+    if (!out.spaces.some(s => s.layout === 'soundboard')) out.spaces.push(newSpace('soundboard', TEMPLATES.soundboard[0], 'Soundboard', ''));
+  }
   if (!c.spotifySpaceAdded) {
     out.spotifySpaceAdded = true;
     if (!out.spaces.some(s => s.category === 'spotify')) out.spaces.push(newSpace('spotify', TEMPLATES.spotify[0], 'Spotify', ''));

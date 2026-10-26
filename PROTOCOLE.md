@@ -28,3 +28,21 @@ Envoyé dès que l'écran est relié, puis à chaque changement (morceau, lectur
 - `cover` n'est présent que quand la jaquette change ; `""` = pas de jaquette (afficher le pictogramme de note).
 - `none: true` = rien en lecture.
 - Aucune réponse attendue.
+
+## De l'écran vers le logiciel
+
+Une ligne JSON par message (les lignes `OK` / `ERR` restent les réponses à `config`).
+
+### Soundboard (espace dont `layout` vaut `"soundboard"`)
+
+L'écran affiche à gauche les quatre sorties (`moi`, `discord`, `jeu`, `stream`), cochées au départ selon `sound.sel`, et une grille de 4 × 3 sons. L'utilisateur coche les sorties, puis touche un son. Le son est joué par le PC :
+
+```json
+{"t":"sound","space":"<id espace>","page":0,"cell":3,"down":true,"dests":{"moi":true,"discord":true,"jeu":false,"stream":true}}
+```
+
+- `down: false` quand le doigt se lève (utile pour les sons « tant qu'on appuie », `action.mode = "hold"`).
+- Un son dont `action.route` vaut `"fixed"` part toujours sur `action.dests`, quelles que soient les cases cochées.
+- Bouton « Stop tout » : `{"t":"sound-stop"}`. Bouton volume : `{"t":"volume","value":75}` (0 à 100).
+
+Images des cases : `image.photo` (JPEG en data URL ou `null`), `image.icon` (nom du pictogramme ou `null`), `image.showName`, `image.color`, `image.dim`, et `edge` (couleur du contour, `null` = celle de l'apparence). Photo, pictogramme et nom se combinent librement.

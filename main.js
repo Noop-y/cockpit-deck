@@ -14,6 +14,7 @@ let quitting = false;
 const dataDir = () => app.getPath('userData');
 const configPath = () => path.join(dataDir(), 'config.json');
 const backupDir = () => path.join(dataDir(), 'sauvegardes');
+const soundsDir = () => path.join(dataDir(), 'sons');
 const psPath = () => path.join(dataDir(), 'placer-fenetre.ps1');
 const mediaPsPath = () => path.join(dataDir(), 'lecture-en-cours.ps1');
 const keysPsPath = () => path.join(dataDir(), 'touches-media.ps1');
@@ -48,7 +49,10 @@ function createWindow() {
     const esp = portList.find(p => parseInt(p.vendorId, 10) === ESPRESSIF_VID);
     callback(esp ? esp.portId : '');
   });
-  ses.setPermissionCheckHandler((wc, permission) => permission === 'serial' || permission === 'clipboard-sanitized-write');
+  // USB (écran), presse-papiers, micro et choix de la sortie audio (soundboard)
+  const allowed = ['serial', 'clipboard-sanitized-write', 'media', 'speaker-selection'];
+  ses.setPermissionCheckHandler((wc, permission) => allowed.includes(permission));
+  ses.setPermissionRequestHandler((wc, permission, callback) => callback(allowed.includes(permission)));
   ses.setDevicePermissionHandler(details => details.deviceType === 'serial');
 
   // Fermer la fenêtre la cache près de l'horloge, sans arrêter le logiciel
@@ -411,6 +415,37 @@ ipcMain.handle('shortcuts:set', (e, list) => {
 
 ipcMain.handle('media:watch', (e, on) => { if (on) startMediaWatch(); else stopMediaWatch(); return true; });
 ipcMain.handle('media:key', (e, k) => mediaKey(String(k)));
+
+// ---------- soundboard : les sons sont copiés dans le dossier du logiciel ----------
+const SOUND_EXT = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'webm'];
+function copySounds(paths) {
+  fs.mkdirSync(soundsDir(), { recursive: true });
+  const out = [];
+  (paths || []).forEach(src => {
+    try {
+      const ext = path.extname(src).slice(1).toLowerCase();
+      if (!SOUND_EXT.includes(ext) || !fs.statSync(src).isFile()) return;
+      const base = path.basename(src, path.extname(src)).replace(/[\\/:*?"<>|]/g, '_').slice(0, 60) || 'son';
+      let name = `${base}.${ext}`, k = 2;
+      while (fs.existsSync(path.join(soundsDir(), name))) name = `${base} (${k++}).${ext}`;
+      fs.copyFileSync(src, path.join(soundsDir(), name));
+      out.push({ file: path.join(soundsDir(), name), name: base });
+    } catch (e) { /* fichier ignoré */ }
+  });
+  return out;
+}
+const insideSounds = (f) => { const r = path.resolve(String(f || '')); return r.startsWith(path.resolve(soundsDir()) + path.sep); };
+ipcMain.handle('sound:import', async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'Ajouter des sons', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Sons', extensions: SOUND_EXT }] });
+  return r.canceled ? [] : copySounds(r.filePaths);
+});
+ipcMain.handle('sound:import-paths', (e, paths) => copySounds(paths));
+ipcMain.handle('sound:read', (e, f) => {
+  if (!insideSounds(f)) return null;                 // ne lit que les sons du logiciel
+  try { return fs.readFileSync(f); } catch (err) { return null; }
+});
+ipcMain.handle('sound:open-folder', () => { fs.mkdirSync(soundsDir(), { recursive: true }); shell.openPath(soundsDir()); });
+ipcMain.handle('link:open', (e, url) => { if (/^https:\/\/(vb-audio\.com|discord\.com)\//.test(String(url))) shell.openExternal(url); });
 
 // ---------- Discord ----------
 ipcMain.handle('discord:connect', (e, creds, auto) => discord.connect(creds, auto));

@@ -109,18 +109,29 @@ const CATEGORIES = {
   bureau: { label: 'Bureau', color: '#5CC8FF', icon: 'bureau' },
   stream: { label: 'Streaming', color: '#B79CFF', icon: 'live' },
   discord: { label: 'Discord', color: '#8E9BFF', icon: 'discussion' },
-  spotify: { label: 'Spotify', color: '#3FB97A', icon: 'musique' }
+  spotify: { label: 'Spotify', color: '#3FB97A', icon: 'musique' },
+  soundboard: { label: 'Soundboard', color: '#FF7EB6', icon: 'son' }
 };
 
 const MEDIA_KEYS = [['volplus', 'Volume +'], ['volmoins', 'Volume −'], ['muet', 'Muet'], ['lecture', 'Lecture / pause'], ['suivante', 'Piste suivante'], ['precedente', 'Piste précédente']];
+// Soundboard : les quatre sorties
+const SOUND_DESTS = [
+  { k: 'moi', label: 'Moi', sub: 'dans mon casque', color: '#C9D6E2', icon: 'M4 15v-3a8 8 0 0 1 16 0v3 M4 14h3v6H4z M17 14h3v6h-3z' },
+  { k: 'discord', label: 'Discord', sub: 'mes amis en vocal', color: '#8E9BFF', icon: 'M7 7c3-1.5 7-1.5 10 0l2 9c-2 1.5-4 2-4 2l-1-2c-1 .3-3 .3-4 0l-1 2s-2-.5-4-2z M9.5 12h.01 M14.5 12h.01' },
+  { k: 'jeu', label: 'Jeu', sub: 'le chat vocal du jeu', color: '#FFB547', icon: 'M6 9h12a3 3 0 0 1 3 3v2a3 3 0 0 1-5.2 2L14 14h-4l-1.8 2A3 3 0 0 1 3 14v-2a3 3 0 0 1 3-3z M8 11v3 M6.5 12.5h3 M16 12h.01 M18 13.5h.01' },
+  { k: 'stream', label: 'Stream', sub: 'les spectateurs (OBS)', color: '#B79CFF', icon: 'M12 12h.01 M8.5 8.5a5 5 0 0 0 0 7 M15.5 8.5a5 5 0 0 1 0 7 M5.6 5.6a9 9 0 0 0 0 12.8 M18.4 5.6a9 9 0 0 1 0 12.8' }
+];
 const DISCORD_OPS = [['micro', 'Couper / rétablir le micro'], ['casque', 'Couper / rétablir le casque'], ['tout', 'Couper / rétablir micro + casque'], ['entree-suiv', 'Entrée audio suivante'], ['sortie-suiv', 'Sortie audio suivante'], ['entree', 'Choisir une entrée audio'], ['sortie', 'Choisir une sortie audio'], ['raccourci', 'Mon raccourci Discord']];
 const OBS_OPS = [['scene', 'Changer de scène'], ['mute', 'Couper / rétablir un son'], ['source', 'Montrer / cacher un élément'], ['stream', 'Lancer / arrêter le live'], ['record', 'Lancer / arrêter l’enregistrement'], ['replay', 'Sauvegarder le replay']];
 
 // ---------- modèles d'espaces ----------
 // Raccourcis d'écriture : j(nom, picto, bouton, mode, ms) / k(nom, picto, touches) / ...
+// Image d'une case : photo, pictogramme et nom se combinent librement
 function cell(name, icon, action, behavior, color) {
-  return { name, image: { type: 'icon', icon, color: color || '#9FB0C0', photo: null, showName: true, dim: 0.35 }, action, behavior: behavior || { mode: 'tap', holdMs: 1500 } };
+  return { name, image: { photo: null, usePhoto: false, icon, showIcon: true, showName: true, color: color || '#9FB0C0', dim: 0.35 }, edge: null, action, behavior: behavior || { mode: 'tap', holdMs: 1500 } };
 }
+// Couleurs de contour d'une case (null = celle de l'apparence)
+const COLORS_CELL_EDGE = [['Gris', '#5B6875'], ['Blanc', '#C9D6E2'], ['Ambre', '#FFB547'], ['Cyan', '#5CC8FF'], ['Violet', '#B79CFF'], ['Vert', '#3FB97A'], ['Rouge', '#FF8A7A'], ['Rose', '#FF7EB6']];
 const J = (name, icon, n, mode, ms, color) => cell(name, icon, { type: 'joy', button: n }, { mode: mode || 'tap', holdMs: ms || 1500 }, color);
 const K = (name, icon, keys, mode) => cell(name, icon, { type: 'key', keys }, { mode: mode || 'tap', holdMs: 1500 });
 const M = (name, icon, media) => cell(name, icon, { type: 'media', media }, null, '#5CC8FF');
@@ -206,6 +217,10 @@ const TEMPLATES = {
     { key: 'lecteur', name: 'Lecteur', desc: 'Jaquette en grand, morceau précédent et suivant, lecture / pause, volume', icon: 'musique', layout: 'player',
       pages: () => [{ name: 'LECTEUR', cells: pad([]) }] },
     { key: 'vide', name: 'Grille Spotify', desc: 'Des cases classiques à remplir', icon: 'musique', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }
+  ],
+  soundboard: [
+    { key: 'sons', name: 'Soundboard', desc: 'Vos sons, envoyés sur Discord, le jeu, le stream ou pour vous', icon: 'son', layout: 'soundboard',
+      pages: () => [{ name: 'SONS', cells: Array(12).fill(null) }] }
   ]
 };
 

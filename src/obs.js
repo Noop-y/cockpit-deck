@@ -103,5 +103,29 @@ const OBS = (() => {
     throw new Error('Action OBS inconnue.');
   }
 
-  return { connect, disconnect, run, state, onChange: (fn) => listeners.push(fn) };
+  // Soundboard : une source média « The Deck – Sons », ajoutée à la scène en cours si besoin
+  const SOUND_INPUT = 'The Deck – Sons';
+  async function ensureSoundInput() {
+    const cur = await request('GetCurrentProgramScene');
+    const scene = cur.currentProgramSceneName || cur.sceneName || state.currentScene;
+    const list = await request('GetInputList');
+    if (!(list.inputs || []).some(x => x.inputName === SOUND_INPUT)) {
+      await request('CreateInput', { sceneName: scene, inputName: SOUND_INPUT, inputKind: 'ffmpeg_source',
+        inputSettings: { is_local_file: true, local_file: '', close_when_inactive: false, restart_on_activate: false, looping: false }, sceneItemEnabled: true });
+    } else {
+      try { await request('GetSceneItemId', { sceneName: scene, sourceName: SOUND_INPUT }); }
+      catch (e) { await request('CreateSceneItem', { sceneName: scene, sourceName: SOUND_INPUT, sceneItemEnabled: true }); }
+    }
+  }
+  async function playSound(file, volume, loop) {
+    await ensureSoundInput();
+    await request('SetInputSettings', { inputName: SOUND_INPUT, inputSettings: { is_local_file: true, local_file: file, looping: !!loop } });
+    await request('SetInputVolume', { inputName: SOUND_INPUT, inputVolumeMul: Math.max(0, Math.min(1, volume)) });
+    await request('TriggerMediaInputAction', { inputName: SOUND_INPUT, mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART' });
+  }
+  async function stopSound() {
+    try { await request('TriggerMediaInputAction', { inputName: SOUND_INPUT, mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP' }); } catch (e) { /* pas de source */ }
+  }
+
+  return { connect, disconnect, run, state, playSound, stopSound, SOUND_INPUT, onChange: (fn) => listeners.push(fn) };
 })();

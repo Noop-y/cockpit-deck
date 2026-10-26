@@ -1,5 +1,5 @@
 // Pont sécurisé entre l'interface et le système
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('deck', {
   loadConfig: () => ipcRenderer.invoke('config:load'),
@@ -24,5 +24,10 @@ contextBridge.exposeInMainWorld('deck', {
   onDiscordState: (cb) => ipcRenderer.on('discord-state', (e, st) => cb(st)),
   mediaWatch: (on) => ipcRenderer.invoke('media:watch', on),
   mediaKey: (k) => ipcRenderer.invoke('media:key', k),
-  onMediaState: (cb) => ipcRenderer.on('media-state', (e, st) => cb(st))
+  onMediaState: (cb) => ipcRenderer.on('media-state', (e, st) => cb(st)),
+  soundImport: () => ipcRenderer.invoke('sound:import'),
+  soundImportFiles: (files) => ipcRenderer.invoke('sound:import-paths', Array.from(files || []).map(f => { try { return webUtils.getPathForFile(f); } catch (e) { return ''; } }).filter(Boolean)),
+  soundRead: (f) => ipcRenderer.invoke('sound:read', f),
+  soundOpenFolder: () => ipcRenderer.invoke('sound:open-folder'),
+  openLink: (url) => ipcRenderer.invoke('link:open', url)
 });
