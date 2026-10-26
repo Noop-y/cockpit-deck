@@ -21,5 +21,8 @@ contextBridge.exposeInMainWorld('deck', {
   discordDisconnect: () => ipcRenderer.invoke('discord:disconnect'),
   discordState: () => ipcRenderer.invoke('discord:state'),
   discordRun: (op, arg) => ipcRenderer.invoke('discord:run', op, arg),
-  onDiscordState: (cb) => ipcRenderer.on('discord-state', (e, st) => cb(st))
+  onDiscordState: (cb) => ipcRenderer.on('discord-state', (e, st) => cb(st)),
+  mediaWatch: (on) => ipcRenderer.invoke('media:watch', on),
+  mediaKey: (k) => ipcRenderer.invoke('media:key', k),
+  onMediaState: (cb) => ipcRenderer.on('media-state', (e, st) => cb(st))
 });

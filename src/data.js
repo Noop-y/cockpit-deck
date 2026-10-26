@@ -108,7 +108,8 @@ const CATEGORIES = {
   jeu: { label: 'Jeux', color: '#FFB547', icon: 'manette' },
   bureau: { label: 'Bureau', color: '#5CC8FF', icon: 'bureau' },
   stream: { label: 'Streaming', color: '#B79CFF', icon: 'live' },
-  discord: { label: 'Discord', color: '#8E9BFF', icon: 'discussion' }
+  discord: { label: 'Discord', color: '#8E9BFF', icon: 'discussion' },
+  spotify: { label: 'Spotify', color: '#3FB97A', icon: 'musique' }
 };
 
 const MEDIA_KEYS = [['volplus', 'Volume +'], ['volmoins', 'Volume −'], ['muet', 'Muet'], ['lecture', 'Lecture / pause'], ['suivante', 'Piste suivante'], ['precedente', 'Piste précédente']];
@@ -200,6 +201,11 @@ const TEMPLATES = {
     { key: 'discord', name: 'Discord', desc: 'Micro, casque, micro + casque, entrées et sorties audio', icon: 'discussion',
       pages: () => [{ name: 'DISCORD', cells: pad(discordCells([])) }] },
     { key: 'vide', name: 'Discord vide', desc: 'Une grille vide', icon: 'discussion', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }
+  ],
+  spotify: [
+    { key: 'lecteur', name: 'Lecteur', desc: 'Jaquette en grand, morceau précédent et suivant, lecture / pause, volume', icon: 'musique', layout: 'player',
+      pages: () => [{ name: 'LECTEUR', cells: pad([]) }] },
+    { key: 'vide', name: 'Grille Spotify', desc: 'Des cases classiques à remplir', icon: 'musique', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }
   ]
 };
 

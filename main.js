@@ -15,6 +15,8 @@ const dataDir = () => app.getPath('userData');
 const configPath = () => path.join(dataDir(), 'config.json');
 const backupDir = () => path.join(dataDir(), 'sauvegardes');
 const psPath = () => path.join(dataDir(), 'placer-fenetre.ps1');
+const mediaPsPath = () => path.join(dataDir(), 'lecture-en-cours.ps1');
+const keysPsPath = () => path.join(dataDir(), 'touches-media.ps1');
 let discord = null;
 
 // ---------- fenêtre ----------
@@ -124,8 +126,118 @@ Start-Sleep -Milliseconds 300
 exit 0
 `;
 
+// ---------- lecteur (Spotify et autres) ----------
+// Lit le morceau en cours avec les commandes multimédia de Windows (sans compte, sans connexion internet).
+const MEDIA_PS = String.raw`$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+function Out-State($o) { [Console]::Out.WriteLine(($o | ConvertTo-Json -Compress)); [Console]::Out.Flush() }
+try {
+  Add-Type -AssemblyName System.Runtime.WindowsRuntime
+  $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation` + '`' + String.raw`1' })[0]
+  function Await($op, [Type]$t) { $task = $asTask.MakeGenericMethod($t).Invoke($null, @($op)); $task.Wait(-1) | Out-Null; $task.Result }
+  [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime] | Out-Null
+  [Windows.Storage.Streams.DataReader, Windows.Storage.Streams, ContentType = WindowsRuntime] | Out-Null
+  $mgr = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
+} catch { Out-State @{ error = 'Commandes multimédia de Windows indisponibles.' }; exit 3 }
+$lastKey = ''; $lastStatus = ''; $coverRetry = 0
+while ($true) {
+  try {
+    $s = $null
+    foreach ($x in $mgr.GetSessions()) { if ($x.SourceAppUserModelId -like '*Spotify*') { $s = $x } }
+    if (-not $s) { $s = $mgr.GetCurrentSession() }
+    if (-not $s) {
+      if ($lastKey -ne 'none') { Out-State @{ none = $true }; $lastKey = 'none'; $lastStatus = '' }
+    } else {
+      $p = Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
+      $st = $s.GetPlaybackInfo().PlaybackStatus.ToString()
+      $key = "$($p.Title)|$($p.Artist)|$($p.AlbumTitle)"
+      if ($key -ne $lastKey) { $coverRetry = 3 }
+      if ($key -ne $lastKey -or $st -ne $lastStatus -or $coverRetry -gt 0) {
+        $cover = $null
+        if ($coverRetry -gt 0 -and $p.Thumbnail) {
+          try {
+            $stream = Await ($p.Thumbnail.OpenReadAsync()) ([Windows.Storage.Streams.IRandomAccessStreamWithContentType])
+            $size = [uint32]$stream.Size
+            $reader = New-Object Windows.Storage.Streams.DataReader($stream.GetInputStreamAt(0))
+            Await ($reader.LoadAsync($size)) ([uint32]) | Out-Null
+            $bytes = New-Object byte[] $size
+            $reader.ReadBytes($bytes)
+            $cover = 'data:' + $stream.ContentType + ';base64,' + [Convert]::ToBase64String($bytes)
+            $reader.Dispose(); $stream.Dispose()
+          } catch { $cover = $null }
+          $coverRetry--
+        }
+        $o = [ordered]@{ title = $p.Title; artist = $p.Artist; album = $p.AlbumTitle; status = $st; app = $s.SourceAppUserModelId }
+        if ($cover) { $o.cover = $cover }
+        Out-State $o
+        $lastKey = $key; $lastStatus = $st
+      }
+    }
+  } catch { }
+  Start-Sleep -Milliseconds 700
+}
+`;
+// Touches multimédia (précédent, lecture/pause, suivant, volume) envoyées par le PC, pour tester sans l'écran
+const KEYS_PS = String.raw`Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class CDK {
+  [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  public static void Press(byte vk) { keybd_event(vk, 0, 1, UIntPtr.Zero); keybd_event(vk, 0, 3, UIntPtr.Zero); }
+}
+"@
+$map = @{ prev = 0xB1; next = 0xB0; play = 0xB3; vplus = 0xAF; vmoins = 0xAE; muet = 0xAD }
+while ($null -ne ($line = [Console]::In.ReadLine())) {
+  $k = $line.Trim()
+  if ($map.ContainsKey($k)) { [CDK]::Press([byte]$map[$k]) }
+}
+`;
+
 function ensurePsScript() {
   try { fs.writeFileSync(psPath(), PS_SCRIPT, 'utf8'); } catch (e) { /* ignoré */ }
+  // BOM UTF-8 : PowerShell 5 lit alors correctement les accents
+  try { fs.writeFileSync(mediaPsPath(), '\ufeff' + MEDIA_PS, 'utf8'); } catch (e) { /* ignoré */ }
+  try { fs.writeFileSync(keysPsPath(), '\ufeff' + KEYS_PS, 'utf8'); } catch (e) { /* ignoré */ }
+}
+
+let mediaProc = null, mediaWanted = false, mediaRestart = null, keysProc = null;
+function sendMedia(st) { if (win && !win.isDestroyed()) win.webContents.send('media-state', st); }
+function startMediaWatch() {
+  mediaWanted = true;
+  if (process.platform !== 'win32') { sendMedia({ unavailable: true, message: 'Le lecteur ne fonctionne que sous Windows.' }); return; }
+  if (mediaProc) return;
+  const ps = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', mediaPsPath()], { windowsHide: true });
+  mediaProc = ps;
+  let buf = '';
+  ps.stdout.setEncoding('utf8');
+  ps.stdout.on('data', (d) => {
+    buf += d;
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (!line) continue;
+      try { sendMedia(JSON.parse(line)); } catch (e) { /* ligne incomplète */ }
+    }
+  });
+  ps.on('close', (code) => {
+    mediaProc = null;
+    if (code === 3) return;                       // Windows trop ancien : on n'insiste pas
+    if (mediaWanted && !quitting) { clearTimeout(mediaRestart); mediaRestart = setTimeout(startMediaWatch, 5000); }
+  });
+  ps.on('error', () => { mediaProc = null; sendMedia({ unavailable: true, message: 'PowerShell introuvable.' }); });
+}
+function stopMediaWatch() {
+  mediaWanted = false; clearTimeout(mediaRestart);
+  if (mediaProc) { try { mediaProc.kill(); } catch (e) { /* ignoré */ } mediaProc = null; }
+}
+function mediaKey(k) {
+  if (process.platform !== 'win32') return false;
+  if (!keysProc) {
+    keysProc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', keysPsPath()], { windowsHide: true });
+    keysProc.on('close', () => { keysProc = null; });
+    keysProc.on('error', () => { keysProc = null; });
+  }
+  try { keysProc.stdin.write(k + '\n'); return true; } catch (e) { return false; }
 }
 
 function runAppAction(a) {
@@ -297,6 +409,9 @@ ipcMain.handle('shortcuts:set', (e, list) => {
   return results;
 });
 
+ipcMain.handle('media:watch', (e, on) => { if (on) startMediaWatch(); else stopMediaWatch(); return true; });
+ipcMain.handle('media:key', (e, k) => mediaKey(String(k)));
+
 // ---------- Discord ----------
 ipcMain.handle('discord:connect', (e, creds, auto) => discord.connect(creds, auto));
 ipcMain.handle('discord:disconnect', () => { discord.disconnect(false); discord.forgetToken(); return discord.state; });
@@ -335,6 +450,10 @@ if (!gotLock) {
     createTray();
   });
   app.on('before-quit', () => { quitting = true; });
-  app.on('will-quit', () => globalShortcut.unregisterAll());
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+    stopMediaWatch();
+    if (keysProc) { try { keysProc.kill(); } catch (e) { /* ignoré */ } }
+  });
   app.on('window-all-closed', () => { /* reste près de l'horloge */ });
 }

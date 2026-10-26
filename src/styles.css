@@ -168,3 +168,27 @@ input[type=range] { accent-color: var(--amber); width: 100%; }
 .deck .slide-r { animation: cd-slide-r .26s ease-out; }
 .deck .bump { animation: cd-bump .3s ease-out; }
 @media (prefers-reduced-motion: reduce) { .deck .slide-l, .deck .slide-r, .deck .bump { animation: none; } }
+/* lecteur (Spotify) sur l'écran */
+.deck .pbg { position: absolute; inset: -6%; background-size: cover; background-position: center; filter: blur(28px) saturate(1.2); }
+.deck .pbgdim { position: absolute; inset: 0; background: rgba(5,7,10,.62); }
+.deck .dplayer { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 1.6cqw; }
+.deck .pmid { flex: 1; min-width: 0; display: flex; align-items: center; gap: 3cqw; padding: 0 1cqw; }
+.deck .pcover { width: 32cqw; height: 32cqw; flex-shrink: 0; border-radius: 1.8cqw; background-size: cover; background-position: center; box-shadow: 0 1.2cqw 3cqw rgba(0,0,0,.55); }
+.deck .pcover.empty { background: #11161C; border: 1.5px solid #26303A; display: flex; align-items: center; justify-content: center; box-shadow: none; }
+.deck .pcover.empty svg { width: 9cqw; height: 9cqw; }
+.deck .pinfo { min-width: 0; display: flex; flex-direction: column; gap: .8cqw; }
+.deck .ptitle { font-size: 4.2cqw; line-height: 1.05; color: #F2F5F8; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.deck .partist { font-size: 2.4cqw; color: #C9D6E2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck .palbum { font-size: 1.8cqw; color: #8E9BA8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck .pstate { font-size: 1.6cqw; text-transform: uppercase; letter-spacing: .2cqw; margin-top: .6cqw; }
+.deck .pbtn { display: flex; align-items: center; justify-content: center; border-radius: 1.6cqw; background: rgba(17,22,28,.72); border: 1.5px solid rgba(201,214,226,.16); color: #E6EDF3; transition: transform .12s, border-color .12s; }
+.deck .pbtn svg { width: 3.6cqw; height: 3.6cqw; }
+.deck .pbtn.pside { width: 9cqw; }
+.deck .pbtn.pside svg { width: 4.4cqw; height: 4.4cqw; }
+.deck .pctrl { height: 9.5cqw; display: flex; justify-content: center; align-items: stretch; gap: 2cqw; }
+.deck .pbtn.pvol { width: 12cqw; }
+.deck .pbtn.pbig { width: 20cqw; background: #E6EDF3; color: #07090C; border-color: transparent; }
+.deck .pbtn.pbig svg { width: 4.4cqw; height: 4.4cqw; }
+.deck .pbtn.hit { transform: scale(.94); border-color: #FFB547; }
+#sim .pbtn { cursor: pointer; }
+.ico20 { width: 20px; height: 20px; }

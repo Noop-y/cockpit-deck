@@ -39,6 +39,9 @@ const api = window.deck || (() => {
     discordConnect: async () => ({ status: 'error', message: 'Disponible dans le logiciel installé sur Windows.' }),
     discordDisconnect: async () => ({ status: 'off', message: '' }),
     discordState: async () => ({ status: 'off', message: '' }),
+    mediaWatch: async () => true,
+    mediaKey: async () => false,
+    onMediaState: () => {},
     discordRun: async () => ({ ok: false, message: 'Disponible dans le logiciel installé sur Windows.' }),
     onDiscordState: () => {}
   };
@@ -83,7 +86,9 @@ const PC_KEYS = (() => {
 
 function newSpace(category, tpl, name, exe, scenes) {
   const pages = tpl.pages(scenes).map(p => ({ id: uid(), name: p.name, cells: p.cells.map(c => c ? clone(c) : null) }));
-  return { id: uid(), name: name || tpl.name, category, icon: tpl.icon || catOf(category).icon, onHome: true, autoExe: exe || '', look: null, pages };
+  const sp = { id: uid(), name: name || tpl.name, category, icon: tpl.icon || catOf(category).icon, onHome: true, autoExe: exe || '', look: null, pages };
+  if (tpl.layout === 'player') { sp.layout = 'player'; sp.player = { volume: true, coverBg: true }; }
+  return sp;
 }
 
 function defaultConfig() {
@@ -91,11 +96,13 @@ function defaultConfig() {
   const bu = newSpace('bureau', TEMPLATES.bureau[0], 'Bureau', '');
   const st = newSpace('stream', TEMPLATES.stream[0], 'Stream', 'obs64.exe');
   const dc = newSpace('discord', TEMPLATES.discord[0], 'Discord', '');
+  const sp = newSpace('spotify', TEMPLATES.spotify[0], 'Spotify', '');
   return {
     format: 'cockpit-deck', version: 1,
-    spaces: [sc, bu, st, dc],
-    homeOrder: [sc.id, bu.id, st.id, dc.id],
+    spaces: [sc, bu, st, dc, sp],
+    homeOrder: [sc.id, bu.id, st.id, dc.id, sp.id],
     discordSpaceAdded: true,
+    spotifySpaceAdded: true,
     cats: [],
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
@@ -113,7 +120,7 @@ function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { api.saveConfig(cfg); }, 400);
 }
-function commit(noRender) { assignHotkeys(); scheduleSave(); if (!noRender) render(); }
+function commit(noRender) { assignHotkeys(); scheduleSave(); if (typeof updateMediaWatch === 'function') updateMediaWatch(); if (!noRender) render(); }
 
 const spaceById = (id) => cfg.spaces.find(s => s.id === id);
 const curSpace = () => spaceById(ui.spaceId);
@@ -216,12 +223,43 @@ function deckCell(c, look, opts) {
   if (prog != null) inner += `<div class="bar" style="width:${prog}%;background:${look.accent}"></div>`;
   return `<div class="dcell" style="background:${fill};border:${edge}${photoBg ? ';backdrop-filter:blur(6px)' : ''}" ${opts && opts.attrs ? opts.attrs : ''}>${inner}</div>`;
 }
-function deckFrame(look, inner) {
-  let bg = '';
-  if (look.bgType === 'photo' && look.bgPhoto) bg = `<div class="bgph" style="background-image:url('${look.bgPhoto}')"></div><div class="bgdim" style="opacity:${look.bgDim || 0}"></div>`;
+function deckFrame(look, inner, extra) {
+  let bg = extra || '';
+  if (!extra && look.bgType === 'photo' && look.bgPhoto) bg = `<div class="bgph" style="background-image:url('${look.bgPhoto}')"></div><div class="bgdim" style="opacity:${look.bgDim || 0}"></div>`;
   return `<div class="deck" style="background:${look.bgType === 'photo' && look.bgPhoto ? '#000' : look.bgColor}">${bg}<div class="scr">${inner}</div></div>`;
 }
+// ---------- Lecteur (Spotify) ----------
+const isPlayer = (s) => s && s.layout === 'player';
+let mstate = { title: '', artist: '', album: '', status: '', cover: '', app: '', none: true, unavailable: !!api.browser, message: api.browser ? 'Disponible dans le logiciel installé sur Windows.' : '' };
+const P_ICONS = {
+  prev: '<path d="M7 5v14" stroke-width="2.4" stroke-linecap="round"/><path d="M19 5.5v13L9 12z" fill="currentColor" stroke-linejoin="round" stroke-width="1.6"/>',
+  next: '<path d="M17 5v14" stroke-width="2.4" stroke-linecap="round"/><path d="M5 5.5v13L15 12z" fill="currentColor" stroke-linejoin="round" stroke-width="1.6"/>',
+  play: '<path d="M8 5.2v13.6L19 12z" fill="currentColor" stroke-linejoin="round" stroke-width="1.6"/>',
+  pause: '<path d="M8.5 5.5v13M15.5 5.5v13" stroke-width="3.2" stroke-linecap="round"/>',
+  vmoins: '<path d="M3.5 9.5h3.5l4.5-4v13l-4.5-4H3.5z" fill="currentColor" stroke-linejoin="round" stroke-width="1.4"/><path d="M15 12h6" stroke-width="2.2" stroke-linecap="round"/>',
+  vplus: '<path d="M3.5 9.5h3.5l4.5-4v13l-4.5-4H3.5z" fill="currentColor" stroke-linejoin="round" stroke-width="1.4"/><path d="M15 12h6M18 9v6" stroke-width="2.2" stroke-linecap="round"/>'
+};
+const pIcon = (k, cls) => `<svg viewBox="0 0 24 24" class="${cls || ''}" fill="none" stroke="currentColor" aria-hidden="true">${P_ICONS[k]}</svg>`;
+function deckPlayer(space, sim) {
+  const look = lookFor(space);
+  const o = space.player || { volume: true, coverBg: true };
+  const m = mstate;
+  const has = !m.none && !m.unavailable && (m.title || m.artist);
+  const playing = sim && sim.playing != null ? sim.playing : m.status === 'Playing';
+  const btn = (k, cls, icon) => `<div class="pbtn ${cls}" ${sim ? `data-simbtn="${k}"` : ''}>${pIcon(icon || k)}</div>`;
+  const cover = has && m.cover ? `<div class="pcover" style="background-image:url('${m.cover}')"></div>` : `<div class="pcover empty">${svg('musique', 60, '#5B6875', 1.4)}</div>`;
+  const info = has
+    ? `<div class="pinfo"><div class="ptitle disp">${esc(m.title)}</div><div class="partist">${esc(m.artist)}</div>${m.album ? `<div class="palbum">${esc(m.album)}</div>` : ''}<div class="pstate" style="color:${look.accent}">${playing ? 'En lecture' : 'En pause'}</div></div>`
+    : `<div class="pinfo"><div class="ptitle disp">Rien en lecture</div><div class="partist">${esc(m.unavailable ? (m.message || 'Lecteur indisponible') : 'Lancez un morceau dans Spotify')}</div></div>`;
+  const tabs = `<div class="dtabs"><div class="dtab home" ${sim ? 'data-sim="home"' : ''}>${svg('maison', 16, '#C9D6E2')}</div></div>`;
+  const inner = `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div>
+    <div class="dplayer${sim && sim.anim ? ' ' + sim.anim : ''}">${btn('prev', 'pside')}<div class="pmid">${cover}${info}</div>${btn('next', 'pside')}</div>
+    <div class="pctrl">${o.volume !== false ? btn('vmoins', 'pvol') : ''}${btn('play', 'pbig', playing ? 'pause' : 'play')}${o.volume !== false ? btn('vplus', 'pvol') : ''}</div>`;
+  const extra = o.coverBg !== false && has && m.cover ? `<div class="pbg" style="background-image:url('${m.cover}')"></div><div class="pbgdim"></div>` : '';
+  return deckFrame(look, inner, extra);
+}
 function deckPage(space, pageIdx, sim) {
+  if (isPlayer(space)) return deckPlayer(space, sim);
   const look = lookFor(space);
   const page = space.pages[pageIdx] || space.pages[0];
   const tabs = `<div class="dtabs"><div class="dtab home" ${sim ? 'data-sim="home"' : ''}>${svg('maison', 16, '#C9D6E2')}</div>` +
@@ -240,7 +278,7 @@ function deckHome(sim, pageArg) {
   const spaces = all.slice(pg * HOME_PER_PAGE, pg * HOME_PER_PAGE + HOME_PER_PAGE);
   const cards = spaces.map(s => {
     const cat = catOf(s.category);
-    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${s.pages.length} page${s.pages.length > 1 ? 's' : ''}</div></div></div>`;
+    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`}</div></div></div>`;
   });
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   cards.push(`<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}">${svg('reglages', 40, '#9FB0C0', 1.6)}<div><div class="t disp">Réglages</div><div class="s">Luminosité · veille</div></div></div>`);
@@ -281,8 +319,8 @@ function viewEspaces() {
           <button class="red" data-act="space-del" data-id="${s.id}">Supprimer</button></div>` : '';
       return `<article class="card scard">
         <div class="row" style="justify-content:space-between">${svg(s.icon, 30, meta.color, 1.7)}<button class="iconbtn" aria-label="Options de l\u2019espace" data-act="space-menu" data-id="${s.id}">⋯</button></div>
-        <div><div class="name disp">${esc(s.name)}</div><div class="small muted">${s.pages.length} page${s.pages.length > 1 ? 's' : ''} · ${nb} case${nb > 1 ? 's' : ''}</div></div>
-        <div class="mono small" style="color:var(--dim)">${s.autoExe ? 'Auto : ' + esc(s.autoExe) : (cat === 'bureau' || cat === 'discord' ? 'Toujours disponible' : 'Pas de lancement auto')}</div>
+        <div><div class="name disp">${esc(s.name)}</div><div class="small muted">${isPlayer(s) ? 'Lecteur : jaquette et commandes' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''} · ${nb} case${nb > 1 ? 's' : ''}`}</div></div>
+        <div class="mono small" style="color:var(--dim)">${s.autoExe ? 'Auto : ' + esc(s.autoExe) : (cat === 'bureau' || cat === 'discord' || cat === 'spotify' ? 'Toujours disponible' : 'Pas de lancement auto')}</div>
         <div class="foot"><label class="chk"><input type="checkbox" data-act="space-home" data-id="${s.id}" ${s.onHome ? 'checked' : ''}>Sur l\u2019accueil</label>
         <button class="btn sm" data-act="open-space" data-id="${s.id}">Modifier</button></div>${menu}</article>`;
     }).join('');
@@ -294,9 +332,29 @@ function viewEspaces() {
     <div class="row"><button class="btn" data-act="cat-new">+ Nouvelle catégorie</button><button class="btn" data-act="space-import">Importer un espace</button><button class="btn" data-act="simulate">Aperçu de l\u2019écran</button><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div></div>${groups}`;
 }
 
+function viewPlayer(s) {
+  const cat = catOf(s.category);
+  const o = s.player || (s.player = { volume: true, coverBg: true });
+  const m = mstate;
+  const state = m.unavailable ? (m.message || 'Indisponible') : (m.none ? 'Rien en lecture' : `${m.status === 'Playing' ? 'En lecture' : 'En pause'} : ${m.title}${m.artist ? ' — ' + m.artist : ''}`);
+  const src = !m.none && m.app ? (/spotify/i.test(m.app) ? 'Spotify' : m.app.replace(/!.*$/, '').replace(/\.exe$/i, '')) : '';
+  const tb = (k, label) => `<button class="btn" style="padding:0 12px" data-act="media-key" data-k="${k}" aria-label="${label}" title="${label}">${pIcon(k, 'ico20')}</button>`;
+  return `<div class="head"><div><div class="crumb"><button data-act="nav" data-view="espaces">Mes espaces</button> › ${esc(cat.label)}</div><h1 class="disp">${esc(s.name)}</h1></div>
+    <div class="row"><button class="btn" data-act="simulate" data-id="${s.id}">Aperçu de l\u2019écran</button><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div></div>
+    <div class="editor"><div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:10px"><span class="lab" style="margin:0">Sur l\u2019écran${m.none || m.unavailable ? '' : ' · le morceau qui joue en ce moment sur ce PC'}</span>${deckPlayer(s, null)}
+      <div class="small muted">Sur l\u2019écran : touchez les flèches ou glissez le doigt vers la gauche ou la droite pour changer de morceau.</div></div>
+    <div class="panel" style="flex:1 1 340px;min-width:0"><h2 class="disp">Lecteur</h2>
+      <div><span class="lab">En ce moment</span><div style="line-height:1.5">${esc(state)}</div>${src ? `<div class="small muted">Source : ${esc(src)}</div>` : ''}</div>
+      <div><span class="lab">Tester sur ce PC</span><div class="row" style="gap:6px;flex-wrap:nowrap">${tb('prev', 'Morceau précédent')}${tb('play', 'Lecture / pause')}${tb('next', 'Morceau suivant')}${tb('vmoins', 'Baisser le volume')}${tb('vplus', 'Monter le volume')}</div></div>
+      <label class="chk"><input type="checkbox" data-act="pl-volume" ${o.volume !== false ? 'checked' : ''}>Afficher les boutons de volume</label>
+      <label class="chk"><input type="checkbox" data-act="pl-coverbg" ${o.coverBg !== false ? 'checked' : ''}>Fond flouté avec la jaquette</label>
+      <div class="note">Rien à connecter : le logiciel lit le morceau en cours avec les commandes multimédia de Windows, sans compte ni mot de passe Spotify. Ça marche aussi avec les autres lecteurs (navigateur, YouTube, Deezer…). Spotify est choisi en priorité quand il est ouvert. Le volume est celui de Windows.</div></div></div>`;
+}
+
 function viewEditeur() {
   const s = curSpace();
   if (!s) { ui.view = 'espaces'; return viewEspaces(); }
+  if (isPlayer(s)) return viewPlayer(s);
   const page = curPage();
   const cat = catOf(s.category);
   const tabs = s.pages.map((p, i) => `<button class="ptab disp${i === ui.page ? ' on' : ''}" data-act="page" data-i="${i}">${esc(p.name)}</button>`).join('');
@@ -733,6 +791,7 @@ function deviceConfig() {
     look: strip(cfg.look),
     home: order.map(s => s.id),
     spaces: cfg.spaces.map(s => ({
+      layout: s.layout || 'grid', player: isPlayer(s) ? Object.assign({ controls: { prev: 'precedente', next: 'suivante', play: 'lecture', vmoins: 'volmoins', vplus: 'volplus', swipeLeft: 'suivante', swipeRight: 'precedente' } }, s.player) : undefined,
       id: s.id, name: s.name, category: s.category, color: catOf(s.category).color, icon: s.icon, autoExe: s.autoExe, look: strip(s.look),
       pages: s.pages.map(p => ({ name: p.name, cells: p.cells.map(c => c ? {
         name: c.name, image: c.image.type === 'photo' ? { type: 'photo', photo: c.image.photo, showName: c.image.showName !== false, dim: c.image.dim || 0 } : { type: c.image.type, icon: c.image.icon, color: c.image.color },
@@ -816,8 +875,21 @@ function simTap(i) {
   }
 }
 // glisser vers la gauche : page suivante ; vers la droite : page précédente
+// lecteur : les boutons de l'aperçu pilotent vraiment la musique du PC
+function simPlayerBtn(k) {
+  const m = ui.modal;
+  api.mediaKey(k);
+  if (k === 'play') m.playing = !(m.playing != null ? m.playing : mstate.status === 'Playing');
+  const el = $(`#sim [data-simbtn="${k}"]`);
+  if (el) { el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 200); }
+  if (k === 'play') simRender();
+}
 function simSwipe(dir) {
   const m = ui.modal;
+  if (m.screen !== 'home' && isPlayer(spaceById(m.spaceId))) {
+    api.mediaKey(dir > 0 ? 'next' : 'prev');
+    m.anim = dir > 0 ? 'slide-l' : 'slide-r'; simRender(); m.anim = null; return;
+  }
   const home = m.screen === 'home';
   const n = home ? homePages() : spaceById(m.spaceId).pages.length;
   const cur = home ? (m.homePage || 0) : m.page;
@@ -864,6 +936,9 @@ const ACTIONS = {
   'space-movecat': (d) => { ui.menu = null; ui.modal = { type: 'movecat', id: d.id }; render(); },
   'movecat-ok': (d) => { const sp = spaceById(ui.modal.id); sp.category = d.v; ui.modal = null; commit(); toast('« ' + sp.name + ' » est maintenant dans ' + catOf(d.v).label + '.', 'ok'); },
   'home-pv': (d) => { ui.homePv = Math.max(0, Math.min(homePages() - 1, (ui.homePv || 0) + +d.d)); render(); },
+  'media-key': (d) => { api.mediaKey(d.k).then(ok => { if (!ok) toast(api.browser ? 'Disponible dans le logiciel installé sur Windows.' : 'Commande non envoyée.', 'err'); }); },
+  'pl-volume': (d, el) => { curSpace().player.volume = el.checked; commit(); },
+  'pl-coverbg': (d, el) => { curSpace().player.coverBg = el.checked; commit(); },
   'dev-swipe': (d, el) => { cfg.device.swipe = el.checked; commit(); },
   'dev-loop': (d, el) => { cfg.device.loop = el.checked; commit(); },
   'space-menu': (d) => { ui.menu = ui.menu === d.id ? null : d.id; render(); },
@@ -1138,7 +1213,8 @@ document.addEventListener('pointerdown', (ev) => {
     simRender(); return;
   }
   const sc = ev.target.closest('[data-simcell]');
-  swipe = { x: ev.clientX, y: ev.clientY, moved: false, cell: sc ? +sc.dataset.simcell : null, space: nav ? nav.dataset.id : null };
+  const pb = ev.target.closest('[data-simbtn]');
+  swipe = { x: ev.clientX, y: ev.clientY, moved: false, cell: sc ? +sc.dataset.simcell : null, space: nav ? nav.dataset.id : null, btn: pb ? pb.dataset.simbtn : null };
   if (sc) simDown(+sc.dataset.simcell);
 });
 document.addEventListener('pointermove', (ev) => {
@@ -1149,7 +1225,7 @@ document.addEventListener('pointermove', (ev) => {
       Object.values(ui.modal.cells).forEach(st => { st.prog = null; });
       simRender();
     }
-    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome'); if (g) g.style.transform = `translateX(${dx * 0.5}px)`; }
+    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome, #sim .dplayer'); if (g) g.style.transform = `translateX(${dx * 0.5}px)`; }
     return;
   }
   if (!cropDrag || !ui.modal) return;
@@ -1165,6 +1241,7 @@ document.addEventListener('pointerup', (ev) => {
     if (w.moved) { if (Math.abs(dx) > 60) simSwipe(dx < 0 ? 1 : -1); else simRender(); return; }
     if (w.space) { const m = ui.modal; m.screen = 'space'; m.spaceId = w.space; m.page = 0; simRender(); return; }
     if (w.cell != null) simTap(w.cell);
+    if (w.btn) simPlayerBtn(w.btn);
   }
   swipe = null;
   simUp();
@@ -1181,6 +1258,17 @@ api.onDiscordState((st) => {
   setD(st);
   if (ui.view === 'connexions' || ui.view === 'editeur') render(); else { const s = $('.status'); if (s) render(); }
 });
+api.onMediaState((st) => {
+  if (st.none) mstate = Object.assign({}, mstate, { none: true, unavailable: false, title: '', artist: '', album: '', status: '', cover: '' });
+  else if (st.unavailable || st.error) mstate = Object.assign({}, mstate, { unavailable: true, none: true, message: st.message || st.error });
+  else {
+    const same = st.title === mstate.title && st.artist === mstate.artist && st.album === mstate.album;
+    mstate = Object.assign({}, mstate, st, { none: false, unavailable: false, cover: st.cover || (same ? mstate.cover : '') });
+  }
+  if (ui.modal && ui.modal.type === 'sim') { ui.modal.playing = null; simRender(); }
+  else if (ui.view === 'editeur' && isPlayer(curSpace())) render();
+});
+function updateMediaWatch() { api.mediaWatch(cfg.spaces.some(isPlayer)); }
 async function runDiscord(op, arg) {
   const r = await api.discordRun(op, arg);
   if (!r.ok) toast('Discord : ' + r.message, 'err');
@@ -1212,6 +1300,11 @@ function migrate(c) {
       out.spaces.push(dc);
     }
   }
+  // version 0.7 : espace Spotify (lecteur) sur l'accueil
+  if (!c.spotifySpaceAdded) {
+    out.spotifySpaceAdded = true;
+    if (!out.spaces.some(s => s.category === 'spotify')) out.spaces.push(newSpace('spotify', TEMPLATES.spotify[0], 'Spotify', ''));
+  }
   out.spaces.forEach(s => { if (!out.homeOrder.includes(s.id)) out.homeOrder.push(s.id); });
   return out;
 }
@@ -1224,6 +1317,7 @@ function migrate(c) {
   // à chaque lancement : le démarrage avec Windows pointe vers cette version-ci
   api.setStartWithWindows(cfg.settings.startWithWindows);
   assignHotkeys();
+  updateMediaWatch();
   render();
   if (cfg.obs.autoConnect) OBS.connect(cfg.obs);
   setD(await api.discordState());
