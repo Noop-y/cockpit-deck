@@ -15,8 +15,8 @@ GitHub fabrique le `.exe` pour vous sur ses ordinateurs. Comptez 10 minutes la p
 7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer Cockpit Deck pour Windows » démarre. Elle dure environ 5 minutes.
 8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **Cockpit-Deck-Windows** pour télécharger un zip.
 9. Dans ce zip, il y a deux fichiers :
-   - `Cockpit-Deck-Installation-0.2.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
-   - `Cockpit-Deck-Portable-0.2.0.exe` : se lance directement, sans installation.
+   - `Cockpit-Deck-Installation-0.2.1.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
+   - `Cockpit-Deck-Portable-0.2.1.exe` : se lance directement, sans installation.
 
 Pour une nouvelle version, il suffit de renvoyer les fichiers modifiés dans le même dépôt : GitHub refabrique le `.exe` tout seul.
 

@@ -232,7 +232,7 @@ function sidebar() {
   const v = ui.view === 'editeur' ? 'espaces' : ui.view;
   const obsDot = OBS.state.status === 'on' ? 'ok' : (OBS.state.status === 'error' ? 'err' : '');
   return `<nav class="side" aria-label="Menu">
-    <div class="logo disp">${svg('ecranmfd', 26, '#FFB547')}COCKPIT DECK</div>
+    <div class="logo disp">${svg('ecranmfd', 26, '#FFB547')}COCKPIT DECK</div><div class="mono small" style="color:var(--dim);margin:-6px 0 6px 12px">version ${esc(ui.version || '')}</div>
     ${items.map(([k, l]) => `<button class="nav${v === k ? ' on' : ''}" data-act="nav" data-view="${k}">${l}</button>`).join('')}
     <div class="status">
       <span><i class="dot ${ui.deckOk ? 'ok' : ''}"></i>${ui.deckOk ? 'Écran reçu la configuration' : 'Écran : envoi non fait'}</span>
@@ -1090,7 +1090,9 @@ function migrate(c) {
   const saved = await api.loadConfig();
   cfg = saved ? migrate(saved) : defaultConfig();
   ui.version = await api.version();
-  if (!saved) { await api.saveConfig(cfg); await api.setStartWithWindows(cfg.settings.startWithWindows); }
+  if (!saved) await api.saveConfig(cfg);
+  // à chaque lancement : le démarrage avec Windows pointe vers cette version-ci
+  api.setStartWithWindows(cfg.settings.startWithWindows);
   assignHotkeys();
   render();
   if (cfg.obs.autoConnect) OBS.connect(cfg.obs);

@@ -26,7 +26,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 680,
     backgroundColor: '#0B0F14',
-    title: 'Cockpit Deck',
+    title: 'Cockpit Deck ' + app.getVersion(),
     icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -61,7 +61,7 @@ function createWindow() {
 function createTray() {
   const img = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png')).resize({ width: 16, height: 16 });
   tray = new Tray(img);
-  tray.setToolTip('Cockpit Deck');
+  tray.setToolTip('Cockpit Deck ' + app.getVersion());
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Ouvrir Cockpit Deck', click: () => { win.show(); win.focus(); } },
     { type: 'separator' },
@@ -253,11 +253,25 @@ ipcMain.handle('discord:run', async (e, op, arg) => {
 });
 
 // ---------- démarrage ----------
-const gotLock = app.requestSingleInstanceLock();
+// Une seule copie à la fois. Si une copie plus ancienne tourne déjà (cachée près de l'horloge),
+// elle se ferme et la nouvelle version prend sa place.
+const newer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+const gotLock = app.requestSingleInstanceLock({ version: app.getVersion() });
 if (!gotLock) {
-  app.quit();
+  if (process.argv.includes('--relance')) {
+    app.exit(0);
+  } else {
+    // laisse à l'ancienne copie le temps de se fermer, puis relance cette version
+    setTimeout(() => {
+      app.relaunch({ execPath: process.env.PORTABLE_EXECUTABLE_FILE || process.execPath, args: process.argv.slice(1).concat(['--relance']) });
+      app.exit(0);
+    }, 2500);
+  }
 } else {
-  app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
+  app.on('second-instance', (event, argv, cwd, data) => {
+    if (data && data.version && newer(data.version, app.getVersion())) { quitting = true; app.quit(); return; }
+    if (win) { win.show(); win.focus(); }
+  });
   app.whenReady().then(() => {
     ensurePsScript();
     discord = new DiscordRPC(path.join(dataDir(), 'discord-jeton.json'));
