@@ -157,3 +157,14 @@ input[type=range] { accent-color: var(--amber); width: 100%; }
 .dbig.off .small { color: #FF8A7A; }
 .dbig:disabled { opacity: .45; cursor: default; }
 .linkbtn { background: none; border: 0; padding: 0; color: var(--cyan); text-decoration: underline; font: inherit; cursor: pointer; }
+.deck .ddots { display: flex; gap: .9cqw; align-items: center; }
+.deck .ddots i { width: 1.1cqw; height: 1.1cqw; border-radius: 50%; background: rgba(201,214,226,.3); }
+#sim { touch-action: none; user-select: none; -webkit-user-select: none; }
+#sim .dgrid, #sim .dhome { will-change: transform; }
+@keyframes cd-slide-l { from { transform: translateX(28%); opacity: .2; } to { transform: none; opacity: 1; } }
+@keyframes cd-slide-r { from { transform: translateX(-28%); opacity: .2; } to { transform: none; opacity: 1; } }
+@keyframes cd-bump { 0%, 100% { transform: none; } 30% { transform: translateX(-2.5%); } 65% { transform: translateX(2%); } }
+.deck .slide-l { animation: cd-slide-l .26s ease-out; }
+.deck .slide-r { animation: cd-slide-r .26s ease-out; }
+.deck .bump { animation: cd-bump .3s ease-out; }
+@media (prefers-reduced-motion: reduce) { .deck .slide-l, .deck .slide-r, .deck .bump { animation: none; } }

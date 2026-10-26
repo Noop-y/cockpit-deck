@@ -1,4 +1,4 @@
-# Cockpit Deck 0.3 — fabriquer le fichier .exe
+# Cockpit Deck 0.4 — fabriquer le fichier .exe
 
 Ce dossier contient le logiciel Cockpit Deck complet. Il faut le transformer une fois en fichier `.exe` pour Windows. Deux façons, au choix.
 
@@ -15,8 +15,8 @@ GitHub fabrique le `.exe` pour vous sur ses ordinateurs. Comptez 10 minutes la p
 7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer Cockpit Deck pour Windows » démarre. Elle dure environ 5 minutes.
 8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **Cockpit-Deck-Windows** pour télécharger un zip.
 9. Dans ce zip, il y a deux fichiers :
-   - `Cockpit-Deck-Installation-0.3.1.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
-   - `Cockpit-Deck-Portable-0.3.1.exe` : se lance directement, sans installation.
+   - `Cockpit-Deck-Installation-0.4.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
+   - `Cockpit-Deck-Portable-0.4.0.exe` : se lance directement, sans installation.
 
 Pour une nouvelle version, il suffit de renvoyer les fichiers modifiés dans le même dépôt : GitHub refabrique le `.exe` tout seul.
 
@@ -37,7 +37,9 @@ Windows peut afficher « Windows a protégé votre ordinateur », car le logicie
 
 - Mes espaces : créer (modèles Star Citizen, Elite Dangerous, Flight Simulator, Bureau, OBS, ou grille vide), renommer, dupliquer, exporter, importer, supprimer, afficher ou masquer sur l'accueil.
 - Pages et cases : nom libre, pictogramme du catalogue, photo recadrée ou texte seul, couleur, action, comportement (appui, maintenir, bascule).
-- Écran d'accueil : ordre et espaces affichés.
+- Catégories personnelles : bouton « + Nouvelle catégorie » dans Mes espaces (nom, couleur, pictogramme), en plus de Jeux, Bureau, Streaming et Discord. Un espace peut changer de catégorie (menu ⋯).
+- Écran d'accueil : ordre et espaces affichés, 5 espaces par page ; au-delà, l'accueil a plusieurs pages.
+- Glisser le doigt vers la gauche ou la droite pour passer à la page suivante ou précédente, dans un espace comme sur l'accueil (réglable dans Appareil, avec retour à la première page en option). À essayer dans « Aperçu de l'écran ».
 - Apparence : fond (couleur ou photo), couleurs des cases au repos et appuyées, thèmes prêts.
 - Aperçu de l'écran : un simulateur pour essayer ses pages avant d'avoir l'écran.
 - Ouvrir une appli sur l'écran de gauche ou de droite, en plein écran ou sur une moitié (bouton Tester).

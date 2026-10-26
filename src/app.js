@@ -74,7 +74,7 @@ const PC_KEYS = (() => {
 
 function newSpace(category, tpl, name, exe, scenes) {
   const pages = tpl.pages(scenes).map(p => ({ id: uid(), name: p.name, cells: p.cells.map(c => c ? clone(c) : null) }));
-  return { id: uid(), name: name || tpl.name, category, icon: tpl.icon || CATEGORIES[category].icon, onHome: true, autoExe: exe || '', look: null, pages };
+  return { id: uid(), name: name || tpl.name, category, icon: tpl.icon || catOf(category).icon, onHome: true, autoExe: exe || '', look: null, pages };
 }
 
 function defaultConfig() {
@@ -87,10 +87,11 @@ function defaultConfig() {
     spaces: [sc, bu, st, dc],
     homeOrder: [sc.id, bu.id, st.id, dc.id],
     discordSpaceAdded: true,
+    cats: [],
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
     discord: { clientId: '', clientSecret: '', autoConnect: false, shortcuts: [] },
-    device: { brightness: 80, sleepMin: 10 },
+    device: { brightness: 80, sleepMin: 10, swipe: true, loop: false },
     settings: { startWithWindows: true }
   };
 }
@@ -109,6 +110,14 @@ const spaceById = (id) => cfg.spaces.find(s => s.id === id);
 const curSpace = () => spaceById(ui.spaceId);
 const curPage = () => { const s = curSpace(); return s ? s.pages[Math.min(ui.page, s.pages.length - 1)] : null; };
 const curCell = () => { const p = curPage(); return p && ui.cell != null ? p.cells[ui.cell] : null; };
+// Catégories : les quatre d'origine + celles créées par l'utilisateur
+const catOf = (k) => CATEGORIES[k] || ((cfg && cfg.cats) || []).find(c => c.id === k) || CATEGORIES.jeu;
+const catKeys = () => Object.keys(CATEGORIES).concat(((cfg && cfg.cats) || []).map(c => c.id));
+const isCustomCat = (k) => !CATEGORIES[k];
+const tplsOf = (k) => TEMPLATES[k] || [{ key: 'vide', name: 'Grille vide', desc: 'Une page vide à remplir comme vous voulez', icon: catOf(k).icon, exe: '', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }];
+const HOME_PER_PAGE = 5;
+const homeSpaces = () => cfg.homeOrder.map(spaceById).filter(s => s && s.onHome);
+const homePages = () => Math.max(1, Math.ceil(homeSpaces().length / HOME_PER_PAGE));
 const shortcutById = (id) => (cfg.discord.shortcuts || []).find(x => x.id === id);
 const DSTATE0 = { status: 'off', message: '', mute: false, deaf: false, outVolume: 100, inputId: '', outputId: '', inputs: [], outputs: [] };
 let dstate = Object.assign({}, DSTATE0);
@@ -212,18 +221,22 @@ function deckPage(space, pageIdx, sim) {
     const st = sim ? sim.cells[`${space.id}|${pageIdx}|${i}`] || {} : {};
     return deckCell(c, look, { on: st.on || st.flash, prog: st.prog, attrs: sim && c ? `data-simcell="${i}"` : '' });
   }).join('');
-  return deckFrame(look, `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div><div class="dgrid">${cells}</div>`);
+  return deckFrame(look, `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div><div class="dgrid${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div>`);
 }
-function deckHome(sim) {
+function deckHome(sim, pageArg) {
   const look = cfg.look;
-  const spaces = cfg.homeOrder.map(spaceById).filter(s => s && s.onHome).slice(0, 5);
+  const all = homeSpaces();
+  const nPages = homePages();
+  const pg = Math.min(sim ? (sim.homePage || 0) : (pageArg || 0), nPages - 1);
+  const spaces = all.slice(pg * HOME_PER_PAGE, pg * HOME_PER_PAGE + HOME_PER_PAGE);
   const cards = spaces.map(s => {
-    const cat = CATEGORIES[s.category] || CATEGORIES.jeu;
+    const cat = catOf(s.category);
     return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${s.pages.length} page${s.pages.length > 1 ? 's' : ''}</div></div></div>`;
   });
-  while (cards.length < 5) cards.push('<div class="dempty"></div>');
+  while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   cards.push(`<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}">${svg('reglages', 40, '#9FB0C0', 1.6)}<div><div class="t disp">Réglages</div><div class="s">Luminosité · veille</div></div></div>`);
-  return deckFrame(look, `<div class="dtop"><div class="disp" style="font-size:2.6cqw;letter-spacing:.2cqw">COCKPIT DECK</div><div style="color:#C9D6E2;font-size:1.5cqw">Choisissez un espace</div></div><div class="dhome">${cards.join('')}</div>`);
+  const dots = nPages > 1 ? `<div class="ddots">${Array.from({ length: nPages }, (_, k) => `<i style="${k === pg ? `background:${look.accent}` : ''}"></i>`).join('')}</div>` : `<div style="color:#C9D6E2;font-size:1.5cqw">Choisissez un espace</div>`;
+  return deckFrame(look, `<div class="dtop"><div class="disp" style="font-size:2.6cqw;letter-spacing:.2cqw">COCKPIT DECK</div>${dots}</div><div class="dhome${sim && sim.anim ? ' ' + sim.anim : ''}">${cards.join('')}</div>`);
 }
 
 // ---------------------------------------------------------------------------
@@ -246,14 +259,15 @@ function sidebar() {
 }
 
 function viewEspaces() {
-  const groups = Object.keys(CATEGORIES).map(cat => {
+  const groups = catKeys().map(cat => {
     const list = cfg.spaces.filter(s => s.category === cat);
-    const meta = CATEGORIES[cat];
+    const meta = catOf(cat);
     const cards = list.map(s => {
       const nb = s.pages.reduce((n, p) => n + p.cells.filter(Boolean).length, 0);
       const menu = ui.menu === s.id ? `<div class="menu" role="menu">
           <button data-act="space-rename" data-id="${s.id}">Renommer</button>
           <button data-act="space-dup" data-id="${s.id}">Dupliquer</button>
+          <button data-act="space-movecat" data-id="${s.id}">Changer de catégorie…</button>
           <button data-act="space-export" data-id="${s.id}">Exporter…</button>
           <button class="red" data-act="space-del" data-id="${s.id}">Supprimer</button></div>` : '';
       return `<article class="card scard">
@@ -263,18 +277,19 @@ function viewEspaces() {
         <div class="foot"><label class="chk"><input type="checkbox" data-act="space-home" data-id="${s.id}" ${s.onHome ? 'checked' : ''}>Sur l\u2019accueil</label>
         <button class="btn sm" data-act="open-space" data-id="${s.id}">Modifier</button></div>${menu}</article>`;
     }).join('');
-    return `<section style="display:flex;flex-direction:column;gap:12px"><h2 class="cat-title disp" style="color:${meta.color}">${meta.label}</h2>
+    const tools = isCustomCat(cat) ? `<button class="btn sm" data-act="cat-edit" data-id="${cat}">Modifier</button><button class="btn sm danger" data-act="cat-del" data-id="${cat}">Supprimer</button>` : '';
+    return `<section style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${isCustomCat(cat) ? svg(meta.icon, 22, meta.color, 1.8) : ''}<h2 class="cat-title disp" style="color:${meta.color}">${esc(meta.label)}</h2>${tools}</div>
       <div class="cards">${cards}<button class="empty-add" data-act="new-space" data-cat="${cat}">${svg('plus', 28, '#C9D6E2')}<span class="disp" style="font-size:17px;text-transform:uppercase">Nouvel espace</span></button></div></section>`;
   }).join('');
   return `<div class="head"><div><h1 class="disp">Mes espaces</h1><div class="muted" style="margin-top:4px">Chaque espace a ses pages et ses cases. Modifiez-les ici, puis envoyez-les sur l\u2019écran.</div></div>
-    <div class="row"><button class="btn" data-act="space-import">Importer un espace</button><button class="btn" data-act="simulate">Aperçu de l\u2019écran</button><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div></div>${groups}`;
+    <div class="row"><button class="btn" data-act="cat-new">+ Nouvelle catégorie</button><button class="btn" data-act="space-import">Importer un espace</button><button class="btn" data-act="simulate">Aperçu de l\u2019écran</button><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div></div>${groups}`;
 }
 
 function viewEditeur() {
   const s = curSpace();
   if (!s) { ui.view = 'espaces'; return viewEspaces(); }
   const page = curPage();
-  const cat = CATEGORIES[s.category];
+  const cat = catOf(s.category);
   const tabs = s.pages.map((p, i) => `<button class="ptab disp${i === ui.page ? ' on' : ''}" data-act="page" data-i="${i}">${esc(p.name)}</button>`).join('');
   const cells = page.cells.map((c, i) => {
     if (!c) return `<button class="ecell empty${ui.cell === i ? ' sel' : ''}" data-act="cell" data-i="${i}" draggable="true" data-drag="${i}" aria-label="Case vide ${i + 1}">+</button>`;
@@ -368,7 +383,7 @@ function cellPanel() {
 
 function viewAccueil() {
   const rows = cfg.homeOrder.map(spaceById).filter(Boolean).map((s, i, arr) => {
-    const cat = CATEGORIES[s.category];
+    const cat = catOf(s.category);
     return `<div class="lrow${s.onHome ? '' : ' off'}">${svg(s.icon, 26, cat.color, 1.7)}<span class="nm disp">${esc(s.name)}</span>
       <button class="btn sm" data-act="home-move" data-id="${s.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Monter">↑</button>
       <button class="btn sm" data-act="home-move" data-id="${s.id}" data-d="1" ${i === arr.length - 1 ? 'disabled' : ''} aria-label="Descendre">↓</button>
@@ -377,8 +392,9 @@ function viewAccueil() {
   const shown = cfg.spaces.filter(s => s.onHome).length;
   return `<div class="head"><div><h1 class="disp">Écran d\u2019accueil</h1><div class="muted" style="margin-top:4px">Choisissez les espaces affichés et leur ordre. La vignette Réglages reste toujours en dernier.</div></div></div>
     <div class="editor"><div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:10px">${rows}
-      ${shown > 5 ? '<div class="warn">L\u2019accueil affiche 5 espaces au maximum : les suivants ne seront pas visibles. Masquez-en ou changez l\u2019ordre.</div>' : ''}</div>
-      <div style="flex:1 1 460px;min-width:0"><span class="lab">Aperçu</span>${deckHome(null)}</div></div>`;
+      ${shown > HOME_PER_PAGE ? `<div class="note">L\u2019accueil montre ${HOME_PER_PAGE} espaces par page. Avec ${shown} espaces, il a ${homePages()} pages : sur l\u2019écran, glissez le doigt vers la gauche ou la droite pour passer de l\u2019une à l\u2019autre.</div>` : ''}</div>
+      <div style="flex:1 1 460px;min-width:0;display:flex;flex-direction:column;gap:10px"><span class="lab" style="margin:0">Aperçu${homePages() > 1 ? ` · page ${(ui.homePv || 0) + 1} sur ${homePages()}` : ''}</span>${deckHome(null, ui.homePv || 0)}
+        ${homePages() > 1 ? `<div class="row"><button class="btn sm" data-act="home-pv" data-d="-1" ${(ui.homePv || 0) === 0 ? 'disabled' : ''}>← Page précédente</button><button class="btn sm" data-act="home-pv" data-d="1" ${(ui.homePv || 0) >= homePages() - 1 ? 'disabled' : ''}>Page suivante →</button></div>` : ''}</div></div>`;
 }
 
 function viewApparence() {
@@ -510,6 +526,8 @@ function viewAppareil() {
     <div class="editor"><div class="panel" style="flex:1 1 420px;min-width:0">
       <div><div class="row" style="justify-content:space-between"><label class="lab" for="f-bri">Luminosité de l\u2019écran</label><span class="mono" style="color:var(--amber)">${d.brightness} %</span></div><input id="f-bri" type="range" min="10" max="100" step="5" value="${d.brightness}" data-field="bri"></div>
       <div><span class="lab">Mise en veille après</span>${seg('sleep', [[0, 'Jamais'], [5, '5 min'], [10, '10 min'], [30, '30 min']], d.sleepMin)}</div>
+      <label class="chk"><input type="checkbox" data-act="dev-swipe" ${d.swipe !== false ? 'checked' : ''}>Changer de page en glissant le doigt vers la gauche ou la droite</label>
+      <label class="chk" style="${d.swipe === false ? 'opacity:.5' : ''}"><input type="checkbox" data-act="dev-loop" ${d.loop ? 'checked' : ''} ${d.swipe === false ? 'disabled' : ''}>Après la dernière page, revenir à la première</label>
       <div class="small muted">Ces réglages partent sur l\u2019écran au prochain envoi.</div></div>
     <div class="panel" style="flex:1 1 360px;min-width:0"><h2 class="disp">État</h2>
       <div style="line-height:1.6">${ui.deckOk ? '<span style="color:var(--cyan)">Le dernier envoi a réussi.</span>' : 'Aucun envoi réussi pendant cette session.'}</div>
@@ -537,16 +555,30 @@ function modalHTML() {
   const m = ui.modal;
   if (!m) return '';
   if (m.type === 'new-space') {
-    const list = TEMPLATES[m.cat];
+    const list = tplsOf(m.cat);
     const t = list[m.tpl] || list[0];
     return `<div class="modal md" role="dialog" aria-label="Nouvel espace"><div class="modal-head"><h2 class="disp" style="font-size:25px">Nouvel espace</h2><button class="iconbtn" data-act="modal-close" aria-label="Fermer">✕</button></div>
-      <div><span class="lab">1 · Catégorie</span>${seg('ns-cat', Object.entries(CATEGORIES).map(([k, v]) => [k, v.label]), m.cat)}</div>
+      <div><span class="lab">1 · Catégorie</span><div class="row" style="gap:8px">${catKeys().map(k => `<button class="pill${m.cat === k ? ' on' : ''}" data-act="ns-cat" data-v="${k}">${esc(catOf(k).label)}</button>`).join('')}</div></div>
       <div style="display:flex;flex-direction:column;gap:8px"><span class="lab" style="margin:0">2 · Partir d\u2019un modèle</span>
         ${list.map((x, i) => `<button class="btn" style="height:auto;padding:10px 14px;flex-direction:column;align-items:flex-start;gap:2px;${i === m.tpl ? 'border-color:var(--amber);background:#1A222B' : ''}" data-act="ns-tpl" data-i="${i}"><b>${esc(x.name)}</b><span class="small muted">${esc(x.desc)}</span></button>`).join('')}</div>
       <div><label class="lab" for="f-nsname">3 · Nom affiché sur l\u2019accueil</label><input id="f-nsname" class="inp" value="${esc(m.name)}" placeholder="${esc(t.name)}" data-field="ns-name" maxlength="24"></div>
       ${m.cat !== 'bureau' ? `<div><label class="lab" for="f-nsexe">Ouvrir cet espace quand ce programme démarre (facultatif)</label><input id="f-nsexe" class="inp mono" value="${esc(m.exe)}" placeholder="${esc(t.exe || 'ex. MonJeu.exe')}" data-field="ns-exe"></div>` : ''}
       ${m.cat === 'stream' && OBS.state.status === 'on' ? '<div class="note">OBS est connecté : les cases de scènes prendront les vrais noms de vos scènes.</div>' : ''}
       <div class="row" style="justify-content:flex-end"><button class="btn" data-act="modal-close">Annuler</button><button class="btn pri" data-act="ns-create">Créer l\u2019espace</button></div></div>`;
+  }
+  if (m.type === 'cat') {
+    const keys = Object.keys(PICTOS);
+    return `<div class="modal md" role="dialog" aria-label="Catégorie"><div class="modal-head"><h2 class="disp" style="font-size:25px">${m.id ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h2><button class="iconbtn" data-act="modal-close" aria-label="Fermer">✕</button></div>
+      <div><label class="lab" for="f-catname">Nom</label><input id="f-catname" class="inp" value="${esc(m.label)}" placeholder="ex. Simulation, Musique, Travail…" data-field="cat-name" maxlength="22"></div>
+      <div><span class="lab">Couleur</span>${swatches('cat-color', COLORS_ICON, m.color)}</div>
+      <div><span class="lab">Pictogramme</span><div class="picgrid" style="max-height:230px;overflow:auto">${keys.map(k => `<button class="pic${k === m.icon ? ' on' : ''}" data-act="cat-icon" data-v="${k}">${svg(k, 24, k === m.icon ? m.color : '#C9D6E2')}<span>${esc(PICTOS[k][0])}</span></button>`).join('')}</div></div>
+      <div class="row" style="justify-content:flex-end"><button class="btn" data-act="modal-close">Annuler</button><button class="btn pri" data-act="cat-ok">${m.id ? 'Enregistrer' : 'Créer la catégorie'}</button></div></div>`;
+  }
+  if (m.type === 'movecat') {
+    const sp = spaceById(m.id);
+    return `<div class="modal sm" role="dialog" aria-label="Changer de catégorie"><h2 class="disp">« ${esc(sp.name)} » va dans…</h2>
+      <div style="display:flex;flex-direction:column;gap:8px">${catKeys().map(k => `<button class="btn" style="justify-content:flex-start;${k === sp.category ? 'border-color:var(--amber)' : ''}" data-act="movecat-ok" data-v="${k}">${svg(catOf(k).icon, 20, catOf(k).color)}${esc(catOf(k).label)}</button>`).join('')}</div>
+      <div class="row" style="justify-content:flex-end"><button class="btn" data-act="modal-close">Annuler</button></div></div>`;
   }
   if (m.type === 'picto') {
     const q = (ui.search || '').toLowerCase().trim();
@@ -580,7 +612,7 @@ function modalHTML() {
   if (m.type === 'sim') {
     const s = m.screen === 'home' ? null : spaceById(m.spaceId);
     return `<div class="modal" role="dialog" aria-label="Aperçu de l\u2019écran" style="width:min(1120px,100%)"><div class="modal-head"><h2 class="disp" style="font-size:25px">Aperçu de l\u2019écran</h2>
-      <div class="row"><span class="muted small">Touchez les cases comme sur le vrai écran. Rien n\u2019est envoyé au jeu.</span><button class="iconbtn" data-act="modal-close" aria-label="Fermer">✕</button></div></div>
+      <div class="row"><span class="muted small">Touchez les cases comme sur le vrai écran${cfg.device.swipe !== false ? ', glissez vers la gauche ou la droite pour changer de page' : ''}. Rien n\u2019est envoyé au jeu.</span><button class="iconbtn" data-act="modal-close" aria-label="Fermer">✕</button></div></div>
       <div id="sim">${s ? deckPage(s, m.page, m) : deckHome(m)}</div></div>`;
   }
   return '';
@@ -692,7 +724,7 @@ function deviceConfig() {
     look: strip(cfg.look),
     home: order.map(s => s.id),
     spaces: cfg.spaces.map(s => ({
-      id: s.id, name: s.name, category: s.category, icon: s.icon, autoExe: s.autoExe, look: strip(s.look),
+      id: s.id, name: s.name, category: s.category, color: catOf(s.category).color, icon: s.icon, autoExe: s.autoExe, look: strip(s.look),
       pages: s.pages.map(p => ({ name: p.name, cells: p.cells.map(c => c ? {
         name: c.name, image: c.image.type === 'photo' ? { type: 'photo', photo: c.image.photo, showName: c.image.showName !== false, dim: c.image.dim || 0 } : { type: c.image.type, icon: c.image.icon, color: c.image.color },
         action: deviceAction(c.action), behavior: c.behavior
@@ -745,33 +777,47 @@ async function sendToDeck() {
 // Simulateur
 // ---------------------------------------------------------------------------
 function openSim(spaceId) {
-  ui.modal = { type: 'sim', screen: spaceId ? 'space' : 'home', spaceId: spaceId || null, page: 0, cells: {} };
+  ui.modal = { type: 'sim', screen: spaceId ? 'space' : 'home', spaceId: spaceId || null, page: 0, homePage: 0, cells: {} };
   render();
 }
 function simRender() { const el = $('#sim'); const m = ui.modal; if (!el || !m) return; const s = m.screen === 'home' ? null : spaceById(m.spaceId); el.innerHTML = s ? deckPage(s, m.page, m) : deckHome(m); }
 let simTimer = null;
+const simCellAt = (i) => { const m = ui.modal, s = spaceById(m.spaceId); const c = s && s.pages[m.page] && s.pages[m.page].cells[i]; return c ? { s, c, st: (m.cells[`${s.id}|${m.page}|${i}`] = m.cells[`${s.id}|${m.page}|${i}`] || {}) } : null; };
+// appui long : la barre se remplit dès que le doigt est posé
 function simDown(i) {
-  const m = ui.modal, s = spaceById(m.spaceId), c = s.pages[m.page].cells[i];
-  if (!c) return;
-  const key = `${s.id}|${m.page}|${i}`;
-  const st = m.cells[key] = m.cells[key] || {};
-  const mode = (c.behavior || {}).mode || 'tap';
-  if (mode === 'hold') {
-    const t0 = Date.now(), ms = c.behavior.holdMs || 1500;
-    clearInterval(simTimer);
-    simTimer = setInterval(() => {
-      st.prog = Math.min(100, (Date.now() - t0) / ms * 100);
-      if (st.prog >= 100) { clearInterval(simTimer); st.prog = null; st.flash = true; setTimeout(() => { st.flash = false; simRender(); }, 600); }
-      simRender();
-    }, 40);
-  } else if (mode === 'toggle') { st.on = !st.on; simRender(); }
-  else {
-    st.flash = true; simRender(); setTimeout(() => { st.flash = false; simRender(); }, 220);
-    if (c.action && c.action.type === 'page') {
-      if (c.action.page === 'home') { m.screen = 'home'; } else { m.page = Math.min(+c.action.page, s.pages.length - 1); }
-      setTimeout(simRender, 230);
-    }
+  const x = simCellAt(i); if (!x || ((x.c.behavior || {}).mode || 'tap') !== 'hold') return;
+  const t0 = Date.now(), ms = x.c.behavior.holdMs || 1500, st = x.st;
+  clearInterval(simTimer);
+  simTimer = setInterval(() => {
+    st.prog = Math.min(100, (Date.now() - t0) / ms * 100);
+    if (st.prog >= 100) { clearInterval(simTimer); st.prog = null; st.flash = true; setTimeout(() => { st.flash = false; simRender(); }, 600); }
+    simRender();
+  }, 40);
+}
+// appui court et bascule : au moment où le doigt se lève (sauf s'il a glissé)
+function simTap(i) {
+  const x = simCellAt(i); if (!x) return;
+  const m = ui.modal, { s, c, st } = x, mode = (c.behavior || {}).mode || 'tap';
+  if (mode === 'hold') return;
+  if (mode === 'toggle') { st.on = !st.on; simRender(); return; }
+  st.flash = true; simRender(); setTimeout(() => { st.flash = false; simRender(); }, 220);
+  if (c.action && c.action.type === 'page') {
+    if (c.action.page === 'home') { m.screen = 'home'; } else { m.page = Math.min(+c.action.page, s.pages.length - 1); }
+    setTimeout(simRender, 230);
   }
+}
+// glisser vers la gauche : page suivante ; vers la droite : page précédente
+function simSwipe(dir) {
+  const m = ui.modal;
+  const home = m.screen === 'home';
+  const n = home ? homePages() : spaceById(m.spaceId).pages.length;
+  const cur = home ? (m.homePage || 0) : m.page;
+  let next = cur + dir;
+  if (next < 0 || next >= n) next = cfg.device.loop && n > 1 ? (next + n) % n : cur;
+  m.anim = next === cur ? 'bump' : (dir > 0 ? 'slide-l' : 'slide-r');
+  if (home) m.homePage = next; else m.page = next;
+  simRender();
+  m.anim = null;
 }
 function simUp() {
   clearInterval(simTimer);
@@ -788,6 +834,29 @@ function textBox(title, value, fn) { ui.modal = { type: 'text', title, value, fn
 
 const ACTIONS = {
   nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'parametres') api.listBackups().then(b => { ui.backups = b; render(); }); render(); },
+  'cat-new': () => { ui.modal = { type: 'cat', id: null, label: '', icon: 'etoile', color: '#B79CFF' }; renderModal(); setTimeout(() => { const el = $('#f-catname'); if (el) el.focus(); }, 0); },
+  'cat-edit': (d) => { const c = cfg.cats.find(x => x.id === d.id); ui.modal = { type: 'cat', id: c.id, label: c.label, icon: c.icon, color: c.color }; renderModal(); },
+  'cat-color': (d) => { ui.modal.color = d.v; renderModal(); },
+  'cat-icon': (d) => { ui.modal.icon = d.v; renderModal(); },
+  'cat-ok': () => {
+    const m = ui.modal, label = (m.label || '').trim();
+    if (!label) { toast('Donnez un nom à la catégorie.', 'err'); return; }
+    if (m.id) { Object.assign(cfg.cats.find(x => x.id === m.id), { label, icon: m.icon, color: m.color }); ui.modal = null; commit(); toast('Catégorie modifiée.', 'ok'); return; }
+    const id = 'c_' + uid();
+    cfg.cats.push({ id, label, icon: m.icon, color: m.color });
+    ui.modal = { type: 'new-space', cat: id, tpl: 0, name: label, exe: '' };
+    commit(); toast('Catégorie « ' + label + ' » créée. Créez maintenant son premier espace.', 'ok', 5000);
+  },
+  'cat-del': (d) => {
+    const c = cfg.cats.find(x => x.id === d.id); const n = cfg.spaces.filter(s => s.category === d.id).length;
+    if (n) { toast(`« ${c.label} » contient encore ${n} espace${n > 1 ? 's' : ''} : supprimez-les ou changez-les de catégorie (menu ⋯ de l’espace).`, 'err', 7000); return; }
+    confirmBox('Supprimer la catégorie « ' + c.label + ' » ?', 'Elle est vide, rien d’autre ne sera supprimé.', 'Supprimer', true, () => { cfg.cats = cfg.cats.filter(x => x.id !== d.id); commit(); });
+  },
+  'space-movecat': (d) => { ui.menu = null; ui.modal = { type: 'movecat', id: d.id }; render(); },
+  'movecat-ok': (d) => { const sp = spaceById(ui.modal.id); sp.category = d.v; ui.modal = null; commit(); toast('« ' + sp.name + ' » est maintenant dans ' + catOf(d.v).label + '.', 'ok'); },
+  'home-pv': (d) => { ui.homePv = Math.max(0, Math.min(homePages() - 1, (ui.homePv || 0) + +d.d)); render(); },
+  'dev-swipe': (d, el) => { cfg.device.swipe = el.checked; commit(); },
+  'dev-loop': (d, el) => { cfg.device.loop = el.checked; commit(); },
   'space-menu': (d) => { ui.menu = ui.menu === d.id ? null : d.id; render(); },
   'open-space': (d) => { ui.spaceId = d.id; ui.page = 0; ui.cell = null; ui.view = 'editeur'; ui.menu = null; render(); },
   'space-home': (d, el) => { const s = spaceById(d.id); s.onHome = el.checked; commit(); },
@@ -808,14 +877,14 @@ const ACTIONS = {
     const s = await api.importSpace(); if (!s) return;
     if (s.error) { toast(s.error, 'err'); return; }
     s.id = uid(); (s.pages || []).forEach(p => { p.id = uid(); (p.cells || []).forEach(c => { if (c && c.action) delete c.action.hotkey; }); });
-    if (!CATEGORIES[s.category]) s.category = 'jeu';
+    if (!catKeys().includes(s.category)) s.category = 'jeu';
     cfg.spaces.push(s); cfg.homeOrder.push(s.id); commit(); toast('Espace « ' + s.name + ' » importé.', 'ok');
   },
   'new-space': (d) => { ui.modal = { type: 'new-space', cat: d.cat || 'jeu', tpl: 0, name: '', exe: '' }; renderModal(); },
   'ns-cat': (d) => { ui.modal.cat = d.v; ui.modal.tpl = 0; renderModal(); },
   'ns-tpl': (d) => { ui.modal.tpl = +d.i; renderModal(); },
   'ns-create': () => {
-    const m = ui.modal, t = TEMPLATES[m.cat][m.tpl];
+    const m = ui.modal, t = tplsOf(m.cat)[m.tpl];
     const s = newSpace(m.cat, t, (m.name || '').trim() || t.name, (m.exe || '').trim() || t.exe || '', OBS.state.status === 'on' ? OBS.state.scenes : null);
     cfg.spaces.push(s); cfg.homeOrder.push(s.id);
     ui.modal = null; ui.spaceId = s.id; ui.page = 0; ui.cell = null; ui.view = 'editeur'; commit(); toast('Espace créé.', 'ok');
@@ -994,6 +1063,7 @@ function onField(el, isChange) {
     case 'picto-search': ui.search = v; renderModal(); { const s = $('#f-psearch'); if (s) { s.focus(); s.setSelectionRange(v.length, v.length); } } break;
     case 'crop-zoom': ui.modal.zoom = +v; cropDraw(); break;
     case 'modal-text': ui.modal.value = v; break;
+    case 'cat-name': ui.modal.label = v; break;
     default: break;
   }
 }
@@ -1042,6 +1112,7 @@ document.addEventListener('drop', (ev) => {
 
 // recadrage : déplacer la photo
 let cropDrag = null;
+let swipe = null;
 document.addEventListener('pointerdown', (ev) => {
   const cv = ev.target.closest && ev.target.closest('#cropview');
   if (cv && ui.modal && ui.modal.type === 'crop') {
@@ -1049,24 +1120,46 @@ document.addEventListener('pointerdown', (ev) => {
     cropDrag = { x: ev.clientX, y: ev.clientY, ox: ui.modal.ox, oy: ui.modal.oy, k };
     cv.setPointerCapture(ev.pointerId); return;
   }
-  const sc = ev.target.closest && ev.target.closest('[data-simcell]');
-  if (sc && ui.modal && ui.modal.type === 'sim') { simDown(+sc.dataset.simcell); return; }
-  const nav = ev.target.closest && ev.target.closest('[data-sim]');
-  if (nav && ui.modal && ui.modal.type === 'sim') {
-    const m = ui.modal;
+  if (!(ui.modal && ui.modal.type === 'sim' && ev.target.closest && ev.target.closest('#sim'))) return;
+  const m = ui.modal;
+  const nav = ev.target.closest('[data-sim]');
+  if (nav && nav.dataset.sim !== 'space') {
     if (nav.dataset.sim === 'home') m.screen = 'home';
     if (nav.dataset.sim === 'page') m.page = +nav.dataset.i;
-    if (nav.dataset.sim === 'space') { m.screen = 'space'; m.spaceId = nav.dataset.id; m.page = 0; }
-    simRender();
+    simRender(); return;
   }
+  const sc = ev.target.closest('[data-simcell]');
+  swipe = { x: ev.clientX, y: ev.clientY, moved: false, cell: sc ? +sc.dataset.simcell : null, space: nav ? nav.dataset.id : null };
+  if (sc) simDown(+sc.dataset.simcell);
 });
 document.addEventListener('pointermove', (ev) => {
+  if (swipe && ui.modal && ui.modal.type === 'sim') {
+    const dx = ev.clientX - swipe.x, dy = ev.clientY - swipe.y;
+    if (!swipe.moved && cfg.device.swipe !== false && Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy)) {
+      swipe.moved = true; clearInterval(simTimer);
+      Object.values(ui.modal.cells).forEach(st => { st.prog = null; });
+      simRender();
+    }
+    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome'); if (g) g.style.transform = `translateX(${dx * 0.5}px)`; }
+    return;
+  }
   if (!cropDrag || !ui.modal) return;
   ui.modal.ox = cropDrag.ox + (ev.clientX - cropDrag.x) * cropDrag.k;
   ui.modal.oy = cropDrag.oy + (ev.clientY - cropDrag.y) * cropDrag.k;
   cropDraw();
 });
-document.addEventListener('pointerup', () => { cropDrag = null; simUp(); });
+document.addEventListener('pointerup', (ev) => {
+  cropDrag = null;
+  if (swipe && ui.modal && ui.modal.type === 'sim') {
+    const w = swipe; swipe = null;
+    const dx = ev.clientX - w.x;
+    if (w.moved) { if (Math.abs(dx) > 60) simSwipe(dx < 0 ? 1 : -1); else simRender(); return; }
+    if (w.space) { const m = ui.modal; m.screen = 'space'; m.spaceId = w.space; m.page = 0; simRender(); return; }
+    if (w.cell != null) simTap(w.cell);
+  }
+  swipe = null;
+  simUp();
+});
 document.addEventListener('wheel', (ev) => {
   if (!(ev.target.closest && ev.target.closest('#cropview')) || !ui.modal) return;
   ev.preventDefault();
@@ -1095,6 +1188,7 @@ function migrate(c) {
   out.look = Object.assign({}, DEFAULT_LOOK, c.look || {});
   out.obs = Object.assign({}, d.obs, c.obs || {});
   out.discord = Object.assign({}, d.discord, c.discord || {});
+  out.cats = Array.isArray(c.cats) ? c.cats : [];
   if (!Array.isArray(out.discord.shortcuts)) out.discord.shortcuts = [];
   out.device = Object.assign({}, d.device, c.device || {});
   out.settings = Object.assign({}, d.settings, c.settings || {});
