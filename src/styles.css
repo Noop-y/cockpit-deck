@@ -1,4 +1,4 @@
-/* Cockpit Deck — interface (thème sombre « cockpit ») */
+/* The Deck — interface (thème sombre « cockpit ») */
 :root {
   --bg: #0B0F14; --side: #07090C; --panel: #11161C; --panel2: #161D25; --field: #0B0F14;
   --line: #26303A; --line2: #2B3540; --fg: #E6EDF3; --soft: #C9D6E2; --muted: #9AA7B4; --dim: #8E9BA8;

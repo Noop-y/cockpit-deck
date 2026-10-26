@@ -1,4 +1,4 @@
-// Cockpit Deck — données : pictogrammes, couleurs, modèles d'espaces
+// The Deck — données : pictogrammes, couleurs, modèles d'espaces
 'use strict';
 
 // Pictogrammes (grille 24 × 24, traits). [nom affiché, catégorie, mots-clés, tracé]

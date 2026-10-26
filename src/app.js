@@ -1,4 +1,4 @@
-// Cockpit Deck — interface du logiciel
+// The Deck — interface du logiciel
 'use strict';
 
 // ---------------------------------------------------------------------------
@@ -25,7 +25,7 @@ const api = window.deck || (() => {
       inp.onchange = () => {
         const f = inp.files[0]; inp.value = '';
         if (!f) { resolve(null); return; }
-        f.text().then(t => { try { const d = JSON.parse(t); resolve(d.space || { error: 'Ce fichier n\u2019est pas un espace Cockpit Deck.' }); } catch (e) { resolve({ error: 'Fichier illisible.' }); } });
+        f.text().then(t => { try { const d = JSON.parse(t); resolve(d.space || { error: 'Ce fichier n\u2019est pas un espace The Deck.' }); } catch (e) { resolve({ error: 'Fichier illisible.' }); } });
       };
       inp.click();
     }),
@@ -236,7 +236,7 @@ function deckHome(sim, pageArg) {
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   cards.push(`<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}">${svg('reglages', 40, '#9FB0C0', 1.6)}<div><div class="t disp">Réglages</div><div class="s">Luminosité · veille</div></div></div>`);
   const dots = nPages > 1 ? `<div class="ddots">${Array.from({ length: nPages }, (_, k) => `<i style="${k === pg ? `background:${look.accent}` : ''}"></i>`).join('')}</div>` : `<div style="color:#C9D6E2;font-size:1.5cqw">Choisissez un espace</div>`;
-  return deckFrame(look, `<div class="dtop"><div class="disp" style="font-size:2.6cqw;letter-spacing:.2cqw">COCKPIT DECK</div>${dots}</div><div class="dhome${sim && sim.anim ? ' ' + sim.anim : ''}">${cards.join('')}</div>`);
+  return deckFrame(look, `<div class="dtop"><div class="disp" style="font-size:2.6cqw;letter-spacing:.2cqw">THE DECK</div>${dots}</div><div class="dhome${sim && sim.anim ? ' ' + sim.anim : ''}">${cards.join('')}</div>`);
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +247,7 @@ function sidebar() {
   const v = ui.view === 'editeur' ? 'espaces' : ui.view;
   const obsDot = OBS.state.status === 'on' ? 'ok' : (OBS.state.status === 'error' ? 'err' : '');
   return `<nav class="side" aria-label="Menu">
-    <div class="logo disp">${svg('ecranmfd', 26, '#FFB547')}COCKPIT DECK</div><div class="mono small" style="color:var(--dim);margin:-6px 0 6px 12px">version ${esc(ui.version || '')}</div>
+    <div class="logo disp">${svg('ecranmfd', 26, '#FFB547')}THE DECK</div><div class="mono small" style="color:var(--dim);margin:-6px 0 6px 12px">version ${esc(ui.version || '')}</div>
     ${items.map(([k, l]) => `<button class="nav${v === k ? ' on' : ''}" data-act="nav" data-view="${k}">${l}</button>`).join('')}
     <div class="status">
       <span><i class="dot ${ui.deckOk ? 'ok' : ''}"></i>${ui.deckOk ? 'Écran reçu la configuration' : 'Écran : envoi non fait'}</span>
@@ -509,7 +509,7 @@ function discordConnPanel() {
   return `<div class="panel" style="flex:1 1 420px;min-width:0"><div class="row" style="justify-content:space-between"><h2 class="disp">Discord</h2><span style="color:${col}">${esc(label)}</span></div>
       <div class="note" style="line-height:1.6">À faire une seule fois :<br>
         1. Ouvrez le <button class="linkbtn" data-act="discord-dev">portail des développeurs Discord</button> et connectez-vous.<br>
-        2. Cliquez sur <b>New Application</b>, nommez-la « Cockpit Deck », acceptez puis <b>Create</b>.<br>
+        2. Cliquez sur <b>New Application</b>, nommez-la « The Deck », acceptez puis <b>Create</b>.<br>
         3. Dans <b>OAuth2</b>, copiez le <b>Client ID</b>, puis cliquez sur <b>Reset Secret</b> et copiez le <b>Client Secret</b>.<br>
         4. Toujours dans OAuth2, sous <b>Redirects</b>, ajoutez <span class="mono">http://localhost</span> puis <b>Save Changes</b>.<br>
         5. Collez les deux codes ici et cliquez sur <b>Connecter</b>. Discord affiche une demande : cliquez sur <b>Autoriser</b>.</div>
@@ -522,7 +522,7 @@ function discordConnPanel() {
 
 function viewAppareil() {
   const d = cfg.device;
-  return `<div class="head"><div><h1 class="disp">Appareil</h1><div class="muted" style="margin-top:4px">L\u2019écran tactile Cockpit Deck, branché en USB.</div></div><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div>
+  return `<div class="head"><div><h1 class="disp">Appareil</h1><div class="muted" style="margin-top:4px">L\u2019écran tactile The Deck, branché en USB.</div></div><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div>
     <div class="editor"><div class="panel" style="flex:1 1 420px;min-width:0">
       <div><div class="row" style="justify-content:space-between"><label class="lab" for="f-bri">Luminosité de l\u2019écran</label><span class="mono" style="color:var(--amber)">${d.brightness} %</span></div><input id="f-bri" type="range" min="10" max="100" step="5" value="${d.brightness}" data-field="bri"></div>
       <div><span class="lab">Mise en veille après</span>${seg('sleep', [[0, 'Jamais'], [5, '5 min'], [10, '10 min'], [30, '30 min']], d.sleepMin)}</div>
@@ -538,7 +538,7 @@ function viewParametres() {
   const bk = ui.backups || [];
   return `<div class="head"><div><h1 class="disp">Paramètres</h1></div></div>
     <div class="editor"><div class="panel" style="flex:1 1 420px;min-width:0">
-      <label class="chk"><input type="checkbox" data-act="startwin" ${cfg.settings.startWithWindows ? 'checked' : ''}>Lancer Cockpit Deck avec Windows (discrètement, près de l\u2019horloge)</label>
+      <label class="chk"><input type="checkbox" data-act="startwin" ${cfg.settings.startWithWindows ? 'checked' : ''}>Lancer The Deck avec Windows (discrètement, près de l\u2019horloge)</label>
       <div class="small muted">Le logiciel doit rester lancé pour ouvrir les applis sur le bon écran et piloter OBS. Fermer sa fenêtre ne l\u2019arrête pas : pour le quitter, clic droit sur son icône près de l\u2019horloge, puis Quitter.</div>
       <div class="small muted">Version ${esc(ui.version || '')}</div></div>
     <div class="panel" style="flex:1 1 420px;min-width:0"><div class="row" style="justify-content:space-between"><h2 class="disp">Sauvegardes</h2><button class="btn sm" data-act="backups-folder">Ouvrir le dossier</button></div>

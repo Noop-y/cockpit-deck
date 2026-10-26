@@ -1,4 +1,4 @@
-// Cockpit Deck — pilotage de Discord par sa connexion locale (RPC, tube nommé discord-ipc)
+// The Deck — pilotage de Discord par sa connexion locale (RPC, tube nommé discord-ipc)
 // Micro, casque, micro + casque, choix des entrées et sorties audio.
 'use strict';
 

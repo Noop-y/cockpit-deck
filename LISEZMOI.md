@@ -1,6 +1,6 @@
-# Cockpit Deck 0.4 — fabriquer le fichier .exe
+# The Deck 0.5 — fabriquer le fichier .exe
 
-Ce dossier contient le logiciel Cockpit Deck complet. Il faut le transformer une fois en fichier `.exe` pour Windows. Deux façons, au choix.
+Ce dossier contient le logiciel The Deck complet. Il faut le transformer une fois en fichier `.exe` pour Windows. Deux façons, au choix.
 
 ## Méthode 1 : par GitHub, sans rien installer (conseillée)
 
@@ -12,11 +12,11 @@ GitHub fabrique le `.exe` pour vous sur ses ordinateurs. Comptez 10 minutes la p
 4. Sur la page qui s'ouvre, cliquez sur le lien **uploading an existing file**.
 5. Décompressez le fichier zip sur votre PC. Ouvrez le dossier `cockpit-deck`, sélectionnez **tout son contenu** (y compris le dossier `.github`) et faites-le glisser dans la page GitHub.
 6. Attendez la fin de l'envoi, puis cliquez sur **Commit changes**.
-7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer Cockpit Deck pour Windows » démarre. Elle dure environ 5 minutes.
-8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **Cockpit-Deck-Windows** pour télécharger un zip.
+7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer The Deck pour Windows » démarre. Elle dure environ 5 minutes.
+8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **The-Deck-Windows** pour télécharger un zip.
 9. Dans ce zip, il y a deux fichiers :
-   - `Cockpit-Deck-Installation-0.4.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
-   - `Cockpit-Deck-Portable-0.4.0.exe` : se lance directement, sans installation.
+   - `The-Deck-Installation-0.5.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
+   - `The-Deck-Portable-0.5.0.exe` : se lance directement, sans installation.
 
 Pour une nouvelle version, il suffit de renvoyer les fichiers modifiés dans le même dépôt : GitHub refabrique le `.exe` tout seul.
 
@@ -49,10 +49,10 @@ Windows peut afficher « Windows a protégé votre ordinateur », car le logicie
 
 ## Discord : la connexion, à faire une fois
 
-1. Ouvrez discord.com/developers/applications, cliquez sur **New Application**, nommez-la « Cockpit Deck ».
+1. Ouvrez discord.com/developers/applications, cliquez sur **New Application**, nommez-la « The Deck ».
 2. Dans **OAuth2** : copiez le **Client ID**, cliquez sur **Reset Secret** et copiez le **Client Secret**.
 3. Toujours dans OAuth2, sous **Redirects**, ajoutez `http://localhost` puis **Save Changes**.
-4. Dans Cockpit Deck, menu **Connexions**, partie Discord : collez les deux codes, cliquez sur **Connecter**, puis sur **Autoriser** dans la fenêtre de Discord.
+4. Dans The Deck, menu **Connexions**, partie Discord : collez les deux codes, cliquez sur **Connecter**, puis sur **Autoriser** dans la fenêtre de Discord.
 
 Le casque seul est coupé en mettant le volume de sortie de Discord à zéro (Discord ne sait pas couper le son sans couper le micro), puis remis comme avant.
 
@@ -68,4 +68,4 @@ Le mot de passe OBS, le Client Secret Discord et l'autorisation Discord sont enr
 
 ## Où sont mes réglages ?
 
-Dans `%APPDATA%\Cockpit Deck\config.json`, avec les sauvegardes dans le dossier `sauvegardes` à côté. Menu Paramètres › Ouvrir le dossier.
+Dans `%APPDATA%\The Deck\config.json`, avec les sauvegardes dans le dossier `sauvegardes` à côté. Menu Paramètres › Ouvrir le dossier.

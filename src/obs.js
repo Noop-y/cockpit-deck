@@ -1,4 +1,4 @@
-// Cockpit Deck — connexion à OBS Studio (protocole obs-websocket v5, intégré à OBS 28 et plus)
+// The Deck — connexion à OBS Studio (protocole obs-websocket v5, intégré à OBS 28 et plus)
 'use strict';
 
 const OBS = (() => {

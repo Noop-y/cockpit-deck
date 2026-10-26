@@ -1,10 +1,10 @@
 {
-  "name": "cockpit-deck",
-  "productName": "Cockpit Deck",
-  "version": "0.4.0",
-  "description": "Logiciel de configuration de l'écran tactile Cockpit Deck",
+  "name": "the-deck",
+  "productName": "The Deck",
+  "version": "0.5.0",
+  "description": "Logiciel de configuration de l'écran tactile The Deck",
   "main": "main.js",
-  "author": "Cockpit Deck",
+  "author": "The Deck",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "fr.cockpitdeck.app",
-    "productName": "Cockpit Deck",
+    "productName": "The Deck",
     "files": [
       "main.js",
       "preload.js",
@@ -40,11 +40,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Cockpit Deck",
-      "artifactName": "Cockpit-Deck-Installation-${version}.${ext}"
+      "shortcutName": "The Deck",
+      "artifactName": "The-Deck-Installation-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "Cockpit-Deck-Portable-${version}.${ext}"
+      "artifactName": "The-Deck-Portable-${version}.${ext}"
     }
   }
 }

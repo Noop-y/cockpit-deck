@@ -1,4 +1,4 @@
-// Cockpit Deck — processus principal (Electron)
+// The Deck — processus principal (Electron)
 const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Tray, Menu, shell, nativeImage, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -26,7 +26,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 680,
     backgroundColor: '#0B0F14',
-    title: 'Cockpit Deck ' + app.getVersion(),
+    title: 'The Deck ' + app.getVersion(),
     icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -39,7 +39,7 @@ function createWindow() {
   // liens externes (portail Discord…) : navigateur par défaut
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
 
-  // Port série (USB) : choisit automatiquement l'écran Cockpit Deck (ESP32-P4)
+  // Port série (USB) : choisit automatiquement l'écran The Deck (ESP32-P4)
   const ses = win.webContents.session;
   ses.on('select-serial-port', (event, portList, webContents, callback) => {
     event.preventDefault();
@@ -61,9 +61,9 @@ function createWindow() {
 function createTray() {
   const img = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png')).resize({ width: 16, height: 16 });
   tray = new Tray(img);
-  tray.setToolTip('Cockpit Deck ' + app.getVersion());
+  tray.setToolTip('The Deck ' + app.getVersion());
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Ouvrir Cockpit Deck', click: () => { win.show(); win.focus(); } },
+    { label: 'Ouvrir The Deck', click: () => { win.show(); win.focus(); } },
     { type: 'separator' },
     { label: 'Quitter', click: () => { quitting = true; app.quit(); } }
   ]));
@@ -194,6 +194,23 @@ function sealExistingFiles() {
   try { const t = fs.readFileSync(tok, 'utf8'); if (canSeal() && t && !t.startsWith(TAG)) fs.writeFileSync(tok, sealText(t)); } catch (e) { /* pas de jeton */ }
 }
 
+// ---------- ancien nom (Cockpit Deck) ----------
+// Le logiciel s'appelait « Cockpit Deck » jusqu'à la version 0.4 : on reprend ses réglages et sauvegardes.
+function migrateFromCockpitDeck() {
+  const oldDir = path.join(app.getPath('appData'), 'Cockpit Deck');
+  const newDir = dataDir();
+  try {
+    if (!fs.existsSync(path.join(newDir, 'config.json')) && fs.existsSync(path.join(oldDir, 'config.json'))) {
+      fs.mkdirSync(newDir, { recursive: true });
+      ['config.json', 'discord-jeton.json'].forEach(f => { const src = path.join(oldDir, f); if (fs.existsSync(src)) fs.copyFileSync(src, path.join(newDir, f)); });
+      const oldBk = path.join(oldDir, 'sauvegardes');
+      if (fs.existsSync(oldBk)) fs.cpSync(oldBk, backupDir(), { recursive: true });
+    }
+  } catch (e) { /* on repart d'une configuration neuve */ }
+  // l'ancien lancement automatique « Cockpit Deck » ne doit plus démarrer
+  try { app.setLoginItemSettings({ openAtLogin: false, name: 'Cockpit Deck' }); } catch (e) { /* ignoré */ }
+}
+
 // ---------- configuration et sauvegardes ----------
 function readJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; }
@@ -230,7 +247,7 @@ ipcMain.handle('space:export', async (e, space) => {
   const r = await dialog.showSaveDialog(win, {
     title: 'Exporter l\u2019espace',
     defaultPath: (space.name || 'espace').replace(/[\\/:*?"<>|]/g, '_') + '.deck',
-    filters: [{ name: 'Espace Cockpit Deck', extensions: ['deck'] }]
+    filters: [{ name: 'Espace The Deck', extensions: ['deck'] }]
   });
   if (r.canceled || !r.filePath) return null;
   fs.writeFileSync(r.filePath, JSON.stringify({ format: 'cockpit-deck-espace', version: 1, space }, null, 1));
@@ -240,11 +257,11 @@ ipcMain.handle('space:import', async () => {
   const r = await dialog.showOpenDialog(win, {
     title: 'Importer un espace',
     properties: ['openFile'],
-    filters: [{ name: 'Espace Cockpit Deck', extensions: ['deck', 'json'] }]
+    filters: [{ name: 'Espace The Deck', extensions: ['deck', 'json'] }]
   });
   if (r.canceled || !r.filePaths.length) return null;
   const data = readJson(r.filePaths[0]);
-  return data && data.space ? data.space : { error: 'Ce fichier n\u2019est pas un espace Cockpit Deck.' };
+  return data && data.space ? data.space : { error: 'Ce fichier n\u2019est pas un espace The Deck.' };
 });
 ipcMain.handle('dialog:exe', async () => {
   const r = await dialog.showOpenDialog(win, {
@@ -310,6 +327,7 @@ if (!gotLock) {
   });
   app.whenReady().then(() => {
     ensurePsScript();
+    migrateFromCockpitDeck();
     sealExistingFiles();
     discord = new DiscordRPC(path.join(dataDir(), 'discord-jeton.json'), { seal: sealText, open: openText });
     discord.on('state', (st) => { if (win && !win.isDestroyed()) win.webContents.send('discord-state', st); });

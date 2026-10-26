@@ -1,4 +1,4 @@
-name: Fabriquer Cockpit Deck pour Windows
+name: Fabriquer The Deck pour Windows
 
 on:
   push:
@@ -25,6 +25,6 @@ jobs:
       - name: Mettre les .exe à télécharger
         uses: actions/upload-artifact@v4
         with:
-          name: Cockpit-Deck-Windows
+          name: The-Deck-Windows
           path: dist/*.exe
           if-no-files-found: error
