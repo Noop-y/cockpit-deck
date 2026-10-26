@@ -81,10 +81,12 @@ function defaultConfig() {
   const sc = newSpace('jeu', TEMPLATES.jeu[0], 'Star Citizen', 'StarCitizen.exe');
   const bu = newSpace('bureau', TEMPLATES.bureau[0], 'Bureau', '');
   const st = newSpace('stream', TEMPLATES.stream[0], 'Stream', 'obs64.exe');
+  const dc = newSpace('discord', TEMPLATES.discord[0], 'Discord', '');
   return {
     format: 'cockpit-deck', version: 1,
-    spaces: [sc, bu, st],
-    homeOrder: [sc.id, bu.id, st.id],
+    spaces: [sc, bu, st, dc],
+    homeOrder: [sc.id, bu.id, st.id, dc.id],
+    discordSpaceAdded: true,
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
     discord: { clientId: '', clientSecret: '', autoConnect: false, shortcuts: [] },
@@ -228,7 +230,7 @@ function deckHome(sim) {
 // Rendu : logiciel
 // ---------------------------------------------------------------------------
 function sidebar() {
-  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['discord', 'Discord'], ['connexions', 'Connexions'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
+  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['connexions', 'Connexions'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
   const v = ui.view === 'editeur' ? 'espaces' : ui.view;
   const obsDot = OBS.state.status === 'on' ? 'ok' : (OBS.state.status === 'error' ? 'err' : '');
   return `<nav class="side" aria-label="Menu">
@@ -257,7 +259,7 @@ function viewEspaces() {
       return `<article class="card scard">
         <div class="row" style="justify-content:space-between">${svg(s.icon, 30, meta.color, 1.7)}<button class="iconbtn" aria-label="Options de l\u2019espace" data-act="space-menu" data-id="${s.id}">⋯</button></div>
         <div><div class="name disp">${esc(s.name)}</div><div class="small muted">${s.pages.length} page${s.pages.length > 1 ? 's' : ''} · ${nb} case${nb > 1 ? 's' : ''}</div></div>
-        <div class="mono small" style="color:var(--dim)">${s.autoExe ? 'Auto : ' + esc(s.autoExe) : (cat === 'bureau' ? 'Toujours disponible' : 'Pas de lancement auto')}</div>
+        <div class="mono small" style="color:var(--dim)">${s.autoExe ? 'Auto : ' + esc(s.autoExe) : (cat === 'bureau' || cat === 'discord' ? 'Toujours disponible' : 'Pas de lancement auto')}</div>
         <div class="foot"><label class="chk"><input type="checkbox" data-act="space-home" data-id="${s.id}" ${s.onHome ? 'checked' : ''}>Sur l\u2019accueil</label>
         <button class="btn sm" data-act="open-space" data-id="${s.id}">Modifier</button></div>${menu}</article>`;
     }).join('');
@@ -290,7 +292,7 @@ function viewEditeur() {
       <button class="btn sm" data-act="page-move" data-d="1" ${ui.page === s.pages.length - 1 ? 'disabled' : ''} aria-label="Déplacer la page à droite">→</button>
       <button class="btn sm danger" data-act="page-del" ${s.pages.length < 2 ? 'disabled' : ''}>Supprimer la page</button></div>
     <div class="editor"><div class="gridwrap"><div class="grid">${cells}</div>
-      <div class="small muted" style="margin-top:10px">Cliquez sur une case pour la régler. Faites glisser une case pour la déplacer.</div></div>
+      <div class="small muted" style="margin-top:10px">Cliquez sur une case pour la régler. Faites glisser une case pour la déplacer.</div>${s.category === 'discord' ? discordSpacePanels() : ''}</div>
       <div class="cellpanel">${cellPanel()}</div></div>`;
 }
 
@@ -415,7 +417,7 @@ function viewConnexions() {
   const o = cfg.obs;
   const st = OBS.state;
   const col = st.status === 'on' ? 'var(--cyan)' : (st.status === 'error' ? 'var(--red)' : 'var(--dim)');
-  return `<div class="head"><div><h1 class="disp">Connexions</h1><div class="muted" style="margin-top:4px">Nécessaires seulement pour l\u2019espace Streaming.</div></div></div>
+  return `<div class="head"><div><h1 class="disp">Connexions</h1><div class="muted" style="margin-top:4px">OBS pour le streaming, Discord pour l\u2019espace Discord.</div></div></div>
     <div class="editor"><div class="panel" style="flex:1 1 420px;min-width:0">
       <div class="row" style="justify-content:space-between"><h2 class="disp">OBS Studio</h2><span style="color:${col}">${esc(st.status === 'on' ? 'Connecté' : (st.message || 'Non connecté'))}</span></div>
       <div class="note">Dans OBS : <b>Outils › Paramètres du serveur WebSocket</b>, cochez <b>Activer le serveur WebSocket</b>, puis cliquez sur <b>Afficher les informations de connexion</b> et copiez le mot de passe ici.</div>
@@ -426,6 +428,7 @@ function viewConnexions() {
       <div class="row">${st.status === 'on' ? '<button class="btn" data-act="obs-off">Se déconnecter</button>' : '<button class="btn pri" data-act="obs-on">Connecter</button>'}</div>
       ${st.status === 'on' ? `<div class="small muted">${st.scenes.length} scène${st.scenes.length > 1 ? 's' : ''} trouvée${st.scenes.length > 1 ? 's' : ''} : ${esc(st.scenes.join(', '))}</div>` : ''}
     </div>
+    ${discordConnPanel()}
     <div class="panel" style="flex:1 1 360px;min-width:0"><div class="row" style="justify-content:space-between"><h2 class="disp">Twitch</h2><span class="muted">Bientôt</span></div>
       <div class="muted" style="line-height:1.55">Les cases Marqueur, Clip, Pub et Titre du live arriveront dans une prochaine version. En attendant, l\u2019espace Streaming pilote déjà OBS : scènes, sons, éléments, live, enregistrement et replay.</div></div></div>`;
 }
@@ -437,7 +440,7 @@ function discordCellFields(a) {
     if (list.length) {
       arg = `<select class="inp" data-field="darg"><option value="">Choisir…</option>${list.map(x => `<option value="${esc(x.id)}" ${a.arg === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}${a.arg && !list.some(x => x.id === a.arg) ? `<option value="${esc(a.arg)}" selected>${esc(a.argName || a.arg)} (absent)</option>` : ''}</select>`;
     } else {
-      arg = `<div class="small mono">${a.arg ? esc(a.argName || a.arg) : 'Aucun appareil choisi'}</div><div class="note">Connectez Discord (menu Discord) pour choisir dans la liste de vos appareils audio.</div>`;
+      arg = `<div class="small mono">${a.arg ? esc(a.argName || a.arg) : 'Aucun appareil choisi'}</div><div class="note">Connectez Discord (menu Connexions) pour choisir dans la liste de vos appareils audio.</div>`;
     }
     arg = `<div><span class="lab">${a.op === 'entree' ? 'Entrée audio (micro)' : 'Sortie audio (casque, haut-parleurs)'}</span>${arg}</div>`;
   }
@@ -445,46 +448,48 @@ function discordCellFields(a) {
     const list = cfg.discord.shortcuts;
     arg = list.length
       ? `<div><span class="lab">Raccourci</span><select class="inp" data-field="darg">${list.map(x => `<option value="${x.id}" ${a.arg === x.id ? 'selected' : ''}>${esc(x.name)}${x.keys ? ' · ' + esc(x.keys) : ''}</option>`).join('')}</select></div>`
-      : '<div class="note">Vous n’avez pas encore de raccourci Discord. <button class="btn sm" data-act="nav" data-view="discord">Créer un raccourci</button></div>';
+      : '<div class="note">Vous n’avez pas encore de raccourci Discord. <button class="btn sm" data-act="nav" data-view="espaces">Ouvrir l\u2019espace Discord</button></div>';
   }
   const pc = a.op !== 'raccourci';
   return `<div><label class="lab" for="f-dop">Action Discord</label><select id="f-dop" class="inp" data-field="dop">${DISCORD_OPS.map(([v, l]) => `<option value="${v}" ${a.op === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     ${arg}
     ${a.op === 'casque' ? '<div class="small muted">Discord ne sait pas couper le son sans couper aussi le micro : le logiciel met le volume de sortie de Discord à zéro, puis le remet comme avant.</div>' : ''}
-    ${pc && dstate.status !== 'on' ? '<div class="note">Connectez Discord (menu Discord) pour que cette case fonctionne.</div>' : ''}
+    ${pc && dstate.status !== 'on' ? '<div class="note">Connectez Discord (menu Connexions) pour que cette case fonctionne.</div>' : ''}
     ${pc ? `<div class="small muted">Touche réservée envoyée par l’écran : <span class="tag">${esc(a.hotkey || '…')}</span></div>` : '<div class="small muted">L’écran envoie directement la combinaison de touches du raccourci.</div>'}`;
 }
 
-function viewDiscord() {
-  const d = cfg.discord, st = dstate, on = st.status === 'on';
+function discordStatus() {
+  const st = dstate, on = st.status === 'on';
   const col = on ? 'var(--cyan)' : (st.status === 'error' ? 'var(--red)' : (st.status === 'auth' ? 'var(--amber)' : 'var(--dim)'));
-  const label = on ? 'Connecté' : (st.message || 'Non connecté');
+  return { on, col, label: on ? 'Connecté' : (st.message || 'Non connecté') };
+}
+// Panneaux affichés sous la grille d'un espace Discord : commandes en direct et raccourcis
+function discordSpacePanels() {
+  const d = cfg.discord, st = dstate, { on, col, label } = discordStatus();
   const headOff = st.outVolume === 0;
-  const big = (op, icon, title, isOff, offTxt, onTxt) => `<button class="dbig${isOff ? ' off' : ''}" data-act="discord-run" data-op="${op}" ${on ? '' : 'disabled'}>${svg(icon, 34, isOff ? '#FF8A7A' : '#9ADCFF', 1.7)}<span class="disp">${title}</span><span class="small">${isOff ? offTxt : onTxt}</span></button>`;
+  const big = (op, icon, title, isOff, offTxt, onTxt) => `<button class="dbig${isOff ? ' off' : ''}" data-act="discord-run" data-op="${op}" ${on ? '' : 'disabled'}>${svg(icon, 30, isOff ? '#FF8A7A' : '#9ADCFF', 1.7)}<span class="disp">${title}</span><span class="small">${isOff ? offTxt : onTxt}</span></button>`;
   const devSel = (field, list, cur) => `<select class="inp" data-field="${field}" ${on && list.length ? '' : 'disabled'}>${list.length ? list.map(x => `<option value="${esc(x.id)}" ${x.id === cur ? 'selected' : ''}>${esc(x.name)}</option>`).join('') : '<option>Connectez Discord pour voir la liste</option>'}</select>`;
   const scRows = d.shortcuts.map(sc => `<div class="lrow"><input class="inp grow" value="${esc(sc.name)}" data-field="sc-name" data-id="${sc.id}" maxlength="28" aria-label="Nom du raccourci">
-      <input class="inp mono" style="width:220px" readonly value="${esc(sc.keys || '')}" placeholder="Cliquez puis tapez les touches" data-field="keycap" data-sc="${sc.id}" aria-label="Touches du raccourci">
+      <input class="inp mono" style="width:210px" readonly value="${esc(sc.keys || '')}" placeholder="Cliquez puis tapez les touches" data-field="keycap" data-sc="${sc.id}" aria-label="Touches du raccourci">
       <button class="btn sm danger" data-act="sc-del" data-id="${sc.id}" aria-label="Supprimer le raccourci">✕</button></div>`).join('');
-  const bureau = cfg.spaces.find(x => x.category === 'bureau');
-  const target = ui.dpageSpace || (bureau || cfg.spaces[0] || {}).id;
-  return `<div class="head"><div><h1 class="disp">Discord</h1><div class="muted" style="margin-top:4px">Micro, casque, entrées et sorties audio, et vos propres raccourcis Discord.</div></div>
-    <div class="row"><select class="inp" style="width:220px" data-field="dpage-space" aria-label="Espace qui recevra la page">${cfg.spaces.map(x => `<option value="${x.id}" ${x.id === target ? 'selected' : ''}>Dans : ${esc(x.name)}</option>`).join('')}</select><button class="btn pri" data-act="discord-addpage">Ajouter la page Discord</button></div></div>
-    <div class="editor"><div style="flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:16px">
-      <div class="panel"><div class="row" style="justify-content:space-between"><h2 class="disp">Commandes</h2><span style="color:${col}">${esc(label)}</span></div>
-        <div class="dbigs">
-          ${big('micro', st.mute || st.deaf ? 'micromuet' : 'micro', 'Micro', st.mute || st.deaf, 'Coupé', 'Ouvert')}
-          ${big('casque', headOff || st.deaf ? 'casquemuet' : 'casque', 'Casque', headOff || st.deaf, 'Coupé', 'Actif')}
-          ${big('tout', st.deaf ? 'muet' : 'son', 'Micro + casque', st.deaf, 'Tout est coupé', 'Tout couper')}
-        </div>
-        <div class="small muted">Micro et Casque se coupent chacun de leur côté. « Micro + casque » coupe les deux d’un coup, comme le bouton casque barré de Discord.</div>
-        <div><span class="lab">Entrée audio (micro)</span>${devSel('d-in', st.inputs, st.inputId)}</div>
-        <div><span class="lab">Sortie audio (casque, haut-parleurs)</span>${devSel('d-out', st.outputs, st.outputId)}</div>
-        ${on ? '' : '<div class="note">Connectez Discord ci-dessous pour utiliser ces commandes.</div>'}</div>
-      <div class="panel"><div class="row" style="justify-content:space-between"><h2 class="disp">Mes raccourcis Discord</h2><button class="btn sm" data-act="sc-add">+ Ajouter un raccourci</button></div>
-        <div class="small muted" style="line-height:1.55">Pour tout le reste (appuyer pour parler, partager l’écran, caméra…) : dans Discord, ouvrez <b>Paramètres › Raccourcis clavier</b>, ajoutez un raccourci et choisissez une combinaison. Tapez la même ici. Ensuite, choisissez ce raccourci dans une case (action « Discord », puis « Mon raccourci Discord »).</div>
-        ${scRows || '<div class="muted small">Aucun raccourci pour l’instant.</div>'}
-        <div class="small muted">Conseil : prenez des combinaisons que rien d’autre n’utilise, par exemple Ctrl+Alt+Shift+M.</div></div></div>
-    <div class="panel" style="flex:1 1 380px;min-width:0"><div class="row" style="justify-content:space-between"><h2 class="disp">Connexion à Discord</h2><span style="color:${col}">${esc(label)}</span></div>
+  return `<div class="panel" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h2 class="disp">Discord en direct</h2><span style="color:${col}">${esc(label)}</span></div>
+      <div class="dbigs">
+        ${big('micro', st.mute || st.deaf ? 'micromuet' : 'micro', 'Micro', st.mute || st.deaf, 'Coupé', 'Ouvert')}
+        ${big('casque', headOff || st.deaf ? 'casquemuet' : 'casque', 'Casque', headOff || st.deaf, 'Coupé', 'Actif')}
+        ${big('tout', st.deaf ? 'muet' : 'son', 'Micro + casque', st.deaf, 'Tout est coupé', 'Tout couper')}
+      </div>
+      <div class="row"><div class="grow" style="min-width:200px"><span class="lab">Entrée audio (micro)</span>${devSel('d-in', st.inputs, st.inputId)}</div>
+        <div class="grow" style="min-width:200px"><span class="lab">Sortie audio (casque, haut-parleurs)</span>${devSel('d-out', st.outputs, st.outputId)}</div></div>
+      ${on ? `<div class="row"><button class="btn sm" data-act="discord-devpage">Créer une page AUDIO avec mes appareils</button><span class="small muted">Une case par micro et par sortie, pour choisir directement sur l’écran.</span></div>`
+        : '<div class="note">Discord n’est pas connecté. <button class="btn sm" data-act="nav" data-view="connexions">Le connecter (menu Connexions)</button></div>'}</div>
+    <div class="panel" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h2 class="disp">Mes raccourcis Discord</h2><button class="btn sm" data-act="sc-add">+ Ajouter un raccourci</button></div>
+      <div class="small muted" style="line-height:1.55">Pour tout le reste (appuyer pour parler, partager l’écran, caméra…) : dans Discord, ouvrez <b>Paramètres › Raccourcis clavier</b>, ajoutez un raccourci et choisissez une combinaison, puis tapez la même ici. Chaque nouveau raccourci prend une case libre de la page affichée.</div>
+      ${scRows || '<div class="muted small">Aucun raccourci pour l’instant.</div>'}
+      <div class="small muted">Conseil : prenez des combinaisons que rien d’autre n’utilise, par exemple Ctrl+Alt+Shift+M.</div></div>`;
+}
+function discordConnPanel() {
+  const d = cfg.discord, st = dstate, { on, col, label } = discordStatus();
+  return `<div class="panel" style="flex:1 1 420px;min-width:0"><div class="row" style="justify-content:space-between"><h2 class="disp">Discord</h2><span style="color:${col}">${esc(label)}</span></div>
       <div class="note" style="line-height:1.6">À faire une seule fois :<br>
         1. Ouvrez le <button class="linkbtn" data-act="discord-dev">portail des développeurs Discord</button> et connectez-vous.<br>
         2. Cliquez sur <b>New Application</b>, nommez-la « Cockpit Deck », acceptez puis <b>Create</b>.<br>
@@ -495,7 +500,7 @@ function viewDiscord() {
       <div><label class="lab" for="f-dcsec">Client Secret</label><input id="f-dcsec" class="inp mono" type="password" value="${esc(d.clientSecret)}" data-field="dc-secret"></div>
       <label class="chk"><input type="checkbox" data-act="discord-auto" ${d.autoConnect ? 'checked' : ''}>Se connecter automatiquement (et se reconnecter si Discord redémarre)</label>
       <div class="row">${on || st.status === 'connecting' || st.status === 'auth' ? '<button class="btn" data-act="discord-off">Se déconnecter</button>' : '<button class="btn pri" data-act="discord-on">Connecter</button>'}</div>
-      <div class="small muted">Ces codes restent sur votre PC. Ils ne sont pas copiés quand vous exportez un espace.</div></div></div>`;
+      <div class="small muted">Ces codes restent sur votre PC. Ils ne sont pas copiés quand vous exportez un espace.</div></div>`;
 }
 
 function viewAppareil() {
@@ -584,7 +589,7 @@ function modalHTML() {
 // Rendu global
 // ---------------------------------------------------------------------------
 function render() {
-  const views = { discord: viewDiscord, espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
+  const views = { espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
   const focusId = document.activeElement && document.activeElement.id;
   const selStart = document.activeElement && document.activeElement.selectionStart;
   const mainScroll = $('.main') ? $('.main').scrollTop : 0;
@@ -870,21 +875,33 @@ const ACTIONS = {
   'discord-auto': (d, el) => { cfg.discord.autoConnect = el.checked; commit(true); },
   'discord-run': (d) => runDiscord(d.op),
   'discord-dev': () => { window.open('https://discord.com/developers/applications'); },
-  'sc-add': () => { const n = cfg.discord.shortcuts.length + 1; cfg.discord.shortcuts.push({ id: uid(), name: 'Raccourci ' + n, keys: '' }); commit(); setTimeout(() => { const els = document.querySelectorAll('[data-field="sc-name"]'); const el = els[els.length - 1]; if (el) { el.focus(); el.select(); } }, 0); },
+  'sc-add': () => {
+    const n = cfg.discord.shortcuts.length + 1;
+    const sc = { id: uid(), name: 'Raccourci ' + n, keys: '' };
+    cfg.discord.shortcuts.push(sc);
+    const page = ui.view === 'editeur' ? curPage() : null;
+    if (page) {
+      const k = page.cells.findIndex(x => !x);
+      if (k >= 0) page.cells[k] = cell(sc.name, 'discussion', { type: 'discord', op: 'raccourci', arg: sc.id, argName: sc.name }, { mode: 'tap', holdMs: 1500 }, '#B79CFF');
+      else toast('La page est pleine : le raccourci est créé, placez-le sur une autre page.', '', 6000);
+    }
+    commit();
+    setTimeout(() => { const els = document.querySelectorAll('[data-field="sc-name"]'); const el = els[els.length - 1]; if (el) { el.focus(); el.select(); } }, 0);
+  },
   'sc-del': (d) => {
     const sc = shortcutById(d.id); if (!sc) return;
     const used = cfg.spaces.reduce((n, sp) => n + sp.pages.reduce((m, p) => m + p.cells.filter(x => x && x.action && x.action.type === 'discord' && x.action.arg === sc.id).length, 0), 0);
     confirmBox('Supprimer « ' + sc.name + ' » ?', used ? `Il est utilisé par ${used} case${used > 1 ? 's' : ''} : elle${used > 1 ? 's' : ''} n’enverr${used > 1 ? 'ont' : 'a'} plus rien.` : 'Ce raccourci n’est utilisé par aucune case.', 'Supprimer', true, () => { cfg.discord.shortcuts = cfg.discord.shortcuts.filter(x => x.id !== sc.id); commit(); });
   },
-  'discord-addpage': () => {
-    const id = ui.dpageSpace || (cfg.spaces.find(x => x.category === 'bureau') || cfg.spaces[0] || {}).id;
-    const sp = spaceById(id); if (!sp) { toast('Créez d’abord un espace.', 'err'); return; }
-    const cells = discordCells(cfg.discord.shortcuts);
-    if (cells.length > 15) toast('Seuls les 9 premiers raccourcis tiennent sur la page.', '', 6000);
-    sp.pages.push({ id: uid(), name: 'DISCORD', cells: pad(cells) });
-    commit(true);
-    ui.spaceId = sp.id; ui.page = sp.pages.length - 1; ui.cell = null; ui.view = 'editeur'; render();
-    toast('Page DISCORD ajoutée à « ' + sp.name + ' ».', 'ok');
+  'discord-devpage': () => {
+    const sp = curSpace(); if (!sp) return;
+    const cells = dstate.inputs.map(x => cell(x.name.slice(0, 28), 'micro', { type: 'discord', op: 'entree', arg: x.id, argName: x.name }, { mode: 'tap', holdMs: 1500 }, '#5CC8FF'))
+      .concat(dstate.outputs.map(x => cell(x.name.slice(0, 28), 'casque', { type: 'discord', op: 'sortie', arg: x.id, argName: x.name }, { mode: 'tap', holdMs: 1500 }, '#FFB547')));
+    if (!cells.length) { toast('Aucun appareil audio trouvé dans Discord.', 'err'); return; }
+    if (cells.length > 15) toast('Les 15 premiers appareils tiennent sur la page.', '', 6000);
+    sp.pages.push({ id: uid(), name: 'AUDIO', cells: pad(cells) });
+    ui.page = sp.pages.length - 1; ui.cell = null; commit();
+    toast('Page AUDIO créée : micros en cyan, sorties en ambre.', 'ok');
   },
   'obs-off': () => { OBS.disconnect(); },
   'obs-auto': (d, el) => { cfg.obs.autoConnect = el.checked; commit(true); },
@@ -1059,7 +1076,7 @@ document.addEventListener('wheel', (ev) => {
 
 api.onDiscordState((st) => {
   setD(st);
-  if (ui.view === 'discord' || ui.view === 'editeur') render(); else { const s = $('.status'); if (s) render(); }
+  if (ui.view === 'connexions' || ui.view === 'editeur') render(); else { const s = $('.status'); if (s) render(); }
 });
 async function runDiscord(op, arg) {
   const r = await api.discordRun(op, arg);
@@ -1082,6 +1099,15 @@ function migrate(c) {
   out.settings = Object.assign({}, d.settings, c.settings || {});
   out.spaces = (c.spaces || []).filter(s => s && s.pages);
   out.homeOrder = (c.homeOrder || []).filter(id => out.spaces.some(s => s.id === id));
+  // version 0.3 : Discord devient un espace de l'accueil, comme les autres
+  if (!c.discordSpaceAdded) {
+    out.discordSpaceAdded = true;
+    if (!out.spaces.some(s => s.category === 'discord')) {
+      const dc = newSpace('discord', TEMPLATES.discord[0], 'Discord', '');
+      dc.pages[0].cells = pad(discordCells(out.discord.shortcuts));
+      out.spaces.push(dc);
+    }
+  }
   out.spaces.forEach(s => { if (!out.homeOrder.includes(s.id)) out.homeOrder.push(s.id); });
   return out;
 }

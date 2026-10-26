@@ -107,7 +107,8 @@ const DEFAULT_LOOK = { bgType: 'color', bgColor: '#07090C', bgPhoto: null, bgDim
 const CATEGORIES = {
   jeu: { label: 'Jeux', color: '#FFB547', icon: 'manette' },
   bureau: { label: 'Bureau', color: '#5CC8FF', icon: 'bureau' },
-  stream: { label: 'Streaming', color: '#B79CFF', icon: 'live' }
+  stream: { label: 'Streaming', color: '#B79CFF', icon: 'live' },
+  discord: { label: 'Discord', color: '#8E9BFF', icon: 'discussion' }
 };
 
 const MEDIA_KEYS = [['volplus', 'Volume +'], ['volmoins', 'Volume −'], ['muet', 'Muet'], ['lecture', 'Lecture / pause'], ['suivante', 'Piste suivante'], ['precedente', 'Piste précédente']];
@@ -178,8 +179,6 @@ const TEMPLATES = {
     },
     { key: 'applis', name: 'Applications', desc: 'Navigateur, Discord… placés sur le bon écran', icon: 'web',
       pages: () => [{ name: 'APPLIS', cells: pad([A('Navigateur', 'web', 'edge', 'gauche', 'gauche'), A('Discord', 'discussion', 'discord', 'gauche', 'droite'), A('Explorateur', 'dossier', 'explorer', 'droite', 'plein')]) }] },
-    { key: 'discord', name: 'Discord', desc: 'Micro, casque, entrées et sorties audio', icon: 'discussion',
-      pages: () => [{ name: 'DISCORD', cells: pad(discordCells([])) }] },
     { key: 'vide', name: 'Bureau vide', desc: 'Une grille vide', icon: 'bureau', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }
   ],
   stream: [
@@ -196,6 +195,11 @@ const TEMPLATES = {
       }
     },
     { key: 'vide', name: 'Stream vide', desc: 'Une grille vide', icon: 'live', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }
+  ],
+  discord: [
+    { key: 'discord', name: 'Discord', desc: 'Micro, casque, micro + casque, entrées et sorties audio', icon: 'discussion',
+      pages: () => [{ name: 'DISCORD', cells: pad(discordCells([])) }] },
+    { key: 'vide', name: 'Discord vide', desc: 'Une grille vide', icon: 'discussion', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }
   ]
 };
 
