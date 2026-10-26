@@ -297,7 +297,7 @@ function sidebar() {
     <div class="logo">${logoLockup(30, '#E6EDF3', '#FFB547', '21px')}</div><div class="mono small" style="color:var(--dim);margin:-6px 0 6px 12px">version ${esc(ui.version || '')}</div>
     ${items.map(([k, l]) => `<button class="nav${v === k ? ' on' : ''}" data-act="nav" data-view="${k}">${l}</button>`).join('')}
     <div class="status">
-      <span><i class="dot ${ui.deckOk ? 'ok' : ''}"></i>${ui.deckOk ? 'Écran reçu la configuration' : 'Écran : envoi non fait'}</span>
+      <span><i class="dot ${ui.deckOk || ui.deckLinked ? 'ok' : ''}"></i>${ui.deckOk ? 'Écran à jour' : (ui.deckLinked ? 'Écran relié en USB' : 'Écran : envoi non fait')}</span>
       <span><i class="dot ${obsDot}"></i>OBS ${OBS.state.status === 'on' ? 'connecté' : 'non connecté'}</span>
       <span><i class="dot ${dstate.status === 'on' ? 'ok' : (dstate.status === 'error' ? 'err' : '')}"></i>Discord ${dstate.status === 'on' ? 'connecté' : 'non connecté'}</span>
       ${api.browser ? '<span class="muted">Mode aperçu (navigateur)</span>' : ''}
@@ -800,44 +800,131 @@ function deviceConfig() {
     }))
   };
 }
-async function sendToDeck() {
-  if (!('serial' in navigator)) { toast('L\u2019envoi USB n\u2019est possible que dans le logiciel installé.', 'err'); return; }
-  let port;
-  try { port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x303A }] }); }
-  catch (e) { toast('Écran non détecté. Branchez-le au PC avec le câble USB-C et allumez-le.', 'err', 6000); return; }
-  toast('Envoi en cours…');
-  let ok = false;
-  try {
-    await port.open({ baudRate: 921600 });
-    const writer = port.writable.getWriter();
-    await writer.write(new TextEncoder().encode(JSON.stringify({ t: 'config', data: deviceConfig() }) + '\n'));
-    writer.releaseLock();
-    const reader = port.readable.getReader();
-    const timer = setTimeout(() => reader.cancel().catch(() => {}), 6000);
-    let buf = '';
+// Liaison USB permanente avec l'écran : la configuration à l'envoi, puis le morceau en cours (jaquette comprise) en direct
+const deckLink = { port: null, writer: null, lines: [], waiters: [], opening: null };
+const isDeckPort = (p) => { try { return p.getInfo().usbVendorId === 0x303A; } catch (e) { return false; } };
+async function deckOpen(port) {
+  if (deckLink.port === port && deckLink.writer) return true;
+  if (deckLink.opening) return deckLink.opening;
+  deckLink.opening = (async () => {
     try {
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += new TextDecoder().decode(value);
-        if (/\bOK\b/.test(buf)) { ok = true; break; }
-        if (/\bERR\b/.test(buf)) break;
+      await deckClose();
+      await port.open({ baudRate: 921600, bufferSize: 65536 });
+      deckLink.port = port;
+      deckLink.writer = port.writable.getWriter();
+      deckReadLoop(port);
+      deckLink.lastCover = null;
+      ui.deckLinked = true; render();
+      deckSendMedia(true);
+      return true;
+    } catch (e) { deckLink.port = null; deckLink.writer = null; return false; }
+    finally { deckLink.opening = null; }
+  })();
+  return deckLink.opening;
+}
+async function deckClose() {
+  const p = deckLink.port;
+  deckLink.port = null;
+  if (deckLink.reader) { try { await deckLink.reader.cancel(); } catch (e) { /* ignoré */ } }
+  if (deckLink.writer) { try { deckLink.writer.releaseLock(); } catch (e) { /* ignoré */ } }
+  deckLink.writer = null; deckLink.reader = null;
+  if (p) { try { await p.close(); } catch (e) { /* ignoré */ } }
+}
+async function deckReadLoop(port) {
+  let buf = '';
+  const dec = new TextDecoder();
+  try {
+    const reader = port.readable.getReader();
+    deckLink.reader = reader;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let k;
+      while ((k = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
+        if (!line) continue;
+        deckLink.waiters.slice().forEach(w => w(line));
       }
-    } catch (e) { /* délai dépassé */ }
-    clearTimeout(timer);
-    reader.releaseLock();
-    await port.close();
-  } catch (e) {
-    toast('Problème de connexion USB : ' + e.message, 'err', 6000);
-    return;
+    }
+  } catch (e) { /* écran débranché */ }
+  if (deckLink.port === port) { deckLink.writer = null; deckLink.port = null; ui.deckLinked = false; render(); }
+}
+async function deckWrite(obj) {
+  if (!deckLink.writer) return false;
+  try { await deckLink.writer.write(new TextEncoder().encode(JSON.stringify(obj) + '\n')); return true; }
+  catch (e) { await deckClose(); return false; }
+}
+function deckWaitReply(ms) {
+  return new Promise((resolve) => {
+    const w = (line) => { if (/\bOK\b/.test(line) || /\bERR\b/.test(line)) { done(/\bOK\b/.test(line)); } };
+    const done = (v) => { clearTimeout(t); deckLink.waiters = deckLink.waiters.filter(x => x !== w); resolve(v); };
+    const t = setTimeout(() => done(false), ms);
+    deckLink.waiters.push(w);
+  });
+}
+// au démarrage et au branchement : se relie tout seul à l'écran déjà autorisé
+async function deckAutoLink() {
+  if (!('serial' in navigator)) return;
+  try { const ports = (await navigator.serial.getPorts()).filter(isDeckPort); if (ports[0]) await deckOpen(ports[0]); } catch (e) { /* ignoré */ }
+}
+if ('serial' in navigator) {
+  navigator.serial.addEventListener('connect', () => setTimeout(deckAutoLink, 800));
+  navigator.serial.addEventListener('disconnect', (ev) => { if (ev.target === deckLink.port) deckClose(); });
+}
+
+// Jaquette réduite à 320 × 320 (JPEG) pour l'écran
+function coverForDeck(dataUrl) {
+  return new Promise((resolve) => {
+    if (!dataUrl) { resolve(''); return; }
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = 320;
+      const x = c.getContext('2d');
+      const k = Math.max(320 / img.width, 320 / img.height);
+      const w = img.width * k, h = img.height * k;
+      x.drawImage(img, (320 - w) / 2, (320 - h) / 2, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = () => resolve('');
+    img.src = dataUrl;
+  });
+}
+let mediaSendChain = Promise.resolve();
+function deckSendMedia(force) {
+  if (!deckLink.writer) return;
+  mediaSendChain = mediaSendChain.then(async () => {
+    const m = mstate;
+    const msg = { t: 'media', playing: m.status === 'Playing', none: !!(m.none || m.unavailable), title: m.title || '', artist: m.artist || '', album: m.album || '' };
+    const coverKey = m.none ? '' : (m.cover || '').length + ':' + (m.cover || '').slice(-64);
+    if (force || coverKey !== deckLink.lastCover) {
+      msg.cover = m.none ? '' : await coverForDeck(m.cover);   // '' = pas de jaquette
+      deckLink.lastCover = coverKey;
+    }
+    await deckWrite(msg);
+  }).catch(() => {});
+}
+
+async function sendToDeck() {
+  if (!('serial' in navigator)) { toast('L’envoi USB n’est possible que dans le logiciel installé.', 'err'); return; }
+  if (!deckLink.writer) {
+    let port;
+    try { port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x303A }] }); }
+    catch (e) { toast('Écran non détecté. Branchez-le au PC avec le câble USB-C et allumez-le.', 'err', 6000); return; }
+    if (!(await deckOpen(port))) { toast('Problème de connexion USB : le port est peut-être utilisé par un autre programme.', 'err', 6000); return; }
   }
+  toast('Envoi en cours…');
+  const reply = deckWaitReply(6000);
+  if (!(await deckWrite({ t: 'config', data: deviceConfig() }))) { toast('Problème de connexion USB.', 'err', 6000); return; }
+  const ok = await reply;
   if (ok) {
     ui.deckOk = true;
     await api.createBackup(cfg);
-    toast('Envoyé sur l\u2019écran.', 'ok');
+    toast('Envoyé sur l’écran.', 'ok');
+    deckSendMedia(true);
     render();
   } else {
-    toast('L\u2019écran n\u2019a pas répondu. Le programme de l\u2019écran n\u2019est peut-être pas encore installé.', 'err', 7000);
+    toast('L’écran n’a pas répondu. Le programme de l’écran n’est peut-être pas encore installé.', 'err', 7000);
   }
 }
 
@@ -1265,6 +1352,7 @@ api.onMediaState((st) => {
     const same = st.title === mstate.title && st.artist === mstate.artist && st.album === mstate.album;
     mstate = Object.assign({}, mstate, st, { none: false, unavailable: false, cover: st.cover || (same ? mstate.cover : '') });
   }
+  deckSendMedia(false);
   if (ui.modal && ui.modal.type === 'sim') { ui.modal.playing = null; simRender(); }
   else if (ui.view === 'editeur' && isPlayer(curSpace())) render();
 });
@@ -1319,6 +1407,7 @@ function migrate(c) {
   assignHotkeys();
   updateMediaWatch();
   render();
+  deckAutoLink();
   if (cfg.obs.autoConnect) OBS.connect(cfg.obs);
   setD(await api.discordState());
   if (cfg.discord.autoConnect && cfg.discord.clientId && dstate.status !== 'on') api.discordConnect({ clientId: cfg.discord.clientId, clientSecret: cfg.discord.clientSecret }, true);
