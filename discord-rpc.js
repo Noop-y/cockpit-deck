@@ -16,9 +16,10 @@ function blankState() {
 }
 
 class DiscordRPC extends EventEmitter {
-  constructor(tokenFile) {
+  constructor(tokenFile, crypt) {
     super();
     this.tokenFile = tokenFile;
+    this.crypt = crypt || { seal: (v) => v, open: (v) => v }; // chiffrement du jeton (fourni par main.js)
     this.sock = null;
     this.buf = Buffer.alloc(0);
     this.pending = new Map();
@@ -108,8 +109,9 @@ class DiscordRPC extends EventEmitter {
   }
 
   // ---------- jeton d'accès (OAuth2) ----------
-  readToken() { try { return JSON.parse(fs.readFileSync(this.tokenFile, 'utf8')); } catch (e) { return null; } }
-  saveToken(t) { try { fs.writeFileSync(this.tokenFile, JSON.stringify(t)); } catch (e) { /* ignoré */ } }
+  readToken() { try { return JSON.parse(this.crypt.open(fs.readFileSync(this.tokenFile, 'utf8'))); } catch (e) { return null; } }
+  saveToken(t) { try { fs.writeFileSync(this.tokenFile, this.crypt.seal(JSON.stringify(t))); } catch (e) { /* ignoré */ } }
+  forgetToken() { try { fs.unlinkSync(this.tokenFile); } catch (e) { /* ignoré */ } }
 
   async tokenRequest(params) {
     const post = async (withRedirect) => {

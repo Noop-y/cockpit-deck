@@ -424,6 +424,7 @@ function viewConnexions() {
       <div class="row"><div class="grow"><label class="lab" for="f-host">Adresse</label><input id="f-host" class="inp mono" value="${esc(o.host)}" data-field="obs-host"></div>
       <div style="width:120px"><label class="lab" for="f-port">Port</label><input id="f-port" class="inp mono" type="number" value="${esc(o.port)}" data-field="obs-port"></div></div>
       <div><label class="lab" for="f-pass">Mot de passe</label><input id="f-pass" class="inp mono" type="password" value="${esc(o.password)}" data-field="obs-pass"></div>
+      <div class="small muted">Le mot de passe est enregistré chiffré par Windows sur ce PC. Il ne part jamais en clair : OBS et le logiciel échangent seulement une empreinte à usage unique.</div>
       <label class="chk"><input type="checkbox" data-act="obs-auto" ${o.autoConnect ? 'checked' : ''}>Se connecter automatiquement au démarrage</label>
       <div class="row">${st.status === 'on' ? '<button class="btn" data-act="obs-off">Se déconnecter</button>' : '<button class="btn pri" data-act="obs-on">Connecter</button>'}</div>
       ${st.status === 'on' ? `<div class="small muted">${st.scenes.length} scène${st.scenes.length > 1 ? 's' : ''} trouvée${st.scenes.length > 1 ? 's' : ''} : ${esc(st.scenes.join(', '))}</div>` : ''}
@@ -500,7 +501,7 @@ function discordConnPanel() {
       <div><label class="lab" for="f-dcsec">Client Secret</label><input id="f-dcsec" class="inp mono" type="password" value="${esc(d.clientSecret)}" data-field="dc-secret"></div>
       <label class="chk"><input type="checkbox" data-act="discord-auto" ${d.autoConnect ? 'checked' : ''}>Se connecter automatiquement (et se reconnecter si Discord redémarre)</label>
       <div class="row">${on || st.status === 'connecting' || st.status === 'auth' ? '<button class="btn" data-act="discord-off">Se déconnecter</button>' : '<button class="btn pri" data-act="discord-on">Connecter</button>'}</div>
-      <div class="small muted">Ces codes restent sur votre PC. Ils ne sont pas copiés quand vous exportez un espace.</div></div>`;
+      <div class="small muted">Le Client Secret est enregistré chiffré par Windows sur ce PC, et n\u2019est jamais copié dans un espace exporté ni envoyé à l\u2019écran. « Se déconnecter » efface aussi l\u2019autorisation donnée par Discord.</div></div>`;
 }
 
 function viewAppareil() {

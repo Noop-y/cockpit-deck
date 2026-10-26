@@ -1,5 +1,5 @@
 // Cockpit Deck — processus principal (Electron)
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Tray, Menu, shell, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Tray, Menu, shell, nativeImage, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -156,6 +156,44 @@ function runAppAction(a) {
   });
 }
 
+// ---------- codes secrets (mot de passe OBS, Client Secret Discord) ----------
+// Chiffrés avec la protection de Windows (DPAPI) : seule votre session Windows, sur ce PC, peut les relire.
+// Copié sur un autre PC ou ouvert par un autre compte, le fichier ne contient rien d'utilisable.
+const SECRETS = [['obs', 'password'], ['discord', 'clientSecret']];
+const TAG = 'dpapi:';
+const canSeal = () => { try { return safeStorage.isEncryptionAvailable(); } catch (e) { return false; } };
+function sealText(v) { return canSeal() ? TAG + safeStorage.encryptString(v).toString('base64') : v; }
+function openText(v) {
+  if (typeof v !== 'string' || !v.startsWith(TAG)) return v;
+  try { return safeStorage.decryptString(Buffer.from(v.slice(TAG.length), 'base64')); } catch (e) { return ''; }
+}
+function sealSecrets(cfg) {
+  if (!cfg) return cfg;
+  const out = JSON.parse(JSON.stringify(cfg));
+  SECRETS.forEach(([a, b]) => { const v = out[a] && out[a][b]; if (typeof v === 'string' && v && !v.startsWith(TAG)) out[a][b] = sealText(v); });
+  return out;
+}
+function openSecrets(cfg) {
+  if (!cfg) return cfg;
+  SECRETS.forEach(([a, b]) => { if (cfg[a] && typeof cfg[a][b] === 'string') cfg[a][b] = openText(cfg[a][b]); });
+  return cfg;
+}
+const hasClearSecret = (cfg) => !!cfg && canSeal() && SECRETS.some(([a, b]) => { const v = cfg[a] && cfg[a][b]; return typeof v === 'string' && v && !v.startsWith(TAG); });
+function writeJsonAtomic(p, data) {
+  const tmp = p + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(data));
+  fs.renameSync(tmp, p);
+}
+// anciennes versions : chiffre les codes restés en clair dans la configuration et les sauvegardes
+function sealExistingFiles() {
+  const files = [configPath()];
+  try { fs.readdirSync(backupDir()).filter(f => f.endsWith('.json')).forEach(f => files.push(path.join(backupDir(), f))); } catch (e) { /* pas de sauvegardes */ }
+  files.forEach(f => { const d = readJson(f); if (hasClearSecret(d)) { try { writeJsonAtomic(f, sealSecrets(d)); } catch (e) { /* ignoré */ } } });
+  // jeton Discord resté en clair
+  const tok = path.join(dataDir(), 'discord-jeton.json');
+  try { const t = fs.readFileSync(tok, 'utf8'); if (canSeal() && t && !t.startsWith(TAG)) fs.writeFileSync(tok, sealText(t)); } catch (e) { /* pas de jeton */ }
+}
+
 // ---------- configuration et sauvegardes ----------
 function readJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; }
@@ -167,18 +205,16 @@ function stamp() {
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}_${z(d.getHours())}h${z(d.getMinutes())}m${z(d.getSeconds())}`;
 }
 
-ipcMain.handle('config:load', () => readJson(configPath()));
+ipcMain.handle('config:load', () => openSecrets(readJson(configPath())));
 ipcMain.handle('config:save', (e, cfg) => {
   fs.mkdirSync(dataDir(), { recursive: true });
-  const tmp = configPath() + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(cfg));
-  fs.renameSync(tmp, configPath());
+  writeJsonAtomic(configPath(), sealSecrets(cfg));
   return true;
 });
 ipcMain.handle('backup:create', (e, cfg) => {
   fs.mkdirSync(backupDir(), { recursive: true });
   const name = `sauvegarde_${stamp()}.json`;
-  fs.writeFileSync(path.join(backupDir(), name), JSON.stringify(cfg));
+  fs.writeFileSync(path.join(backupDir(), name), JSON.stringify(sealSecrets(cfg)));
   // garde les 30 dernières
   const all = fs.readdirSync(backupDir()).filter(f => f.endsWith('.json')).sort();
   all.slice(0, Math.max(0, all.length - 30)).forEach(f => { try { fs.unlinkSync(path.join(backupDir(), f)); } catch (err) { /* ignoré */ } });
@@ -187,7 +223,7 @@ ipcMain.handle('backup:create', (e, cfg) => {
 ipcMain.handle('backup:list', () => {
   try { return fs.readdirSync(backupDir()).filter(f => f.endsWith('.json')).sort().reverse(); } catch (e) { return []; }
 });
-ipcMain.handle('backup:read', (e, name) => readJson(path.join(backupDir(), path.basename(name))));
+ipcMain.handle('backup:read', (e, name) => openSecrets(readJson(path.join(backupDir(), path.basename(name)))));
 ipcMain.handle('backup:open-folder', () => { fs.mkdirSync(backupDir(), { recursive: true }); shell.openPath(backupDir()); });
 
 ipcMain.handle('space:export', async (e, space) => {
@@ -246,7 +282,7 @@ ipcMain.handle('shortcuts:set', (e, list) => {
 
 // ---------- Discord ----------
 ipcMain.handle('discord:connect', (e, creds, auto) => discord.connect(creds, auto));
-ipcMain.handle('discord:disconnect', () => { discord.disconnect(false); return discord.state; });
+ipcMain.handle('discord:disconnect', () => { discord.disconnect(false); discord.forgetToken(); return discord.state; });
 ipcMain.handle('discord:state', () => discord.state);
 ipcMain.handle('discord:run', async (e, op, arg) => {
   try { return { ok: true, message: await discord.run(op, arg) }; } catch (err) { return { ok: false, message: err.message }; }
@@ -274,7 +310,8 @@ if (!gotLock) {
   });
   app.whenReady().then(() => {
     ensurePsScript();
-    discord = new DiscordRPC(path.join(dataDir(), 'discord-jeton.json'));
+    sealExistingFiles();
+    discord = new DiscordRPC(path.join(dataDir(), 'discord-jeton.json'), { seal: sealText, open: openText });
     discord.on('state', (st) => { if (win && !win.isDestroyed()) win.webContents.send('discord-state', st); });
     createWindow();
     createTray();

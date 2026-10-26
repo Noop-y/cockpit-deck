@@ -15,8 +15,8 @@ GitHub fabrique le `.exe` pour vous sur ses ordinateurs. Comptez 10 minutes la p
 7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer Cockpit Deck pour Windows » démarre. Elle dure environ 5 minutes.
 8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **Cockpit-Deck-Windows** pour télécharger un zip.
 9. Dans ce zip, il y a deux fichiers :
-   - `Cockpit-Deck-Installation-0.3.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
-   - `Cockpit-Deck-Portable-0.3.0.exe` : se lance directement, sans installation.
+   - `Cockpit-Deck-Installation-0.3.1.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
+   - `Cockpit-Deck-Portable-0.3.1.exe` : se lance directement, sans installation.
 
 Pour une nouvelle version, il suffit de renvoyer les fichiers modifiés dans le même dépôt : GitHub refabrique le `.exe` tout seul.
 
@@ -59,6 +59,10 @@ Le casque seul est coupé en mettant le volume de sortie de Discord à zéro (Di
 L'envoi sur l'écran utilise le câble USB. Il fonctionnera quand le programme de la carte ESP32-P4 (micrologiciel) sera installé. D'ici là, le logiciel affiche « l'écran n'a pas répondu », ce qui est normal.
 
 Twitch (clips, marqueurs, pub, titre) arrivera dans une prochaine version.
+
+## Sécurité des codes
+
+Le mot de passe OBS, le Client Secret Discord et l'autorisation Discord sont enregistrés chiffrés par Windows (DPAPI) : seule votre session Windows, sur ce PC, peut les relire. Ils ne sont jamais mis dans un espace exporté, ni envoyés à l'écran tactile. Le logiciel ne contacte qu'un seul site, discord.com, en HTTPS, pour obtenir l'autorisation Discord. Aucun mot de passe de compte Discord n'est demandé.
 
 ## Où sont mes réglages ?
 

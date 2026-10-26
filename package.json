@@ -1,7 +1,7 @@
 {
   "name": "cockpit-deck",
   "productName": "Cockpit Deck",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Logiciel de configuration de l'écran tactile Cockpit Deck",
   "main": "main.js",
   "author": "Cockpit Deck",
