@@ -55,6 +55,15 @@ function svg(key, size, color, sw) {
   const p = PICTOS[key] ? PICTOS[key][3] : PICTOS.plus[3];
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color || 'currentColor'}" stroke-width="${sw || 1.8}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${p}"/></svg>`;
 }
+// Logo The Deck (piste 2 « Profil ») : le flanc du pied à lamelles et l'écran incliné
+const LOGO_BODY = 'M16 88H86V18Z M41.5 72H76.5A3.5 3.5 0 0 1 76.5 79H41.5A3.5 3.5 0 0 1 41.5 72Z M53.5 60H76.5A3.5 3.5 0 0 1 76.5 67H53.5A3.5 3.5 0 0 1 53.5 60Z M65.5 48H76.5A3.5 3.5 0 0 1 76.5 55H65.5A3.5 3.5 0 0 1 65.5 48Z';
+function logoMark(size, fg, acc, label) {
+  const sw = size < 40 ? 9 : 8;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" ${label ? 'role="img" aria-label="The Deck"' : 'aria-hidden="true"'}><path d="${LOGO_BODY}" fill="${fg}" fill-rule="evenodd"/><path d="M9 81L79 11" fill="none" stroke="${acc}" stroke-width="${sw}" stroke-linecap="round"/></svg>`;
+}
+function logoLockup(size, fg, acc, fontSize) {
+  return `${logoMark(size, fg, acc, true)}<span class="disp" style="font-size:${fontSize};letter-spacing:.12em;white-space:nowrap"><span style="color:${acc}">THE</span> DECK</span>`;
+}
 function toast(msg, kind, ms) {
   const el = document.createElement('div');
   el.className = 'toast' + (kind ? ' ' + kind : '');
@@ -236,7 +245,7 @@ function deckHome(sim, pageArg) {
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   cards.push(`<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}">${svg('reglages', 40, '#9FB0C0', 1.6)}<div><div class="t disp">Réglages</div><div class="s">Luminosité · veille</div></div></div>`);
   const dots = nPages > 1 ? `<div class="ddots">${Array.from({ length: nPages }, (_, k) => `<i style="${k === pg ? `background:${look.accent}` : ''}"></i>`).join('')}</div>` : `<div style="color:#C9D6E2;font-size:1.5cqw">Choisissez un espace</div>`;
-  return deckFrame(look, `<div class="dtop"><div class="disp" style="font-size:2.6cqw;letter-spacing:.2cqw">THE DECK</div>${dots}</div><div class="dhome${sim && sim.anim ? ' ' + sim.anim : ''}">${cards.join('')}</div>`);
+  return deckFrame(look, `<div class="dtop"><div style="display:flex;align-items:center;gap:1cqw;font-size:2.6cqw">${logoMark(36, '#E6EDF3', look.accent, true).replace('width="36" height="36"', 'style="width:4.2cqw;height:4.2cqw"')}<span class="disp" style="letter-spacing:.2cqw"><span style="color:${look.accent}">THE</span> DECK</span></div>${dots}</div><div class="dhome${sim && sim.anim ? ' ' + sim.anim : ''}">${cards.join('')}</div>`);
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +256,7 @@ function sidebar() {
   const v = ui.view === 'editeur' ? 'espaces' : ui.view;
   const obsDot = OBS.state.status === 'on' ? 'ok' : (OBS.state.status === 'error' ? 'err' : '');
   return `<nav class="side" aria-label="Menu">
-    <div class="logo disp">${svg('ecranmfd', 26, '#FFB547')}THE DECK</div><div class="mono small" style="color:var(--dim);margin:-6px 0 6px 12px">version ${esc(ui.version || '')}</div>
+    <div class="logo">${logoLockup(30, '#E6EDF3', '#FFB547', '21px')}</div><div class="mono small" style="color:var(--dim);margin:-6px 0 6px 12px">version ${esc(ui.version || '')}</div>
     ${items.map(([k, l]) => `<button class="nav${v === k ? ' on' : ''}" data-act="nav" data-view="${k}">${l}</button>`).join('')}
     <div class="status">
       <span><i class="dot ${ui.deckOk ? 'ok' : ''}"></i>${ui.deckOk ? 'Écran reçu la configuration' : 'Écran : envoi non fait'}</span>

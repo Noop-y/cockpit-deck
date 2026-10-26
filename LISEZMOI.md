@@ -1,4 +1,4 @@
-# The Deck 0.5 — fabriquer le fichier .exe
+# The Deck 0.6 — fabriquer le fichier .exe
 
 Ce dossier contient le logiciel The Deck complet. Il faut le transformer une fois en fichier `.exe` pour Windows. Deux façons, au choix.
 
@@ -15,8 +15,8 @@ GitHub fabrique le `.exe` pour vous sur ses ordinateurs. Comptez 10 minutes la p
 7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer The Deck pour Windows » démarre. Elle dure environ 5 minutes.
 8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **The-Deck-Windows** pour télécharger un zip.
 9. Dans ce zip, il y a deux fichiers :
-   - `The-Deck-Installation-0.5.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
-   - `The-Deck-Portable-0.5.0.exe` : se lance directement, sans installation.
+   - `The-Deck-Installation-0.6.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
+   - `The-Deck-Portable-0.6.0.exe` : se lance directement, sans installation.
 
 Pour une nouvelle version, il suffit de renvoyer les fichiers modifiés dans le même dépôt : GitHub refabrique le `.exe` tout seul.
 
