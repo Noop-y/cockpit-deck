@@ -27,7 +27,6 @@ Le câble se branche au dos, dans une petite capsule arrondie collée entre la 1
 
 | Pièce | Nombre | Référence proposée |
 |---|---|---|
-| Nappe USB-C plate, **mâle coudé à 90° → femelle droite**, 5 cm | 1 | https://www.amazon.fr/Ruban-connecteur-Femelle-synchronisation-Chargement/dp/B07Q432F3H (même modèle aussi ici, sans doute avec le coude dans l'autre sens : https://www.amazon.fr/Ruban-connecteur-Femelle-synchronisation-Chargement/dp/B07QF4KX1R — comparer les photos avec la carte) |
-| Variante plus longue : rallonge plate USB-C **mâle coudé 90° → femelle**, 15 cm, lot de 2 | 0 ou 1 | https://www.amazon.fr/Rallonge-Femelle-Donn%C3%A9es-Flexible-Appareils/dp/B0GCZPVYH6 |
+| Nappe USB-C plate (type drone FPV), **mâle coudé à 90° → femelle droite**, 5 cm | 1 | **retenue** : https://www.amazon.fr/Ruban-connecteur-Femelle-synchronisation-Chargement/dp/B07Q432F3H (le sens du coude n'a pas d'importance : la fiche USB-C se retourne ; à la réception, mesurer la petite carte du bout femelle pour ajuster le creux de la capsule) |
 | Colle gel pour pièces imprimées (PETG) | 1 | https://www.amazon.fr/instantan%C3%A9e-impression-anti-dess%C3%A8chement-KRAFTPROTZ-%C3%A9tanche/dp/B0CBSKGFLM |
 | Câble AUFU magnétique | — | le même que pour le boîtier normal : sa tête aimantée se met dans la prise de la capsule |
