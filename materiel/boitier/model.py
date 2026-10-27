@@ -21,6 +21,7 @@ FT = 1.6                        # épaisseur du cadre avant
 ANGLE = float(sys.argv[2]) if len(sys.argv) > 2 else 55.0   # inclinaison écran / bureau
 VARIANT = sys.argv[3] if len(sys.argv) > 3 else 'lamelles'   # ajourage des flancs : lamelles | treillis
 INSERT_D, SCREW_D = 4.2, 3.4    # inserts laiton M3 / passage vis M3
+INSERT_DEPTH = 8.0              # trous borgnes des vis du cadre : insert (4 à 6 mm) + 2 mm pour le bout de la vis
 
 PW, PH = GW + 2 * CLR, GH + 2 * CLR
 OW, OH = PW + 2 * WS, PH + 2 * WTB
@@ -37,7 +38,7 @@ CABLE = (60.0, 16.0, 0.0, -5.0)  # fenêtre câbles (l, h, cx, cy) dans le fond
 parts = {}
 
 # ---------- COQUE (repère coque : fond sur z=0, face avant z=SD) ----------
-holes = [circle(INSERT_D / 2, x, y) for x, y in MOUNT + SCREWS]
+holes = [circle(INSERT_D / 2, x, y) for x, y in MOUNT]   # seuls les trous du pied traversent le fond
 holes.append(rrect(CABLE[0], CABLE[1], 2.0, CABLE[2], CABLE[3]))
 for y in (28.0, 34.0, 40.0):
     holes += [rrect(30.0, 3.0, 1.4, -20.0, y), rrect(30.0, 3.0, 1.4, 20.0, y)]
@@ -56,7 +57,9 @@ xo, xi = -OW / 2, -PW / 2
 bridge = [(xo, hi1), (xi, hi1), (xi, PH / 2), (-xi, PH / 2), (-xi, -PH / 2), (xi, -PH / 2), (xi, lo2), (xo, lo2)]
 lower = poly(np.vstack([outer[:k + 1], bridge, outer[k + 1:]]))
 island = rect(OW / 2 - PW / 2, lo1 - hi2, (xo + xi) / 2, (lo1 + hi2) / 2)
-shell.append(extrude(lower, ins, TB - 0.4, CUT_TOP))
+Z_INS = SD - INSERT_DEPTH                # fond des trous d'inserts du cadre (paroi pleine en dessous)
+shell.append(extrude(lower, [], TB - 0.4, Z_INS))
+shell.append(extrude(lower, ins, Z_INS, CUT_TOP))
 shell.append(extrude(island, [], TB - 0.4, CUT_TOP))
 shell.append(extrude(outer, [rect(PW, PH)] + ins, CUT_TOP - 0.2, SD))
 for sx in (-1, 1):                       # appuis de l'écran (4 patins)
