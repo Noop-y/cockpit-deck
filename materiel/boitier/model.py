@@ -38,7 +38,7 @@ assert np.hypot(_dx, _dy) >= INSERT_D / 2 + 1.0, 'insert trop près du logement 
 MX = 60.0                        # inserts du pied : rentrés sous l'écran (pied plus étroit que la coque)
 MOUNT = [(sx * MX, y) for sx in (-1, 1) for y in (-42.0, 37.0)]     # inserts au dos, dans des bossages
 # ouvertures côté gauche (vu de face) : (centre y, largeur) — d'après les photos Waveshare, à confirmer
-USB_CUT = (0.0, 14.0)            # port USB-C, environ au milieu
+USB_CUT = (0.0, 16.0)            # port USB-C, environ au milieu ; 16 mm de large pour la tête aimantée du câble AUFU 16 broches (à ajuster après mesure)
 BTN_CUT = (19.0, 10.0)           # SUPPOSE : bouton marche/arrêt, au-dessus du port
 CABLE = None                     # fenêtre câbles dans le fond : supprimée (l'USB-C sort par le côté). Ancienne valeur : (60.0, 16.0, 0.0, -5.0)
 
