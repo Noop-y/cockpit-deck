@@ -27,7 +27,7 @@ Le câble se branche au dos, dans une petite capsule arrondie collée entre la 1
 
 | Pièce | Nombre | Référence proposée |
 |---|---|---|
-| Nappe USB-C plate, mâle **coudé à 90°** → femelle droite, 10 cm | 1 | https://www.amazon.fr/C%C3%A2ble-Type-C-coud%C3%A9-synchronisation-Chargement/dp/B07MKY2C1S (le sens du coude est à vérifier avec la carte) |
-| Variante plus longue si besoin : nappe plate USB-C mâle → femelle, 20 cm | 0 ou 1 | https://www.amazon.fr/JSADZKJ-C%C3%A2ble-plat-USB-C-femelle/dp/B0GSXZ1SYJ |
+| Nappe USB-C plate, **mâle coudé à 90° → femelle droite**, 5 cm | 1 | https://www.amazon.fr/Ruban-connecteur-Femelle-synchronisation-Chargement/dp/B07Q432F3H (même modèle aussi ici, sans doute avec le coude dans l'autre sens : https://www.amazon.fr/Ruban-connecteur-Femelle-synchronisation-Chargement/dp/B07QF4KX1R — comparer les photos avec la carte) |
+| Variante plus longue : rallonge plate USB-C **mâle coudé 90° → femelle**, 15 cm, lot de 2 | 0 ou 1 | https://www.amazon.fr/Rallonge-Femelle-Donn%C3%A9es-Flexible-Appareils/dp/B0GCZPVYH6 |
 | Colle gel pour pièces imprimées (PETG) | 1 | https://www.amazon.fr/instantan%C3%A9e-impression-anti-dess%C3%A8chement-KRAFTPROTZ-%C3%A9tanche/dp/B0CBSKGFLM |
 | Câble AUFU magnétique | — | le même que pour le boîtier normal : sa tête aimantée se met dans la prise de la capsule |
