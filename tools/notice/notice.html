@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>The Deck — notice d'utilisation</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 18mm; }
+@page :first { margin: 0; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, 'DejaVu Sans', sans-serif; font-size: 10.4pt; line-height: 1.55; color: #1B232C; }
+h1, h2, h3 { font-family: 'Inter Display', Inter, sans-serif; color: #0B0F14; line-height: 1.2; }
+h2 { font-size: 19pt; margin: 0 0 3mm; padding-top: 1mm; break-after: avoid; }
+h2 .n { color: #C26D00; margin-right: 2.5mm; }
+h3 { font-size: 12.5pt; margin: 5mm 0 1.5mm; break-after: avoid; }
+p { margin: 0 0 2.5mm; }
+ol, ul { margin: 0 0 3mm; padding-left: 6mm; }
+li { margin: 0 0 1.2mm; }
+b { color: #0B0F14; }
+.section { break-before: page; }
+.lead { font-size: 11pt; color: #3A4652; margin-bottom: 4mm; }
+figure { margin: 3mm 0 4mm; break-inside: avoid; }
+figure img { width: 100%; display: block; border-radius: 2.5mm; border: 0.3mm solid #C9D2DB; }
+figure.half img { width: 78%; margin: 0 auto; }
+figcaption { font-size: 8.8pt; color: #56636F; margin-top: 1.5mm; }
+.tip { border-left: 1.2mm solid #FFB547; background: #FFF6E6; padding: 2.5mm 4mm; border-radius: 0 2mm 2mm 0; margin: 3mm 0; break-inside: avoid; }
+.warn { border-left: 1.2mm solid #0E6E99; background: #EAF5FB; padding: 2.5mm 4mm; border-radius: 0 2mm 2mm 0; margin: 3mm 0; break-inside: avoid; }
+.tip b:first-child, .warn b:first-child { display: block; margin-bottom: .5mm; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9.6pt; break-inside: avoid; }
+th, td { text-align: left; vertical-align: top; padding: 1.6mm 2mm; border-bottom: 0.3mm solid #DDE3E9; }
+th { background: #F1F4F7; font-weight: 600; }
+.k { font-family: 'DejaVu Sans Mono', monospace; font-size: 9pt; background: #EEF1F4; padding: .3mm 1.4mm; border-radius: 1mm; white-space: nowrap; }
+/* couverture */
+.cover { height: 296mm; display: flex; flex-direction: column; justify-content: space-between; background: #0B0F14; color: #E6EDF3; padding: 34mm 24mm 26mm; }
+.cover .brand { display: flex; align-items: center; gap: 7mm; }
+.cover .brand span { font-family: 'Inter Display', Inter, sans-serif; font-weight: 700; font-size: 38pt; letter-spacing: 3pt; }
+.cover h1 { color: #E6EDF3; font-size: 30pt; margin: 0 0 4mm; }
+.cover p { color: #C9D6E2; font-size: 12.5pt; max-width: 140mm; }
+.cover .meta { color: #8E9BA8; font-size: 10pt; }
+.toc { columns: 2; column-gap: 10mm; padding-left: 0; list-style: none; }
+.toc li { margin-bottom: 1.6mm; }
+.toc li span { color: #C26D00; font-weight: 600; margin-right: 2mm; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="brand">
+    <svg width="110" height="110" viewBox="0 0 100 100" aria-hidden="true"><path d="M16 88H86V18Z M41.5 72H76.5A3.5 3.5 0 0 1 76.5 79H41.5A3.5 3.5 0 0 1 41.5 72Z M53.5 60H76.5A3.5 3.5 0 0 1 76.5 67H53.5A3.5 3.5 0 0 1 53.5 60Z M65.5 48H76.5A3.5 3.5 0 0 1 76.5 55H65.5A3.5 3.5 0 0 1 65.5 48Z" fill="#E6EDF3" fill-rule="evenodd"/><path d="M9 81L79 11" fill="none" stroke="#FFB547" stroke-width="8" stroke-linecap="round"/></svg>
+    <span><span style="color:#FFB547">THE</span> DECK</span>
+  </div>
+  <div>
+    <h1>Notice d’utilisation du logiciel</h1>
+    <p>Préparez vos espaces, vos pages et vos cases sur le PC, puis envoyez-les sur l’écran tactile The Deck pour piloter vos jeux, votre bureau, votre stream, Discord et votre musique.</p>
+  </div>
+  <div class="meta">Logiciel version 1.1.0 · octobre 2026</div>
+</div>
+
+<div class="section">
+  <h2>Sommaire</h2>
+  <ol class="toc">
+    <li><span>1</span>Installer le logiciel</li>
+    <li><span>2</span>Le logiciel en un coup d’œil</li>
+    <li><span>3</span>Mes espaces et les catégories</li>
+    <li><span>4</span>Régler une page et ses cases</li>
+    <li><span>5</span>Ouvrir une appli sur le bon écran</li>
+    <li><span>6</span>L’écran d’accueil du Deck</li>
+    <li><span>7</span>Changer de page et d’espace en glissant</li>
+    <li><span>8</span>Apparence : fond et couleurs</li>
+    <li><span>9</span>Streaming avec OBS</li>
+    <li><span>10</span>Discord</li>
+    <li><span>11</span>Spotify : le lecteur</li>
+    <li><span>12</span>Soundboard</li>
+    <li><span>13</span>Sorties audio de la soundboard</li>
+    <li><span>14</span>Clips : l’enregistreur intégré</li>
+    <li><span>15</span>Essayer avec l’aperçu de l’écran</li>
+    <li><span>16</span>Envoyer sur l’écran et réglages de l’appareil</li>
+    <li><span>17</span>Paramètres et sauvegardes</li>
+    <li><span>18</span>Sécurité de vos codes</li>
+    <li><span>19</span>Questions fréquentes</li>
+  </ol>
+  <h3>Comment ça marche</h3>
+  <p>The Deck, c’est deux choses :</p>
+  <ul>
+    <li><b>L’écran tactile</b> (7 pouces, branché au PC par un câble USB-C). Il affiche vos cases. Quand vous touchez une case, il envoie au PC un bouton de manette, une touche du clavier ou une touche multimédia.</li>
+    <li><b>Le logiciel The Deck</b> sur le PC. C’est là que vous préparez tout. Il reste ouvert discrètement près de l’horloge pour faire ce que l’écran ne peut pas faire seul : ouvrir une appli sur le bon écran, piloter OBS et Discord, afficher la musique en cours.</li>
+  </ul>
+  <div class="warn"><b>À savoir</b>Le programme de l’écran (sur la carte ESP32-P4) est en cours d’écriture. En attendant, tout se prépare et s’essaie dans le logiciel avec <b>Aperçu de l’écran</b>, et le bouton « Envoyer sur l’écran » répond « l’écran n’a pas répondu ».</div>
+</div>
+
+<div class="section">
+  <h2><span class="n">1</span>Installer le logiciel</h2>
+  <p class="lead">Le logiciel se télécharge sur GitHub, où il est fabriqué automatiquement à chaque nouvelle version.</p>
+  <ol>
+    <li>Ouvrez la page <b>Actions</b> du dépôt GitHub de The Deck et cliquez sur la dernière fabrication avec une pastille verte.</li>
+    <li>En bas de la page, dans <b>Artifacts</b>, cliquez sur <b>The-Deck-Windows</b>. Un fichier zip se télécharge.</li>
+    <li>Décompressez-le. Vous y trouvez deux fichiers :
+      <ul>
+        <li><span class="k">The-Deck-Installation-1.1.0.exe</span> : installe le logiciel, avec un raccourci sur le bureau. <b>C’est celui à utiliser.</b></li>
+        <li><span class="k">The-Deck-Portable-1.1.0.exe</span> : se lance directement, sans installation.</li>
+      </ul></li>
+    <li>Lancez l’installation et suivez les étapes.</li>
+  </ol>
+  <div class="tip"><b>« Windows a protégé votre ordinateur »</b>Ce message apparaît parce que le logiciel n’est pas signé par un éditeur connu. Cliquez sur <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>.</div>
+  <h3>Mettre à jour</h3>
+  <p>Installez simplement la nouvelle version par-dessus l’ancienne. Vos espaces et réglages sont gardés, et l’ancienne version encore ouverte se ferme toute seule. Le numéro de version s’affiche sous le logo, en haut à gauche.</p>
+  <div class="tip"><b>Vous aviez « Cockpit Deck » ?</b>C’était l’ancien nom du logiciel. The Deck reprend tout seul ses réglages au premier lancement. Quittez une dernière fois Cockpit Deck (clic droit sur son icône près de l’horloge, puis Quitter), puis désinstallez-le dans <b>Paramètres Windows › Applications</b>.</div>
+  <h3>Fermer ou quitter</h3>
+  <p>Fermer la fenêtre ne coupe pas le logiciel : il reste près de l’horloge pour que l’écran continue de fonctionner. Pour le quitter vraiment : clic droit sur son icône près de l’horloge, puis <b>Quitter</b>.</p>
+</div>
+
+<div class="section">
+  <h2><span class="n">2</span>Le logiciel en un coup d’œil</h2>
+  <figure><img src="img/espaces.png" alt="Fenêtre principale du logiciel"><figcaption>La fenêtre principale, sur la page Mes espaces.</figcaption></figure>
+  <table>
+    <tr><th style="width:30%">Menu à gauche</th><th>À quoi il sert</th></tr>
+    <tr><td><b>Mes espaces</b></td><td>Vos espaces (Star Citizen, Bureau, Stream, Discord, Spotify…), rangés par catégorie. On les crée, on les modifie, on les range.</td></tr>
+    <tr><td><b>Écran d’accueil</b></td><td>Les espaces affichés sur l’accueil du Deck et leur ordre.</td></tr>
+    <tr><td><b>Apparence</b></td><td>Le fond de l’écran et les couleurs des cases.</td></tr>
+    <tr><td><b>Connexions</b></td><td>La liaison avec OBS et avec Discord.</td></tr>
+    <tr><td><b>Appareil</b></td><td>La luminosité, la mise en veille et le glissement entre les pages de l’écran.</td></tr>
+    <tr><td><b>Paramètres</b></td><td>Le lancement avec Windows, la version et les sauvegardes.</td></tr>
+  </table>
+  <p>En bas à gauche, trois pastilles indiquent l’état de l’écran (relié en USB, à jour), d’OBS et de Discord. Elles deviennent bleues quand tout est connecté.</p>
+</div>
+
+<div class="section">
+  <h2><span class="n">3</span>Mes espaces et les catégories</h2>
+  <p class="lead">Un <b>espace</b> correspond à un jeu ou à un usage. Il contient une ou plusieurs <b>pages</b> de 15 cases. Les espaces sont rangés par <b>catégorie</b> : Jeux, Bureau, Streaming, Discord, Spotify, plus celles que vous créez.</p>
+  <h3>Créer un espace</h3>
+  <ol>
+    <li>Dans <b>Mes espaces</b>, cliquez sur <b>Nouvel espace</b> dans la catégorie voulue.</li>
+    <li>Choisissez un modèle tout prêt (Star Citizen, Elite Dangerous, Flight Simulator, raccourcis Windows, OBS…) ou une grille vide.</li>
+    <li>Donnez-lui un nom. Pour un jeu, vous pouvez indiquer son programme (par exemple <span class="k">StarCitizen.exe</span>) : l’espace s’ouvrira tout seul quand le jeu démarre.</li>
+    <li>Cliquez sur <b>Créer l’espace</b>.</li>
+  </ol>
+  <figure class="half"><img src="img/nouvel-espace.png" alt="Fenêtre Nouvel espace"><figcaption>Choix de la catégorie, du modèle et du nom.</figcaption></figure>
+  <h3>Créer une catégorie</h3>
+  <p>Cliquez sur <b>+ Nouvelle catégorie</b>, en haut de Mes espaces. Donnez-lui un nom, une couleur et un pictogramme, puis créez son premier espace. Vos catégories ont des boutons <b>Modifier</b> et <b>Supprimer</b>. Une catégorie ne se supprime que si elle est vide.</p>
+  <figure class="half"><img src="img/categorie.png" alt="Fenêtre Nouvelle catégorie"><figcaption>Une catégorie « Simulation » en vert.</figcaption></figure>
+  <h3>Le menu ⋯ d’un espace</h3>
+  <ul>
+    <li><b>Renommer</b> et <b>Dupliquer</b>.</li>
+    <li><b>Changer de catégorie…</b> : déplace l’espace dans une autre catégorie.</li>
+    <li><b>Exporter…</b> : enregistre l’espace dans un fichier <span class="k">.deck</span> pour le garder ou le partager. Le bouton <b>Importer un espace</b> fait l’inverse.</li>
+    <li><b>Supprimer</b>.</li>
+  </ul>
+  <p>La case <b>Sur l’accueil</b> de chaque carte affiche ou masque l’espace sur l’écran d’accueil du Deck.</p>
+</div>
+
+<div class="section">
+  <h2><span class="n">4</span>Régler une page et ses cases</h2>
+  <p class="lead">Cliquez sur <b>Modifier</b> sur un espace. La grille de 15 cases s’affiche à gauche, et les réglages de la case choisie à droite.</p>
+  <figure><img src="img/cellpanel.png" alt="Réglages d’une case"><figcaption>Les réglages d’une case : nom, ce qui s’affiche (photo, pictogramme, nom), couleurs, puis ce que fait la case.</figcaption></figure>
+  <h3>Les pages</h3>
+  <p>Les onglets au-dessus de la grille sont les pages (VOL, COMBAT, SYSTÈMES…). <b>+ PAGE</b> en ajoute une. À droite, vous pouvez renommer la page, la déplacer avec les flèches ou la supprimer.</p>
+  <h3>Une case</h3>
+  <ol>
+    <li>Cliquez sur une case, ou sur une case vide <b>+</b> pour en créer une.</li>
+    <li><b>Nom</b> : le texte de la case.</li>
+    <li><b>Sur la case, afficher</b> : cochez librement <b>Photo</b>, <b>Pictogramme</b> et <b>Nom</b>. Toutes les combinaisons sont possibles : photo seule, photo + nom, photo + pictogramme, photo + pictogramme + nom, pictogramme + nom, ou nom seul (écrit en grand). La photo vient de votre PC et se recadre dans le logiciel.</li>
+    <li><b>Couleur du contour</b> : « Auto » suit l’apparence, ou choisissez une couleur (gris, blanc, ambre, cyan, violet, vert, rouge, rose).</li>
+    <li><b>Ce que fait la case</b> : voir le tableau ci-dessous.</li>
+    <li><b>Comportement</b> : <b>Appui</b> (une pression), <b>Maintenir</b> (il faut garder le doigt posé, utile contre les fausses manœuvres) ou <b>Bascule</b> (la case reste allumée jusqu’au prochain appui).</li>
+  </ol>
+  <table>
+    <tr><th style="width:34%">Action</th><th>Ce qu’elle fait</th></tr>
+    <tr><td><b>Bouton de manette (jeux)</b></td><td>L’écran se comporte comme une manette de 32 boutons. Dans le jeu, ouvrez les contrôles, cliquez sur l’action voulue, puis touchez la case.</td></tr>
+    <tr><td><b>Touche ou raccourci clavier</b></td><td>Cliquez dans le champ et tapez la combinaison (par exemple Ctrl+C).</td></tr>
+    <tr><td><b>Touche multimédia</b></td><td>Volume, muet, lecture/pause, piste suivante ou précédente.</td></tr>
+    <tr><td><b>Ouvrir une appli sur un écran</b></td><td>Voir le chapitre 5.</td></tr>
+    <tr><td><b>OBS (streaming)</b></td><td>Voir le chapitre 9.</td></tr>
+    <tr><td><b>Discord</b></td><td>Voir le chapitre 10.</td></tr>
+    <tr><td><b>Changer de page</b></td><td>Aller à une autre page de l’espace, ou revenir à l’accueil.</td></tr>
+  </table>
+  <div class="tip"><b>Astuces</b>Faites glisser une case sur une autre pour les échanger. Le bouton <b>Tester</b> essaie tout de suite les actions faites par le PC (appli, OBS, Discord). Tout est enregistré automatiquement.</div>
+  <figure><img src="img/combos.png" alt="Combinaisons photo, pictogramme et nom"><figcaption>Photo + pictogramme + nom, photo + nom, photo + pictogramme, photo seule, nom seul, et deux contours de couleur (rose, vert).</figcaption></figure>
+  <figure class="half"><img src="img/picto.png" alt="Catalogue de pictogrammes"><figcaption>Le catalogue de pictogrammes, avec recherche et catégories.</figcaption></figure>
+</div>
+
+<div class="section">
+  <h2><span class="n">5</span>Ouvrir une appli sur le bon écran</h2>
+  <p class="lead">Avec deux écrans, une case peut ouvrir une appli exactement où vous la voulez : par exemple le navigateur sur la moitié gauche de l’écran de gauche, et Discord sur la moitié droite.</p>
+  <figure class="half"><img src="img/appli.png" alt="Réglages d’une case Ouvrir une appli"><figcaption>La case « Navigateur » : Microsoft Edge, écran de gauche, moitié gauche.</figcaption></figure>
+  <ol>
+    <li>Dans <b>Ce que fait la case</b>, choisissez <b>Ouvrir une appli sur un écran</b>.</li>
+    <li>Choisissez l’<b>application</b> : Edge, Chrome, Firefox, Discord, Spotify, l’Explorateur, ou <b>Autre programme…</b> (bouton <b>Choisir…</b> pour aller chercher le fichier .exe).</li>
+    <li><b>Ouvrir sur</b> : écran de gauche ou de droite.</li>
+    <li><b>Position</b> : plein écran, moitié gauche ou moitié droite.</li>
+    <li><b>Si l’appli est déjà ouverte</b> : la ramener à cet endroit, ou ouvrir une nouvelle fenêtre.</li>
+    <li>Cliquez sur <b>Tester</b> pour vérifier.</li>
+  </ol>
+  <p>La mention « Touche réservée » (F13, Shift+F14…) est la touche invisible que l’écran envoie au logiciel pour déclencher l’action. Vous n’avez rien à régler.</p>
+</div>
+
+<div class="section">
+  <h2><span class="n">6</span>L’écran d’accueil du Deck</h2>
+  <p class="lead">C’est le premier écran affiché par le Deck : une vignette par espace, et la vignette Réglages toujours en dernier.</p>
+  <figure><img src="img/accueil.png" alt="Page Écran d’accueil"><figcaption>L’ordre des espaces à gauche, l’aperçu de l’accueil à droite.</figcaption></figure>
+  <ul>
+    <li>Les flèches <b>↑ ↓</b> changent l’ordre.</li>
+    <li><b>Affiché / Masqué</b> montre ou cache un espace sur l’accueil.</li>
+    <li>L’accueil montre <b>5 espaces par page</b>. Au-delà, il passe sur plusieurs pages, avec des petits points en haut à droite qui indiquent la page.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2><span class="n">7</span>Changer de page et d’espace en glissant</h2>
+  <p class="lead">Sur l’écran, on se déplace du bout du doigt, comme sur un téléphone.</p>
+  <table>
+    <tr><th style="width:34%">Geste</th><th>Ce qu’il fait</th></tr>
+    <tr><td><b>Toucher la maison</b></td><td>Le carré en haut à gauche de chaque espace ramène à l’écran d’accueil, pour choisir Star Citizen, Discord, Spotify…</td></tr>
+    <tr><td><b>Glisser vers la gauche</b></td><td>Page suivante de l’espace (ou de l’accueil).</td></tr>
+    <tr><td><b>Glisser vers la droite</b></td><td>Page précédente.</td></tr>
+    <tr><td><b>Glisser vers le haut</b></td><td>Espace suivant, dans l’ordre de l’écran d’accueil : Star Citizen → Bureau → Stream → Discord → Spotify…</td></tr>
+    <tr><td><b>Glisser vers le bas</b></td><td>Espace précédent.</td></tr>
+  </table>
+  <ul>
+    <li>En changeant d’espace, son nom s’affiche une seconde au milieu de l’écran, et on arrive sur sa première page. Une petite colonne de points, à droite, montre où l’on est parmi les espaces.</li>
+    <li>Pour changer l’ordre des espaces, utilisez la page <b>Écran d’accueil</b> (chapitre 6). Seuls les espaces affichés sur l’accueil sont parcourus.</li>
+    <li>Dans l’espace Spotify, glisser à gauche ou à droite change de morceau. Glisser en haut ou en bas change d’espace, comme ailleurs.</li>
+    <li>Au bout de la liste, l’écran tremble légèrement et ne bouge pas. Dans <b>Appareil</b>, cochez <b>Après la dernière page ou le dernier espace, revenir au premier</b> pour faire le tour.</li>
+    <li>Les onglets en haut de l’écran mènent directement à une page, et le carré avec la maison, tout à gauche, ramène à l’accueil.</li>
+    <li>Une case ne s’active que si le doigt se lève sans avoir glissé : pas d’appui par erreur.</li>
+    <li>Les deux gestes peuvent être coupés séparément dans <b>Appareil</b>.</li>
+  </ul>
+  <figure><img src="img/sim-swipev.png" alt="Changement d’espace en glissant vers le haut"><figcaption>Glissement vers le haut depuis Star Citizen : on arrive sur Bureau, son nom s’affiche et le repère à droite avance d’un cran.</figcaption></figure>
+</div>
+
+<div class="section">
+  <h2><span class="n">8</span>Apparence : fond et couleurs</h2>
+  <figure><img src="img/apparence.png" alt="Page Apparence"><figcaption>Les réglages à gauche, l’aperçu en direct à droite (touchez ses cases pour voir la couleur « appuyée »).</figcaption></figure>
+  <ul>
+    <li><b>Fond d’écran</b> : une couleur unie du catalogue, ou une photo de votre PC, recadrée dans le logiciel. La photo peut être assombrie pour mieux lire les cases.</li>
+    <li><b>Case au repos</b> : la couleur du contour des cases.</li>
+    <li><b>Case appuyée ou allumée</b> : la couleur que prennent le contour, le pictogramme et le nom quand on appuie (ambre par défaut).</li>
+    <li><b>Thèmes prêts</b> : Cockpit, Arctique, Néon, Forêt.</li>
+    <li><b>S’applique à</b>, en haut à droite : tous les espaces, ou un seul espace qui aura sa propre apparence.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2><span class="n">9</span>Streaming avec OBS</h2>
+  <p class="lead">L’espace Stream pilote OBS Studio : changer de scène, couper un son, montrer ou cacher un élément, lancer le live ou l’enregistrement, sauvegarder le replay.</p>
+  <figure><img src="img/connexions.png" alt="Page Connexions"><figcaption>Le menu Connexions : OBS à gauche, Discord à droite.</figcaption></figure>
+  <h3>Connecter OBS (une seule fois)</h3>
+  <ol>
+    <li>Dans OBS : <b>Outils › Paramètres du serveur WebSocket</b>, cochez <b>Activer le serveur WebSocket</b>.</li>
+    <li>Cliquez sur <b>Afficher les informations de connexion</b> et copiez le mot de passe.</li>
+    <li>Dans The Deck, menu <b>Connexions</b> : collez le mot de passe et cliquez sur <b>Connecter</b>. Cochez <b>Se connecter automatiquement</b> si vous voulez.</li>
+  </ol>
+  <p>Une fois OBS connecté, les réglages des cases proposent directement la liste de vos scènes et de vos sources. Un nouvel espace créé avec le modèle OBS prend les vrais noms de vos scènes.</p>
+  <div class="warn"><b>Twitch</b>Les cases Marqueur, Clip, Pub et Titre du live arriveront dans une prochaine version.</div>
+</div>
+
+<div class="section">
+  <h2><span class="n">10</span>Discord</h2>
+  <p class="lead">L’espace Discord coupe le micro, le casque ou les deux, change d’entrée et de sortie audio, et lance vos propres raccourcis Discord.</p>
+  <figure class="half"><img src="img/discord.png" alt="Espace Discord"><figcaption>L’espace Discord : les cases en haut, les commandes en direct et vos raccourcis en dessous.</figcaption></figure>
+  <h3>Connecter Discord (une seule fois)</h3>
+  <ol>
+    <li>Ouvrez le portail des développeurs Discord (lien dans le menu <b>Connexions</b>) et connectez-vous.</li>
+    <li>Cliquez sur <b>New Application</b>, nommez-la « The Deck », puis <b>Create</b>.</li>
+    <li>Dans <b>OAuth2</b> : copiez le <b>Client ID</b>, cliquez sur <b>Reset Secret</b> et copiez le <b>Client Secret</b>.</li>
+    <li>Toujours dans OAuth2, sous <b>Redirects</b>, ajoutez <span class="k">http://localhost</span> puis <b>Save Changes</b>.</li>
+    <li>Dans The Deck, menu <b>Connexions</b> : collez les deux codes et cliquez sur <b>Connecter</b>. Discord affiche une demande : cliquez sur <b>Autoriser</b>.</li>
+  </ol>
+  <h3>Ce que fait l’espace Discord</h3>
+  <ul>
+    <li><b>Micro</b> : coupe ou rétablit le micro seul.</li>
+    <li><b>Casque</b> : coupe ou rétablit le son seul. Discord ne sait pas le faire sans couper le micro, alors le logiciel met le volume de sortie de Discord à zéro, puis le remet comme avant.</li>
+    <li><b>Micro + casque</b> : coupe les deux d’un coup, comme le casque barré de Discord.</li>
+    <li><b>Entrée suivante / Sortie suivante</b> : passe au micro ou au casque suivant.</li>
+    <li>Les listes <b>Entrée audio</b> et <b>Sortie audio</b> choisissent l’appareil directement. <b>Créer une page AUDIO avec mes appareils</b> fait une case par appareil.</li>
+  </ul>
+  <h3>Vos raccourcis Discord</h3>
+  <p>Pour tout le reste (appuyer pour parler, partager l’écran, caméra…) : dans Discord, ouvrez <b>Paramètres › Raccourcis clavier</b>, ajoutez un raccourci et choisissez une combinaison. Dans The Deck, cliquez sur <b>+ Ajouter un raccourci</b>, donnez-lui un nom et tapez la même combinaison. Il prend tout seul une case libre de la page.</p>
+  <div class="tip"><b>Conseil</b>Choisissez des combinaisons que rien d’autre n’utilise, par exemple Ctrl+Alt+Shift+M.</div>
+</div>
+
+<div class="section">
+  <h2><span class="n">11</span>Spotify : le lecteur</h2>
+  <p class="lead">L’espace Spotify n’a pas de cases : il s’affiche comme un lecteur de musique, avec la jaquette du morceau en grand.</p>
+  <figure><img src="img/spotify.png" alt="Espace Spotify"><figcaption>Le lecteur, avec le morceau qui joue sur le PC (image d’exemple).</figcaption></figure>
+  <ul>
+    <li>La <b>jaquette</b> du morceau en cours, avec le titre, l’artiste, l’album et « En lecture » ou « En pause ». Elle change à chaque morceau.</li>
+    <li>La grande flèche de <b>gauche</b> revient au morceau précédent, celle de <b>droite</b> passe au suivant. On peut aussi glisser le doigt.</li>
+    <li>En bas : <b>Volume −</b>, <b>lecture / pause</b> et <b>Volume +</b>.</li>
+    <li>Deux options : <b>Afficher les boutons de volume</b> et <b>Fond flouté avec la jaquette</b>.</li>
+    <li>Les boutons <b>Tester sur ce PC</b> pilotent vraiment votre musique.</li>
+  </ul>
+  <div class="tip"><b>Rien à connecter</b>Le logiciel lit le morceau en cours grâce aux commandes multimédia de Windows, sans compte ni mot de passe Spotify. Ça marche aussi avec les autres lecteurs (YouTube ou Deezer dans le navigateur…), mais Spotify passe en priorité quand il est ouvert. Le volume est celui de Windows. Quand l’écran est branché, le logiciel lui envoie la jaquette en direct.</div>
+</div>
+
+<div class="section">
+  <h2><span class="n">12</span>Soundboard</h2>
+  <p class="lead">L’espace Soundboard joue vos sons. Sur l’écran, vous <b>cochez d’abord où ils partent</b>, dans la colonne de gauche, puis vous <b>touchez les sons</b>.</p>
+  <figure><img src="img/sbsim.png" alt="Soundboard sur l’écran"><figcaption>Moi, Discord et Stream sont cochés, Jeu est décoché (barré). Le son « Klaxon » est en cours de lecture.</figcaption></figure>
+  <table>
+    <tr><th style="width:24%">Sortie</th><th>Qui entend le son</th></tr>
+    <tr><td><b>Moi</b></td><td>Vous, dans votre casque.</td></tr>
+    <tr><td><b>Discord</b></td><td>Vos amis en vocal sur Discord.</td></tr>
+    <tr><td><b>Jeu</b></td><td>Les joueurs du chat vocal du jeu.</td></tr>
+    <tr><td><b>Stream</b></td><td>Les spectateurs, par OBS.</td></tr>
+  </table>
+  <ul>
+    <li>Touchez une sortie pour la cocher ou la décocher, puis touchez le son. Pour ne plus envoyer sur le stream, il suffit de décocher Stream.</li>
+    <li>En haut à droite : <b>Volume</b> (chaque appui baisse d’un cran) et <b>Stop tout</b>.</li>
+    <li>12 sons par page. Glissez à gauche ou à droite pour les autres pages, comme ailleurs.</li>
+  </ul>
+  <h3>Ajouter et régler un son</h3>
+  <figure><img src="img/sbeditor.png" alt="Réglages d’un son"><figcaption>L’espace Soundboard dans le logiciel, avec le son « Klaxon » sélectionné.</figcaption></figure>
+  <ol>
+    <li>Cliquez sur <b>Importer des sons…</b>, ou glissez des fichiers (MP3, WAV, OGG, FLAC, M4A) sur la grille. Chaque fichier devient une case. Les sons sont copiés dans le dossier du logiciel, sur votre PC.</li>
+    <li><b>Découpe</b> : réglez le début et la fin du son ; la partie jouée est en ambre. <b>Préécouter</b> le joue dans votre casque.</li>
+    <li><b>Volume de ce son</b>, et <b>Fondu à la fin</b> pour qu’il ne coupe pas net.</li>
+    <li>Photo, pictogramme, nom et contour, comme pour les autres cases.</li>
+    <li><b>Où part ce son</b> : <b>Selon les cases de l’écran</b> (normal), ou <b>Toujours les mêmes</b> sorties (par exemple une alerte qui part toujours sur le stream).</li>
+    <li><b>Lecture</b> : une fois, en boucle, ou tant qu’on appuie. <b>Si on rappuie</b> : arrêter, recommencer ou superposer.</li>
+  </ol>
+  <div class="tip"><b>Essayer tout de suite</b>Dans <b>Aperçu de l’écran</b>, les sons de la soundboard sont vraiment joués sur les sorties cochées.</div>
+</div>
+
+<div class="section">
+  <h2><span class="n">13</span>Sorties audio de la soundboard</h2>
+  <p class="lead">Le menu <b>Sorties audio</b> règle où partent les sons. L’encadré <b>« À faire une seule fois »</b>, en haut, explique ce qu’il faut faire pour Discord et le jeu.</p>
+  <figure><img src="img/audio.png" alt="Page Sorties audio"><figcaption>La page Sorties audio.</figcaption></figure>
+  <h3>À faire une seule fois</h3>
+  <ol>
+    <li><b>Installer le micro virtuel gratuit VB-CABLE</b> (bouton <b>Télécharger VB-CABLE</b>), puis redémarrer le PC et cliquer sur <b>Revérifier</b>. L’étape passe au vert.</li>
+    <li><b>Dans Discord</b> : Paramètres › Voix et vidéo › <b>Périphérique d’entrée</b> : choisir « CABLE Output (VB-Audio Virtual Cable) ». Si Discord est connecté à The Deck, l’étape passe au vert toute seule.</li>
+    <li><b>Dans le jeu</b> : options audio › micro ou entrée vocale : choisir « CABLE Output (VB-Audio Virtual Cable) ».</li>
+  </ol>
+  <div class="tip"><b>Rien d’autre à changer</b>Votre casque, SteelSeries Sonar et OBS restent comme avant. Votre voix garde ses réglages, Sonar compris : The Deck reprend votre micro et ajoute les sons par-dessus. Pour revenir en arrière, remettez simplement votre ancien micro comme entrée dans Discord et dans le jeu.</div>
+  <h3>Les réglages</h3>
+  <ul>
+    <li><b>Moi</b> : la sortie où vous entendez les sons (par exemple « Sonar – Aux »), et son volume. Avec le mode streamer de Sonar, ce canal ne doit pas aller dans le mix Stream, sinon les sons arriveraient deux fois sur le stream.</li>
+    <li><b>Discord</b> et <b>Jeu</b> passent par le même micro virtuel : ils reçoivent les mêmes sons, avec un volume commun.</li>
+    <li><b>Stream</b> : The Deck ajoute tout seul une source « The Deck – Sons » dans OBS, à la scène en cours. OBS doit être connecté (chapitre 9).</li>
+    <li><b>Ma voix</b> : votre vrai micro, repris dans le micro virtuel. Le micro de SteelSeries Sonar est choisi automatiquement s’il existe.</li>
+    <li><b>Général</b> : volume de tous les sons, « Un seul son à la fois », et le dossier où sont rangés vos sons.</li>
+    <li>Les boutons <b>Tester</b> jouent un petit bip sur la sortie choisie.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2><span class="n">14</span>Clips : l’enregistreur intégré</h2>
+  <p class="lead">The Deck a son propre enregistreur, sans OBS ni logiciel de carte graphique. Une <b>mémoire</b> filme en continu et ne garde que les dernières secondes. Un appui sur <b>CLIP</b> les enregistre dans un fichier vidéo.</p>
+  <figure><img src="img/clips-ecran.png" alt="Espace Clips sur l’écran"><figcaption>L’espace Clips sur l’écran. En haut à droite, l’état de la mémoire.</figcaption></figure>
+  <table>
+    <tr><th style="width:26%">Case</th><th>Ce qu’elle fait</th></tr>
+    <tr><td><b>CLIP</b></td><td>Enregistre les dernières secondes (la durée du retour en arrière) dans un fichier MP4.</td></tr>
+    <tr><td><b>ENREGISTRER</b></td><td>Lance une vidéo longue. La case devient <b>ARRÊTER</b> avec un chrono ; un second appui enregistre la vidéo.</td></tr>
+    <tr><td><b>CAPTURE</b></td><td>Prend une image (PNG) de ce qui est filmé.</td></tr>
+    <tr><td><b>RETOUR EN ARRIÈRE</b></td><td>Chaque appui passe à la durée suivante : 15 s, 30 s, 1 min, 2 min, 3 min, 5 min.</td></tr>
+    <tr><td><b>DERNIERS CLIPS</b></td><td>Les trois derniers fichiers, avec leur durée.</td></tr>
+    <tr><td><b>MÉMOIRE</b></td><td>Met la mémoire en marche ou à l’arrêt (rien n’est filmé quand elle est à l’arrêt).</td></tr>
+    <tr><td><b>MA VOIX</b></td><td>Garde ou coupe votre micro dans les clips.</td></tr>
+    <tr><td><b>LE JEU / L’ÉCRAN</b></td><td>Filmer seulement la fenêtre du jeu, ou tout l’écran.</td></tr>
+    <tr><td><b>DOSSIER</b></td><td>Ouvre le dossier des clips sur le PC.</td></tr>
+  </table>
+  <figure><img src="img/clips-ecran-toast.png" alt="Clip enregistré"><figcaption>Juste après un appui sur CLIP : le bandeau vert confirme, et le clip apparaît dans « Derniers clips ».</figcaption></figure>
+  <ul>
+    <li>Les fichiers vont dans <b>Vidéos › The Deck › Clips</b>, avec le nom du jeu, la date et l’heure : <span class="k">Star Citizen 2026-10-27 19h12.mp4</span>. Les vidéos longues finissent par « (vidéo) ».</li>
+    <li>Une case <b>Clips</b> peut aussi aller dans n’importe quel espace (Star Citizen…) : dans « Ce que fait la case », choisissez <b>Clips (clip, vidéo, capture)</b>, puis l’action.</li>
+    <li>Le clip contient tout le son mélangé, plus deux pistes séparées (votre voix, le son du PC) pour le montage.</li>
+  </ul>
+  <figure><img src="img/clips-case.png" alt="Case Clip dans Star Citizen"><figcaption>Une case CLIP ajoutée à la page VOL de Star Citizen.</figcaption></figure>
+  <h3>Les réglages (menu Clips)</h3>
+  <figure><img src="img/clips-reglages.png" alt="Réglages des clips"><figcaption>Le menu Clips, onglet Réglages.</figcaption></figure>
+  <ul>
+    <li><b>Retour en arrière</b> : la durée gardée par CLIP. À côté, la place prise sur le disque pendant le jeu, et la taille d’un clip. La mémoire s’efface au fur et à mesure : elle ne grossit jamais.</li>
+    <li><b>Ce qu’on filme</b> : <b>Le jeu</b> (la fenêtre du jeu en cours, sans les notifications ni Discord ; sans jeu lancé, l’écran principal), <b>Écran entier</b>, ou <b>Choisir un écran</b>.</li>
+    <li><b>Qualité</b> : 720p, 1080p ou 1440p, à 30 ou 60 images par seconde. Changer ce réglage vide la mémoire.</li>
+    <li><b>Son dans les clips</b> : le son du PC, votre voix, et les sons de la soundboard joués avec la case « Stream ».</li>
+    <li><b>Mémoire en marche</b> : <b>Toujours</b>, <b>Pendant un jeu</b> (quand un jeu de « Mes espaces » est lancé, d’après le programme indiqué dans l’espace), ou <b>Jamais</b> (seule ENREGISTRER filme).</li>
+    <li><b>Dossier</b> : l’ouvrir, ou en choisir un autre.</li>
+  </ul>
+  <div class="tip"><b>Avec SteelSeries Sonar</b>Le son de Windows ne contient que le canal Jeu de Sonar. Pour avoir aussi Discord et la musique dans vos clips : activez le mode streamer de Sonar, choisissez <b>« Sonar – Stream »</b> dans « Le son du PC vient de », et coupez <b>Ma voix</b> (elle est déjà dans ce mélange).</div>
+  <div class="tip"><b>Sans ralentir le jeu</b>The Deck enregistre avec la carte graphique (NVIDIA, AMD ou Intel), comme les logiciels de capture des fabricants. La pastille en haut du menu Clips indique celle qui est utilisée. L’outil vidéo FFmpeg (gratuit) est installé avec le logiciel.</div>
+  <h3>Mes clips</h3>
+  <figure><img src="img/clips-biblio.png" alt="Mes clips"><figcaption>L’onglet Mes clips : tous vos clips, vidéos et captures.</figcaption></figure>
+  <ul>
+    <li>En haut à droite, la place prise par vos clips et la place libre sur le disque.</li>
+    <li>Filtres <b>Clips</b>, <b>Vidéos</b>, <b>Captures</b>, et par jeu.</li>
+    <li>Cliquez sur un clip, puis : <b>Lire</b>, <b>Couper le début / la fin</b> (une version coupée s’ajoute, l’original est gardé), <b>Renommer</b>, <b>Voir dans le dossier</b>, <b>Copier (pour Discord)</b> puis Ctrl+V dans Discord, ou <b>Supprimer</b> (le fichier part dans la corbeille).</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2><span class="n">15</span>Essayer avec l’aperçu de l’écran</h2>
+  <p class="lead">Le bouton <b>Aperçu de l’écran</b> ouvre une copie de l’écran tactile dans le logiciel. On l’utilise à la souris, comme si on le touchait.</p>
+  <figure><img src="img/sim-accueil.png" alt="Aperçu de l’écran, accueil"><figcaption>L’accueil du Deck dans l’aperçu.</figcaption></figure>
+  <ul>
+    <li>Cliquez sur une vignette pour ouvrir un espace, et sur la maison pour revenir.</li>
+    <li>Cliquez sur les cases : elles s’allument, se remplissent (Maintenir) ou restent allumées (Bascule).</li>
+    <li>Cliquez, gardez le bouton enfoncé et glissez pour changer de page.</li>
+    <li>Rien n’est envoyé aux jeux. Seuls les boutons du lecteur Spotify pilotent vraiment la musique du PC.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2><span class="n">16</span>Envoyer sur l’écran et réglages de l’appareil</h2>
+  <ol>
+    <li>Branchez l’écran au PC avec le câble USB-C et allumez-le.</li>
+    <li>Cliquez sur <b>Envoyer sur l’écran</b> (en haut de Mes espaces, d’un espace ou de la page Appareil).</li>
+    <li>Le message <b>Envoyé sur l’écran</b> confirme l’envoi, et une sauvegarde est créée automatiquement.</li>
+  </ol>
+  <p>Une fois relié, le logiciel reste en lien avec l’écran : il se reconnecte tout seul au démarrage et quand vous rebranchez le câble, et lui envoie la musique en cours.</p>
+  <figure><img src="img/appareil.png" alt="Page Appareil"><figcaption>La page Appareil.</figcaption></figure>
+  <ul>
+    <li><b>Luminosité de l’écran</b> et <b>mise en veille</b> (jamais, 5, 10 ou 30 minutes).</li>
+    <li><b>Changer de page en glissant</b> (gauche/droite), <b>changer d’espace en glissant</b> (haut/bas), et <b>revenir au premier</b> après le dernier.</li>
+    <li>Ces réglages partent sur l’écran au prochain envoi.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2><span class="n">17</span>Paramètres et sauvegardes</h2>
+  <figure><img src="img/parametres.png" alt="Page Paramètres"><figcaption>La page Paramètres.</figcaption></figure>
+  <ul>
+    <li><b>Lancer The Deck avec Windows</b> : le logiciel démarre discrètement près de l’horloge. Laissez-le coché pour que les applis, OBS, Discord et la musique fonctionnent depuis l’écran.</li>
+    <li><b>Sauvegardes</b> : une sauvegarde est créée à chaque envoi réussi sur l’écran, et quand vous cliquez sur <b>Sauvegarder maintenant</b>. Les 30 dernières sont gardées. <b>Restaurer</b> remet une ancienne version de vos espaces.</li>
+    <li><b>Tout réinitialiser…</b> remet le logiciel comme au premier jour. Une sauvegarde est faite avant.</li>
+  </ul>
+  <p>Vos réglages sont dans le dossier <span class="k">%APPDATA%\The Deck</span> (bouton <b>Ouvrir le dossier</b>).</p>
+</div>
+
+<div class="section">
+  <h2><span class="n">18</span>Sécurité de vos codes</h2>
+  <ul>
+    <li>The Deck ne demande <b>jamais</b> le mot de passe de votre compte Discord ni de votre compte Spotify.</li>
+    <li>Le mot de passe OBS, le Client Secret et l’autorisation Discord sont <b>chiffrés par Windows</b> : seule votre session Windows, sur ce PC, peut les relire. Copiés sur un autre ordinateur, ces fichiers sont inutilisables.</li>
+    <li>Ces codes ne sont jamais mis dans un espace exporté, ni envoyés à l’écran tactile.</li>
+    <li>Vos sons restent sur votre PC, dans le dossier du logiciel. Votre micro n’est utilisé que pour être mélangé aux sons dans le micro virtuel ; rien n’est enregistré ni envoyé sur internet.</li>
+    <li>Le logiciel ne contacte qu’un seul site internet, discord.com, en connexion chiffrée, pour obtenir l’autorisation Discord. Avec OBS, le mot de passe n’est jamais envoyé : seule une empreinte à usage unique l’est.</li>
+    <li><b>Se déconnecter</b> (menu Connexions) efface l’autorisation Discord.</li>
+  </ul>
+  <div class="tip"><b>Bons réflexes</b>Ne collez jamais vos codes dans une conversation ou un message. Choisissez un mot de passe OBS long. En cas de doute, cliquez sur <b>Reset Secret</b> sur le portail des développeurs Discord : l’ancien code ne marche plus.</div>
+</div>
+
+<div class="section">
+  <h2><span class="n">19</span>Questions fréquentes</h2>
+  <h3>Je ne vois pas la nouveauté après une mise à jour</h3>
+  <p>Vérifiez le numéro sous le logo. S’il n’a pas changé, l’ancienne version était peut-être encore ouverte près de l’horloge : clic droit sur son icône, <b>Quitter</b>, puis relancez The Deck.</p>
+  <h3>« L’écran n’a pas répondu »</h3>
+  <p>Vérifiez le câble USB-C et que l’écran est allumé. Tant que le programme de l’écran n’est pas installé, ce message est normal.</p>
+  <h3>Une appli ne s’ouvre pas au bon endroit</h3>
+  <p>Cliquez sur <b>Tester</b> dans la case. Pour un « Autre programme », renseignez le <b>Nom du processus</b> (par exemple <span class="k">chrome</span>) si le logiciel ne trouve pas la fenêtre.</p>
+  <h3>OBS ne se connecte pas</h3>
+  <p>Vérifiez qu’OBS est ouvert, que le serveur WebSocket est activé et que le mot de passe est le bon. Le port par défaut est 4455.</p>
+  <h3>Discord ne se connecte pas</h3>
+  <p>Discord doit être lancé sur le PC. Vérifiez le Client ID, le Client Secret et l’adresse <span class="k">http://localhost</span> dans Redirects. Le message affiché dans Connexions indique ce qui coince.</p>
+  <h3>Le lecteur Spotify affiche « Rien en lecture »</h3>
+  <p>Lancez un morceau dans Spotify. La jaquette apparaît au bout d’une seconde environ.</p>
+  <h3>L’ancienne icône s’affiche encore</h3>
+  <p>Windows garde parfois les icônes en mémoire. Elle se met à jour au bout d’un moment, ou après un redémarrage.</p>
+</div>
+
+</body>
+</html>

@@ -1,3 +1,6 @@
 node_modules/
 dist/
 vendor/
+tools/notice/*.pdf
+__pycache__/
+*.stl
