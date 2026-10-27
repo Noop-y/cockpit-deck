@@ -1,7 +1,7 @@
 {
   "name": "the-deck",
   "productName": "The Deck",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Logiciel de configuration de l'écran tactile The Deck",
   "main": "main.js",
   "author": "The Deck",
@@ -22,8 +22,13 @@
       "main.js",
       "preload.js",
       "discord-rpc.js",
+      "clips.js",
       "src/**/*",
       "build/icon.png"
+    ],
+    "extraResources": [
+      { "from": "vendor/ffmpeg.exe", "to": "ffmpeg/ffmpeg.exe" },
+      { "from": "vendor/FFMPEG-LICENCE.txt", "to": "ffmpeg/LICENCE.txt" }
     ],
     "directories": {
       "output": "dist"

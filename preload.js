@@ -29,5 +29,21 @@ contextBridge.exposeInMainWorld('deck', {
   soundImportFiles: (files) => ipcRenderer.invoke('sound:import-paths', Array.from(files || []).map(f => { try { return webUtils.getPathForFile(f); } catch (e) { return ''; } }).filter(Boolean)),
   soundRead: (f) => ipcRenderer.invoke('sound:read', f),
   soundOpenFolder: () => ipcRenderer.invoke('sound:open-folder'),
-  openLink: (url) => ipcRenderer.invoke('link:open', url)
+  openLink: (url) => ipcRenderer.invoke('link:open', url),
+  clipsConfig: (c) => ipcRenderer.invoke('clips:config', c),
+  clipsState: () => ipcRenderer.invoke('clips:state'),
+  clipsAction: (op) => ipcRenderer.invoke('clips:action', op),
+  clipsAudio: (k, d) => ipcRenderer.send('clips:audio', k, d),
+  clipsScreenSource: () => ipcRenderer.invoke('clips:screen-source'),
+  clipsList: () => ipcRenderer.invoke('clips:list'),
+  clipsOpenFolder: () => ipcRenderer.invoke('clips:open-folder'),
+  clipsShow: (f) => ipcRenderer.invoke('clips:show', f),
+  clipsCopy: (f) => ipcRenderer.invoke('clips:copy', f),
+  clipsDelete: (f) => ipcRenderer.invoke('clips:delete', f),
+  clipsRename: (f, n) => ipcRenderer.invoke('clips:rename', f, n),
+  clipsTrim: (f, a, b) => ipcRenderer.invoke('clips:trim', f, a, b),
+  clipsFileUrl: (f) => ipcRenderer.invoke('clips:file-url', f),
+  clipsChooseFolder: () => ipcRenderer.invoke('clips:choose-folder'),
+  onClipsState: (cb) => ipcRenderer.on('clips-state', (e, st) => cb(st)),
+  onClipsSaved: (cb) => ipcRenderer.on('clips-saved', (e, info) => cb(info))
 });

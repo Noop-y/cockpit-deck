@@ -43,7 +43,16 @@ const api = window.deck || (() => {
     mediaKey: async () => false,
     onMediaState: () => {},
     discordRun: async () => ({ ok: false, message: 'Disponible dans le logiciel installé sur Windows.' }),
-    onDiscordState: () => {}
+    onDiscordState: () => {},
+    clipsConfig: async () => ({ available: false }),
+    clipsState: async () => ({ available: false }),
+    clipsAction: async () => ({ ok: false, message: 'Les clips s’enregistrent dans le logiciel installé sur Windows.' }),
+    clipsAudio: () => {},
+    clipsScreenSource: async () => '',
+    clipsList: async () => ({ items: [], total: 0, free: null, folder: '', count: 0 }),
+    clipsOpenFolder: async () => null, clipsShow: async () => null, clipsCopy: async () => ({ ok: false }), clipsDelete: async () => ({ ok: false }),
+    clipsRename: async () => ({ ok: false }), clipsTrim: async () => ({ ok: false }), clipsFileUrl: async () => '', clipsChooseFolder: async () => null,
+    onClipsState: () => {}, onClipsSaved: () => {}
   };
 })();
 
@@ -99,6 +108,7 @@ function newSpace(category, tpl, name, exe, scenes) {
   const pages = tpl.pages(scenes).map(p => ({ id: uid(), name: p.name, cells: p.cells.map(c => c ? clone(c) : null) }));
   const sp = { id: uid(), name: name || tpl.name, category, icon: tpl.icon || catOf(category).icon, onHome: true, autoExe: exe || '', look: null, pages };
   if (tpl.layout === 'player') { sp.layout = 'player'; sp.player = { volume: true, coverBg: true }; }
+  if (tpl.layout === 'clips') sp.layout = 'clips';
   if (tpl.layout === 'soundboard') { sp.layout = 'soundboard'; sp.sound = { sel: { moi: true, discord: true, jeu: false, stream: false } }; }
   return sp;
 }
@@ -110,13 +120,16 @@ function defaultConfig() {
   const dc = newSpace('discord', TEMPLATES.discord[0], 'Discord', '');
   const sp = newSpace('spotify', TEMPLATES.spotify[0], 'Spotify', '');
   const sb = newSpace('soundboard', TEMPLATES.soundboard[0], 'Soundboard', '');
+  const cl = newSpace('clips', TEMPLATES.clips[0], 'Clips', '');
   return {
     format: 'cockpit-deck', version: 1,
-    spaces: [sc, bu, st, dc, sp, sb],
-    homeOrder: [sc.id, bu.id, st.id, dc.id, sp.id, sb.id],
+    spaces: [sc, bu, st, dc, sp, sb, cl],
+    homeOrder: [sc.id, bu.id, st.id, dc.id, sp.id, sb.id, cl.id],
     discordSpaceAdded: true,
     spotifySpaceAdded: true,
     soundboardAdded: true,
+    clipsAdded: true,
+    clips: { when: 'jeu', paused: false, src: 'jeu', monitor: 0, res: 1080, fps: 60, dur: 60, pc: true, mic: true, sb: true, pcDev: '', folder: '' },
     audio: { meOut: '', micIn: '', passMic: true, volMe: 80, volMic: 80, volStream: 80, master: 100, solo: false },
     cats: [],
     look: clone(DEFAULT_LOOK),
@@ -135,7 +148,7 @@ function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { api.saveConfig(cfg); }, 400);
 }
-function commit(noRender) { assignHotkeys(); scheduleSave(); if (typeof updateMediaWatch === 'function') updateMediaWatch(); if (!noRender) render(); }
+function commit(noRender) { assignHotkeys(); scheduleSave(); if (typeof updateMediaWatch === 'function') updateMediaWatch(); if (typeof syncClips === 'function') syncClips(); if (!noRender) render(); }
 
 const spaceById = (id) => cfg.spaces.find(s => s.id === id);
 const curSpace = () => spaceById(ui.spaceId);
@@ -161,7 +174,7 @@ function assignHotkeys() {
   const needs = [];
   cfg.spaces.forEach(s => s.pages.forEach(p => p.cells.forEach(c => {
     if (!c || !c.action) return;
-    const pc = c.action.type === 'app' || c.action.type === 'obs' || (c.action.type === 'discord' && c.action.op !== 'raccourci');
+    const pc = c.action.type === 'app' || c.action.type === 'obs' || c.action.type === 'clip' || (c.action.type === 'discord' && c.action.op !== 'raccourci');
     if (!pc) { delete c.action.hotkey; return; }
     if (c.action.hotkey && !used.has(c.action.hotkey) && PC_KEYS.includes(c.action.hotkey)) used.add(c.action.hotkey);
     else { delete c.action.hotkey; needs.push(c); }
@@ -192,6 +205,8 @@ async function runPcAction(c, fromTest) {
   } else if (a.type === 'discord') {
     const r = await api.discordRun(a.op, a.arg);
     if (fromTest || !r.ok) toast('Discord : ' + r.message, r.ok ? 'ok' : 'err');
+  } else if (a.type === 'clip') {
+    runClip(a.op || 'clip');
   }
 }
 function resolveApp(a) {
@@ -212,6 +227,7 @@ function cellSub(c) {
   if (a.type === 'discord') { if (a.op !== 'raccourci') return 'DISCORD'; const sc = shortcutById(a.arg); return sc ? (sc.keys || 'DISCORD') : 'DISCORD'; }
   if (a.type === 'page') return 'PAGE';
   if (a.type === 'sound') return a.file ? fmtDur(a.dur) : 'SON ?';
+  if (a.type === 'clip') return a.op === 'rec' ? 'REC' : (a.op === 'shot' ? 'IMAGE' : (a.op === 'mem' ? 'MÉMOIRE' : clipDurLabel().toUpperCase()));
   return '';
 }
 function deckCell(c, look, opts) {
@@ -364,6 +380,7 @@ function refreshSoundPlaying() {
 function deckPage(space, pageIdx, sim) {
   if (isPlayer(space)) return deckPlayer(space, sim);
   if (isSoundboard(space)) return deckSound(space, pageIdx, sim);
+  if (isClips(space)) return deckClips(space, sim);
   const look = lookFor(space);
   const page = space.pages[pageIdx] || space.pages[0];
   const tabs = `<div class="dtabs">${homeBtn(look, sim)}` +
@@ -372,7 +389,7 @@ function deckPage(space, pageIdx, sim) {
     const st = sim ? sim.cells[`${space.id}|${pageIdx}|${i}`] || {} : {};
     return deckCell(c, look, { on: st.on || st.flash, prog: st.prog, attrs: sim && c ? `data-simcell="${i}"` : '' });
   }).join('');
-  return deckFrame(look, `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div><div class="dgrid${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div>`, '', spaceOverlay(space, sim));
+  return deckFrame(look, `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div><div class="dgrid${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div>${sim && typeof clipToastHTML === 'function' ? clipToastHTML() : ''}`, '', spaceOverlay(space, sim));
 }
 function deckHome(sim, pageArg) {
   const look = cfg.look;
@@ -382,7 +399,7 @@ function deckHome(sim, pageArg) {
   const spaces = all.slice(pg * HOME_PER_PAGE, pg * HOME_PER_PAGE + HOME_PER_PAGE);
   const cards = spaces.map(s => {
     const cat = catOf(s.category);
-    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
+    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isClips(s) ? 'Clips' : isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
   });
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   cards.push(`<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}">${svg('reglages', 40, '#9FB0C0', 1.6)}<div><div class="t disp">Réglages</div><div class="s">Luminosité · veille</div></div></div>`);
@@ -394,7 +411,7 @@ function deckHome(sim, pageArg) {
 // Rendu : logiciel
 // ---------------------------------------------------------------------------
 function sidebar() {
-  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['connexions', 'Connexions'], ['audio', 'Sorties audio'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
+  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['connexions', 'Connexions'], ['audio', 'Sorties audio'], ['clips', 'Clips'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
   const v = ui.view === 'editeur' ? 'espaces' : ui.view;
   const obsDot = OBS.state.status === 'on' ? 'ok' : (OBS.state.status === 'error' ? 'err' : '');
   return `<nav class="side" aria-label="Menu">
@@ -423,8 +440,8 @@ function viewEspaces() {
           <button class="red" data-act="space-del" data-id="${s.id}">Supprimer</button></div>` : '';
       return `<article class="card scard">
         <div class="row" style="justify-content:space-between">${svg(s.icon, 30, meta.color, 1.7)}<button class="iconbtn" aria-label="Options de l\u2019espace" data-act="space-menu" data-id="${s.id}">⋯</button></div>
-        <div><div class="name disp">${esc(s.name)}</div><div class="small muted">${isPlayer(s) ? 'Lecteur : jaquette et commandes' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''} · ${nb} case${nb > 1 ? 's' : ''}`}</div></div>
-        <div class="mono small" style="color:var(--dim)">${s.autoExe ? 'Auto : ' + esc(s.autoExe) : (cat === 'bureau' || cat === 'discord' || cat === 'spotify' ? 'Toujours disponible' : 'Pas de lancement auto')}</div>
+        <div><div class="name disp">${esc(s.name)}</div><div class="small muted">${isPlayer(s) ? 'Lecteur : jaquette et commandes' : isClips(s) ? 'Clip, vidéo, capture' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''} · ${nb} case${nb > 1 ? 's' : ''}`}</div></div>
+        <div class="mono small" style="color:var(--dim)">${s.autoExe ? 'Auto : ' + esc(s.autoExe) : (cat === 'bureau' || cat === 'discord' || cat === 'spotify' || cat === 'clips' ? 'Toujours disponible' : 'Pas de lancement auto')}</div>
         <div class="foot"><label class="chk"><input type="checkbox" data-act="space-home" data-id="${s.id}" ${s.onHome ? 'checked' : ''}>Sur l\u2019accueil</label>
         <button class="btn sm" data-act="open-space" data-id="${s.id}">Modifier</button></div>${menu}</article>`;
     }).join('');
@@ -459,6 +476,7 @@ function viewEditeur() {
   const s = curSpace();
   if (!s) { ui.view = 'espaces'; return viewEspaces(); }
   if (isPlayer(s)) return viewPlayer(s);
+  if (isClips(s)) return viewClipsSpace(s);
   const sound = isSoundboard(s);
   const page = curPage();
   const cat = catOf(s.category);
@@ -605,12 +623,13 @@ function cellPanel() {
       <div class="small muted">Touche réservée envoyée par l\u2019écran : <span class="tag">${esc(a.hotkey || '…')}</span></div>`;
   }
   if (a.type === 'discord') act = discordCellFields(a);
+  if (a.type === 'clip') act = clipCellFields(a);
   const b = c.behavior || { mode: 'tap', holdMs: 1500 };
   return `<div class="panel">
     <div class="row" style="justify-content:space-between"><h2 class="disp">Case ${ui.cell + 1} · ${esc(c.name || 'Sans nom')}</h2><span class="tag">sélectionnée</span></div>
     ${img}
     <div><label class="lab" for="f-type">Ce que fait la case</label><select id="f-type" class="inp" data-field="type">
-      ${[['joy', 'Bouton de manette (jeux)'], ['key', 'Touche ou raccourci clavier'], ['media', 'Touche multimédia'], ['app', 'Ouvrir une appli sur un écran'], ['obs', 'OBS (streaming)'], ['discord', 'Discord (micro, casque, audio)'], ['page', 'Changer de page'], ['none', 'Rien (case décorative)']].map(([v, l]) => `<option value="${v}" ${a.type === v ? 'selected' : ''}>${l}</option>`).join('')}
+      ${[['joy', 'Bouton de manette (jeux)'], ['key', 'Touche ou raccourci clavier'], ['media', 'Touche multimédia'], ['app', 'Ouvrir une appli sur un écran'], ['obs', 'OBS (streaming)'], ['discord', 'Discord (micro, casque, audio)'], ['clip', 'Clips (clip, vidéo, capture)'], ['page', 'Changer de page'], ['none', 'Rien (case décorative)']].map(([v, l]) => `<option value="${v}" ${a.type === v ? 'selected' : ''}>${l}</option>`).join('')}
     </select></div>
     ${act}
     <div><span class="lab">Comportement</span>${seg('beh', [['tap', 'Appui'], ['hold', 'Maintenir'], ['toggle', 'Bascule']], b.mode)}</div>
@@ -892,7 +911,7 @@ function modalHTML() {
       <div class="row" style="justify-content:flex-end"><button class="btn" data-act="modal-close">Annuler</button><button class="btn ${m.danger ? 'danger' : 'pri'}" data-act="confirm-ok">${esc(m.ok)}</button></div></div>`;
   }
   if (m.type === 'text') {
-    return `<div class="modal sm" role="dialog" aria-label="${esc(m.title)}"><h2 class="disp">${esc(m.title)}</h2><input class="inp" id="f-modaltext" value="${esc(m.value)}" data-field="modal-text" maxlength="24">
+    return `<div class="modal sm" role="dialog" aria-label="${esc(m.title)}"><h2 class="disp">${esc(m.title)}</h2><input class="inp" id="f-modaltext" value="${esc(m.value)}" data-field="modal-text" maxlength="${m.max || 24}">
       <div class="row" style="justify-content:flex-end"><button class="btn" data-act="modal-close">Annuler</button><button class="btn pri" data-act="text-ok">Valider</button></div></div>`;
   }
   if (m.type === 'sim') {
@@ -901,6 +920,7 @@ function modalHTML() {
       <div class="row"><span class="muted small">Touchez les cases${cfg.device.swipe !== false ? ' · glissez ← → pour les pages' : ''}${cfg.device.swipeV !== false ? ', ↑ ↓ pour les espaces' : ''}. Rien n\u2019est envoyé au jeu.</span><button class="iconbtn" data-act="modal-close" aria-label="Fermer">✕</button></div></div>
       <div id="sim">${s ? deckPage(s, m.page, m) : deckHome(m)}</div></div>`;
   }
+  if (typeof clipsModal === 'function') return clipsModal(m) || '';
   return '';
 }
 
@@ -908,7 +928,7 @@ function modalHTML() {
 // Rendu global
 // ---------------------------------------------------------------------------
 function render() {
-  const views = { audio: viewAudio, espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
+  const views = { clips: viewClips, audio: viewAudio, espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
   const focusId = document.activeElement && document.activeElement.id;
   const selStart = document.activeElement && document.activeElement.selectionStart;
   const mainScroll = $('.main') ? $('.main').scrollTop : 0;
@@ -1039,6 +1059,7 @@ async function deckOpen(port) {
       deckLink.lastCover = null;
       ui.deckLinked = true; render();
       deckSendMedia(true);
+      if (typeof deckSendClips === 'function') deckSendClips(true);
       return true;
     } catch (e) { deckLink.port = null; deckLink.writer = null; return false; }
     finally { deckLink.opening = null; }
@@ -1064,6 +1085,7 @@ function onDeckMessage(m) {
     sbPlay(s, m.page, m.cell, m.dests || sbSel(s));
   }
   if (m.t === 'sound-stop') SOUND.stopAll();
+  if (m.t === 'clip' && m.op) runClip(String(m.op));
   if (m.t === 'volume' && typeof m.value === 'number') { cfg.audio.master = Math.max(0, Math.min(100, m.value)); commit(true); SOUND.setup(cfg.audio); }
 }
 async function deckReadLoop(port) {
@@ -1200,6 +1222,7 @@ function simTap(i) {
   if (mode === 'hold') return;
   if (mode === 'toggle') { st.on = !st.on; simRender(); return; }
   st.flash = true; simRender(); setTimeout(() => { st.flash = false; simRender(); }, 220);
+  if (c.action && c.action.type === 'clip') runClip(c.action.op || 'clip');
   if (c.action && c.action.type === 'page') {
     if (c.action.page === 'home') { m.screen = 'home'; } else { m.page = Math.min(+c.action.page, s.pages.length - 1); }
     setTimeout(simRender, 230);
@@ -1258,10 +1281,10 @@ function simUp() {
 // Événements
 // ---------------------------------------------------------------------------
 function confirmBox(title, text, ok, danger, fn) { ui.modal = { type: 'confirm', title, text, ok, danger, fn }; renderModal(); }
-function textBox(title, value, fn) { ui.modal = { type: 'text', title, value, fn }; renderModal(); setTimeout(() => { const el = $('#f-modaltext'); if (el) { el.focus(); el.select(); } }, 0); }
+function textBox(title, value, fn, max) { ui.modal = { type: 'text', title, value, fn, max: max || 24 }; renderModal(); setTimeout(() => { const el = $('#f-modaltext'); if (el) { el.focus(); el.select(); } }, 0); }
 
 const ACTIONS = {
-  nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'audio' && !api.browser) ensureAudio().then(render); if (d.view === 'parametres') api.listBackups().then(b => { ui.backups = b; render(); }); render(); },
+  nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'audio' && !api.browser) ensureAudio().then(render); if (d.view === 'clips' && !api.browser && !SOUND.state.ready) SOUND.refreshDevices().then(() => { if (ui.view === 'clips') render(); }); if (d.view === 'clips' && ui.clipsTab === 'biblio') loadClipsLib(); if (d.view === 'parametres') api.listBackups().then(b => { ui.backups = b; render(); }); render(); },
   'cat-new': () => { ui.modal = { type: 'cat', id: null, label: '', icon: 'etoile', color: '#B79CFF' }; renderModal(); setTimeout(() => { const el = $('#f-catname'); if (el) el.focus(); }, 0); },
   'cat-edit': (d) => { const c = cfg.cats.find(x => x.id === d.id); ui.modal = { type: 'cat', id: c.id, label: c.label, icon: c.icon, color: c.color }; renderModal(); },
   'cat-color': (d) => { ui.modal.color = d.v; renderModal(); },
@@ -1367,7 +1390,7 @@ const ACTIONS = {
   'cell-test': () => {
     const c = curCell(); const t = c.action && c.action.type;
     if (t === 'sound') { const s = curSpace(); sbPlay(s, ui.page, ui.cell, sbSel(s)); return; }
-    if (t === 'app' || t === 'obs' || (t === 'discord' && c.action.op !== 'raccourci')) runPcAction(c, true);
+    if (t === 'app' || t === 'obs' || t === 'clip' || (t === 'discord' && c.action.op !== 'raccourci')) runPcAction(c, true);
     else if (t === 'page') toast('Essayez-la dans « Aperçu de l\u2019écran ».');
     else toast('Cette case est envoyée par l\u2019écran lui-même : testez-la une fois l\u2019écran branché, ou dans « Aperçu de l\u2019écran ».');
   },
@@ -1503,7 +1526,7 @@ function onField(el, isChange) {
     case 'page': c.action.page = v === 'home' ? 'home' : +v; commit(); break;
     case 'type': {
       const t = v;
-      const base = { joy: { type: 'joy', button: 1 }, key: { type: 'key', keys: '' }, media: { type: 'media', media: 'volplus' }, app: { type: 'app', preset: 'autre', exe: '', args: '', processName: '', screen: 'gauche', position: 'plein', ifOpen: 'front' }, obs: { type: 'obs', op: 'scene', target: '' }, discord: { type: 'discord', op: 'micro', arg: '', argName: '' }, page: { type: 'page', page: 0 }, none: { type: 'none' } }[t];
+      const base = { joy: { type: 'joy', button: 1 }, key: { type: 'key', keys: '' }, media: { type: 'media', media: 'volplus' }, app: { type: 'app', preset: 'autre', exe: '', args: '', processName: '', screen: 'gauche', position: 'plein', ifOpen: 'front' }, obs: { type: 'obs', op: 'scene', target: '' }, discord: { type: 'discord', op: 'micro', arg: '', argName: '' }, clip: { type: 'clip', op: 'clip' }, page: { type: 'page', page: 0 }, none: { type: 'none' } }[t];
       c.action = clone(base); commit(); break;
     }
     case 'preset': c.action.preset = v; if (v !== 'autre') { c.action.exe = ''; c.action.args = ''; c.action.processName = ''; } commit(); break;
@@ -1555,7 +1578,7 @@ function onField(el, isChange) {
       const sp = el.parentElement.querySelector('.mono'); if (sp) sp.textContent = v + ' %';
       break;
     }
-    default: break;
+    default: if (typeof onClipsField === 'function') onClipsField(f, v, el, isChange); break;
   }
 }
 function refreshGridOnly() {
@@ -1629,6 +1652,8 @@ document.addEventListener('pointerdown', (ev) => {
   }
   const sd = ev.target.closest('[data-simdest]');
   if (sd) { const sp = spaceById(m.spaceId); const sel = sbSel(sp, m); sel[sd.dataset.simdest] = !sel[sd.dataset.simdest]; simRender(); return; }
+  const scl = ev.target.closest('[data-simclip]');
+  if (scl) { runClip(scl.dataset.simclip); simRender(); return; }
   const sbb = ev.target.closest('[data-simsb]');
   if (sbb) {
     if (sbb.dataset.simsb === 'stop') SOUND.stopAll();
@@ -1652,7 +1677,7 @@ document.addEventListener('pointermove', (ev) => {
         simRender();
       }
     }
-    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome, #sim .dplayer, #sim .sbgrid'); if (g) g.style.transform = swipe.moved === 'h' ? `translateX(${dx * 0.5}px)` : `translateY(${dy * 0.4}px)`; }
+    if (swipe.moved) { const g = $('#sim .dgrid, #sim .dhome, #sim .dplayer, #sim .sbgrid, #sim .clgrid'); if (g) g.style.transform = swipe.moved === 'h' ? `translateX(${dx * 0.5}px)` : `translateY(${dy * 0.4}px)`; }
     return;
   }
   if (!cropDrag || !ui.modal) return;
@@ -1738,6 +1763,12 @@ function migrate(c) {
     out.soundboardAdded = true;
     if (!out.spaces.some(s => s.layout === 'soundboard')) out.spaces.push(newSpace('soundboard', TEMPLATES.soundboard[0], 'Soundboard', ''));
   }
+  // version 1.1 : enregistreur de clips
+  out.clips = Object.assign({}, d.clips, c.clips || {});
+  if (!c.clipsAdded) {
+    out.clipsAdded = true;
+    if (!out.spaces.some(s => s.layout === 'clips')) out.spaces.push(newSpace('clips', TEMPLATES.clips[0], 'Clips', ''));
+  }
   if (!c.spotifySpaceAdded) {
     out.spotifySpaceAdded = true;
     if (!out.spaces.some(s => s.category === 'spotify')) out.spaces.push(newSpace('spotify', TEMPLATES.spotify[0], 'Spotify', ''));
@@ -1747,6 +1778,8 @@ function migrate(c) {
 }
 
 (async function start() {
+  // attend que tous les scripts (dont clipsui.js) soient chargés
+  if (document.readyState === 'loading') await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
   const saved = await api.loadConfig();
   cfg = saved ? migrate(saved) : defaultConfig();
   ui.version = await api.version();
@@ -1758,6 +1791,7 @@ function migrate(c) {
   render();
   deckAutoLink();
   if (cfg.obs.autoConnect) OBS.connect(cfg.obs);
+  if (typeof startClips === 'function') startClips();
   setD(await api.discordState());
   if (cfg.discord.autoConnect && cfg.discord.clientId && dstate.status !== 'on') api.discordConnect({ clientId: cfg.discord.clientId, clientSecret: cfg.discord.clientSecret }, true);
 })();

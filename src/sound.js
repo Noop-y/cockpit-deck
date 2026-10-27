@@ -10,6 +10,7 @@ const SOUND = (() => {
   const state = { outputs: [], inputs: [], cableOut: null, cableIn: null, micLabel: '', micOn: false, error: '', ready: false };
   let conf = {};
   let ctxMe = null, ctxMic = null, micStream = null, micSrc = null, micGain = null, meSink = null, micKey = '';
+  let tap = null;                      // enregistreur de clips : reçoit les sons partis sur « Stream »
   const emit = () => listeners.forEach(fn => { try { fn(state); } catch (e) { /* ignoré */ } });
   const isBrowser = () => !!(window.deck == null);
 
@@ -93,10 +94,10 @@ const SOUND = (() => {
   }
 
   // ---------- lecture ----------
-  function startVoice(ctx, buf, start, end, gain, a) {
+  function startVoice(ctx, buf, start, end, gain, a, dest) {
     const src = ctx.createBufferSource(); src.buffer = buf;
     const g = ctx.createGain(); g.gain.value = gain;
-    src.connect(g).connect(ctx.destination);
+    src.connect(g).connect(dest || ctx.destination);
     const now = ctx.currentTime, len = end - start;
     if (a.mode === 'loop') { src.loop = true; src.loopStart = start; src.loopEnd = end; src.start(now, start); }
     else {
@@ -134,6 +135,8 @@ const SOUND = (() => {
     const voices = [], used = [];
     if (dests.moi) { voices.push(startVoice(ctxMe, buf, start, end, vol * conf.volMe / 100, a)); used.push('moi'); }
     if ((dests.discord || dests.jeu) && ctxMic) { voices.push(startVoice(ctxMic, buf, start, end, vol * conf.volMic / 100, a)); if (dests.discord) used.push('discord'); if (dests.jeu) used.push('jeu'); }
+    // clips : un son parti sur le stream mais pas dans le casque n'est pas dans le son du PC, on l'ajoute
+    if (tap && dests.stream && !dests.moi) { try { voices.push(startVoice(tap.ctx, buf, start, end, vol * conf.volStream / 100, a, tap.node)); } catch (e) { /* ignoré */ } }
     let stream = false;
     if (dests.stream && OBS.state.status === 'on') {
       try { await OBS.playSound(file, vol * conf.volStream / 100, a.mode === 'loop'); stream = true; used.push('stream'); } catch (e) { state.error = 'OBS : ' + e.message; }
@@ -165,6 +168,8 @@ const SOUND = (() => {
 
   if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', () => { refreshDevices().then(() => setup(conf)); });
 
-  return { state, setup, refreshDevices, defaultMic, load, peaks, play, stop, stopAll, release, progress, preview, forget, beep,
+  function setTap(ctx, node) { tap = ctx && node ? { ctx, node } : null; }
+
+  return { state, setup, setTap, refreshDevices, defaultMic, load, peaks, play, stop, stopAll, release, progress, preview, forget, beep,
     isPlaying: (id) => playing.has(id), onChange: (fn) => listeners.push(fn) };
 })();

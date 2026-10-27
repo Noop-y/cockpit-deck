@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: file:; style-src 'self' 'unsafe-inline'; script-src 'self' data:; connect-src 'self' ws: wss:; media-src 'self' file: blob:">
 <title>The Deck</title>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -15,6 +15,8 @@
 <script src="data.js"></script>
 <script src="obs.js"></script>
 <script src="sound.js"></script>
+<script src="cliprec.js"></script>
 <script src="app.js"></script>
+<script src="clipsui.js"></script>
 </body>
 </html>

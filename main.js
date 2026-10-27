@@ -1,9 +1,10 @@
 // The Deck — processus principal (Electron)
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Tray, Menu, shell, nativeImage, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Tray, Menu, shell, nativeImage, safeStorage, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { DiscordRPC } = require('./discord-rpc');
+const { ClipRecorder } = require('./clips');
 
 const ESPRESSIF_VID = 12346; // 0x303A, fabricant de l'ESP32-P4
 
@@ -18,7 +19,11 @@ const soundsDir = () => path.join(dataDir(), 'sons');
 const psPath = () => path.join(dataDir(), 'placer-fenetre.ps1');
 const mediaPsPath = () => path.join(dataDir(), 'lecture-en-cours.ps1');
 const keysPsPath = () => path.join(dataDir(), 'touches-media.ps1');
+const scanPsPath = () => path.join(dataDir(), 'programmes-en-cours.ps1');
+// outil vidéo FFmpeg livré avec le logiciel (dossier resources\ffmpeg une fois installé)
+const ffmpegPath = () => app.isPackaged ? path.join(process.resourcesPath, 'ffmpeg', 'ffmpeg.exe') : path.join(__dirname, 'vendor', 'ffmpeg.exe');
 let discord = null;
+let clips = null;
 
 // ---------- fenêtre ----------
 function createWindow() {
@@ -35,7 +40,9 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false,  // la mémoire des clips continue fenêtre cachée
+      autoplayPolicy: 'no-user-gesture-required'
     }
   });
   win.loadFile(path.join(__dirname, 'src', 'index.html'));
@@ -50,10 +57,15 @@ function createWindow() {
     callback(esp ? esp.portId : '');
   });
   // USB (écran), presse-papiers, micro et choix de la sortie audio (soundboard)
-  const allowed = ['serial', 'clipboard-sanitized-write', 'media', 'speaker-selection'];
+  // et capture du son du PC pour les clips
+  const allowed = ['serial', 'clipboard-sanitized-write', 'media', 'speaker-selection', 'display-capture'];
   ses.setPermissionCheckHandler((wc, permission) => allowed.includes(permission));
   ses.setPermissionRequestHandler((wc, permission, callback) => callback(allowed.includes(permission)));
   ses.setDevicePermissionHandler(details => details.deviceType === 'serial');
+  // son du PC (clips) : écran principal + son de Windows, sans fenêtre de choix
+  ses.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then(src => callback(src[0] ? { video: src[0], audio: 'loopback' } : {})).catch(() => callback({}));
+  });
 
   // Fermer la fenêtre la cache près de l'horloge, sans arrêter le logiciel
   win.on('close', (e) => {
@@ -197,11 +209,49 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
 }
 `;
 
+// Programmes en cours pour les clips : jeu lancé, programme au premier plan, écrans
+const SCAN_PS = String.raw`Add-Type -AssemblyName System.Windows.Forms
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class CDF {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+}
+"@
+[CDF]::SetProcessDPIAware() | Out-Null
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+while ($null -ne ($line = [Console]::In.ReadLine())) {
+  try {
+    $parts = $line.Split('|')
+    $fg = ''
+    $h = [CDF]::GetForegroundWindow(); $fp = [uint32]0
+    [CDF]::GetWindowThreadProcessId($h, [ref]$fp) | Out-Null
+    try { $fg = (Get-Process -Id $fp -ErrorAction Stop).ProcessName } catch { }
+    $run = New-Object System.Collections.ArrayList
+    for ($i = 1; $i -lt $parts.Length; $i++) {
+      $n = $parts[$i]
+      if ($n) {
+        $p = @(Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($n)) -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
+        if ($p.Count -gt 0) { [void]$run.Add($n) }
+      }
+    }
+    $scr = New-Object System.Collections.ArrayList
+    $k = 0
+    foreach ($s in [System.Windows.Forms.Screen]::AllScreens) { [void]$scr.Add(@{ i = $k; primary = $s.Primary; w = $s.Bounds.Width; h = $s.Bounds.Height }); $k++ }
+    $o = @{ fg = $fg; running = @($run); screens = @($scr) }
+    [Console]::Out.WriteLine(($o | ConvertTo-Json -Compress -Depth 4)); [Console]::Out.Flush()
+  } catch { [Console]::Out.WriteLine('{}'); [Console]::Out.Flush() }
+}
+`;
+
 function ensurePsScript() {
   try { fs.writeFileSync(psPath(), PS_SCRIPT, 'utf8'); } catch (e) { /* ignoré */ }
   // BOM UTF-8 : PowerShell 5 lit alors correctement les accents
   try { fs.writeFileSync(mediaPsPath(), '\ufeff' + MEDIA_PS, 'utf8'); } catch (e) { /* ignoré */ }
   try { fs.writeFileSync(keysPsPath(), '\ufeff' + KEYS_PS, 'utf8'); } catch (e) { /* ignoré */ }
+  try { fs.writeFileSync(scanPsPath(), '\ufeff' + SCAN_PS, 'utf8'); } catch (e) { /* ignoré */ }
 }
 
 let mediaProc = null, mediaWanted = false, mediaRestart = null, keysProc = null;
@@ -447,6 +497,36 @@ ipcMain.handle('sound:read', (e, f) => {
 ipcMain.handle('sound:open-folder', () => { fs.mkdirSync(soundsDir(), { recursive: true }); shell.openPath(soundsDir()); });
 ipcMain.handle('link:open', (e, url) => { if (/^https:\/\/(vb-audio\.com|discord\.com)\//.test(String(url))) shell.openExternal(url); });
 
+// ---------- clips ----------
+const clipsReady = () => clips || { state: () => ({ available: false }) };
+ipcMain.handle('clips:config', (e, c) => clips ? clips.setConfig(c) : { available: false });
+ipcMain.handle('clips:state', () => clipsReady().state());
+ipcMain.handle('clips:action', async (e, op) => {
+  if (!clips) return { ok: false, message: 'Enregistreur indisponible.' };
+  if (op === 'clip') return clips.clip();
+  if (op === 'rec') return clips.rec.on ? clips.recStop() : clips.recStart();
+  if (op === 'shot') return clips.shot();
+  return { ok: false, message: 'Action inconnue.' };
+});
+ipcMain.on('clips:audio', (e, k, d) => {
+  if (!clips || (k !== 'a' && k !== 'b') || !d) return;
+  const b = ArrayBuffer.isView(d) ? Buffer.from(d.buffer, d.byteOffset, d.byteLength) : (d instanceof ArrayBuffer ? Buffer.from(d) : null);
+  if (b) clips.writeAudio(k, b);
+});
+ipcMain.handle('clips:screen-source', async () => { try { const s = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } }); return s[0] ? s[0].id : ''; } catch (e) { return ''; } });
+ipcMain.handle('clips:list', () => clips ? clips.list() : { items: [], total: 0, free: null, folder: '' });
+ipcMain.handle('clips:open-folder', () => { if (!clips) return; const d = clips.folder(); fs.mkdirSync(d, { recursive: true }); shell.openPath(d); });
+ipcMain.handle('clips:show', (e, f) => { const r = clips && clips.inside(f); if (r) shell.showItemInFolder(r); });
+ipcMain.handle('clips:copy', (e, f) => clips ? clips.copy(f) : { ok: false });
+ipcMain.handle('clips:delete', (e, f) => clips ? clips.remove(f) : { ok: false });
+ipcMain.handle('clips:rename', (e, f, n) => clips ? clips.rename(f, n) : { ok: false });
+ipcMain.handle('clips:trim', (e, f, a, b) => clips ? clips.trim(f, +a || 0, +b || 0) : { ok: false });
+ipcMain.handle('clips:file-url', (e, f) => { const r = clips && clips.inside(f); return r ? require('url').pathToFileURL(r).href : ''; });
+ipcMain.handle('clips:choose-folder', async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'Dossier des clips', properties: ['openDirectory', 'createDirectory'] });
+  return r.canceled || !r.filePaths.length ? null : r.filePaths[0];
+});
+
 // ---------- Discord ----------
 ipcMain.handle('discord:connect', (e, creds, auto) => discord.connect(creds, auto));
 ipcMain.handle('discord:disconnect', () => { discord.disconnect(false); discord.forgetToken(); return discord.state; });
@@ -481,14 +561,19 @@ if (!gotLock) {
     sealExistingFiles();
     discord = new DiscordRPC(path.join(dataDir(), 'discord-jeton.json'), { seal: sealText, open: openText });
     discord.on('state', (st) => { if (win && !win.isDestroyed()) win.webContents.send('discord-state', st); });
+    clips = new ClipRecorder({ ffmpeg: ffmpegPath(), temp: path.join(app.getPath('temp'), 'TheDeck-memoire'), data: dataDir(), videos: app.getPath('videos'), scanScript: scanPsPath(), shell, nativeImage });
+    clips.on('state', (st) => { if (win && !win.isDestroyed()) win.webContents.send('clips-state', st); });
+    clips.on('saved', (info) => { if (win && !win.isDestroyed()) win.webContents.send('clips-saved', info); });
     createWindow();
     createTray();
+    clips.init();
   });
   app.on('before-quit', () => { quitting = true; });
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
     stopMediaWatch();
     if (keysProc) { try { keysProc.kill(); } catch (e) { /* ignoré */ } }
+    if (clips) clips.shutdown();
   });
   app.on('window-all-closed', () => { /* reste près de l'horloge */ });
 }

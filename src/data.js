@@ -63,6 +63,8 @@ const PICTOS = {
   live: ['Live', 'Streaming', 'live direct diffusion', 'M12 10a2 2 0 1 0 0.01 0 M7.8 7.8a6 6 0 0 0 0 8.4 M16.2 7.8a6 6 0 0 1 0 8.4 M4.9 4.9a10 10 0 0 0 0 14.2 M19.1 4.9a10 10 0 0 1 0 14.2'],
   enregistrer: ['Enregistrer', 'Streaming', 'enregistrer rec', 'M12 5a7 7 0 1 0 0.01 0 M12 9a3 3 0 1 0 0.01 0'],
   marqueur: ['Marqueur', 'Streaming', 'marqueur drapeau', 'M6 3v18 M6 4h11l-3 4 3 4H6'],
+  retour: ['Clip (retour)', 'Streaming', 'clip retour arrière mémoire replay', 'M3.5 12a8.5 8.5 0 1 0 2.6-6.1 M3 4v5h5 M12 7.5V12l3 2'],
+  appareilphoto: ['Capture photo', 'Streaming', 'capture image photo appareil', 'M4 8h3l2-3h6l2 3h3v11H4z M12 9.5a3.5 3.5 0 1 0 0.01 0'],
   clip: ['Clip', 'Streaming', 'clip ciseaux', 'M6 7a2.5 2.5 0 1 0 0.01 0 M6 17a2.5 2.5 0 1 0 0.01 0 M8 8l12 9 M8 16l12-9'],
   // Média
   musique: ['Musique', 'Média', 'musique note', 'M9 18V5l11-2v13 M9 18a3 3 0 1 1-6 0a3 3 0 1 1 6 0 M20 16a3 3 0 1 1-6 0a3 3 0 1 1 6 0'],
@@ -110,7 +112,8 @@ const CATEGORIES = {
   stream: { label: 'Streaming', color: '#B79CFF', icon: 'live' },
   discord: { label: 'Discord', color: '#8E9BFF', icon: 'discussion' },
   spotify: { label: 'Spotify', color: '#3FB97A', icon: 'musique' },
-  soundboard: { label: 'Soundboard', color: '#FF7EB6', icon: 'son' }
+  soundboard: { label: 'Soundboard', color: '#FF7EB6', icon: 'son' },
+  clips: { label: 'Clips', color: '#FF6B79', icon: 'retour' }
 };
 
 const MEDIA_KEYS = [['volplus', 'Volume +'], ['volmoins', 'Volume −'], ['muet', 'Muet'], ['lecture', 'Lecture / pause'], ['suivante', 'Piste suivante'], ['precedente', 'Piste précédente']];
@@ -122,6 +125,9 @@ const SOUND_DESTS = [
   { k: 'stream', label: 'Stream', sub: 'les spectateurs (OBS)', color: '#B79CFF', icon: 'M12 12h.01 M8.5 8.5a5 5 0 0 0 0 7 M15.5 8.5a5 5 0 0 1 0 7 M5.6 5.6a9 9 0 0 0 0 12.8 M18.4 5.6a9 9 0 0 1 0 12.8' }
 ];
 const DISCORD_OPS = [['micro', 'Couper / rétablir le micro'], ['casque', 'Couper / rétablir le casque'], ['tout', 'Couper / rétablir micro + casque'], ['entree-suiv', 'Entrée audio suivante'], ['sortie-suiv', 'Sortie audio suivante'], ['entree', 'Choisir une entrée audio'], ['sortie', 'Choisir une sortie audio'], ['raccourci', 'Mon raccourci Discord']];
+// Clips : les actions possibles d'une case, et les durées de retour en arrière (secondes)
+const CLIP_OPS = [['clip', 'Clip : garder les dernières secondes'], ['rec', 'Enregistrer une vidéo (marche / arrêt)'], ['shot', 'Capture d’écran (une image)'], ['mem', 'Mémoire en marche / à l’arrêt']];
+const CLIP_DURS = [[15, '15 s'], [30, '30 s'], [60, '1 min'], [120, '2 min'], [180, '3 min'], [300, '5 min']];
 const OBS_OPS = [['scene', 'Changer de scène'], ['mute', 'Couper / rétablir un son'], ['source', 'Montrer / cacher un élément'], ['stream', 'Lancer / arrêter le live'], ['record', 'Lancer / arrêter l’enregistrement'], ['replay', 'Sauvegarder le replay']];
 
 // ---------- modèles d'espaces ----------
@@ -217,6 +223,10 @@ const TEMPLATES = {
     { key: 'lecteur', name: 'Lecteur', desc: 'Jaquette en grand, morceau précédent et suivant, lecture / pause, volume', icon: 'musique', layout: 'player',
       pages: () => [{ name: 'LECTEUR', cells: pad([]) }] },
     { key: 'vide', name: 'Grille Spotify', desc: 'Des cases classiques à remplir', icon: 'musique', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }
+  ],
+  clips: [
+    { key: 'clips', name: 'Clips', desc: 'CLIP, enregistrer, capture, durée du retour en arrière et derniers clips', icon: 'retour', layout: 'clips',
+      pages: () => [{ name: 'CLIPS', cells: pad([]) }] }
   ],
   soundboard: [
     { key: 'sons', name: 'Soundboard', desc: 'Vos sons, envoyés sur Discord, le jeu, le stream ou pour vous', icon: 'son', layout: 'soundboard',
