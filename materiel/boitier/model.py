@@ -33,13 +33,14 @@ MOUNT = [(sx * MX, y) for sx in (-1, 1) for y in (-42.0, 37.0)]     # inserts au
 # ouvertures côté gauche (vu de face) : (centre y, largeur) — d'après les photos Waveshare, à confirmer
 USB_CUT = (0.0, 14.0)            # port USB-C, environ au milieu
 BTN_CUT = (19.0, 10.0)           # SUPPOSE : bouton marche/arrêt, au-dessus du port
-CABLE = (60.0, 16.0, 0.0, -5.0)  # fenêtre câbles (l, h, cx, cy) dans le fond
+CABLE = None                     # fenêtre câbles dans le fond : supprimée (l'USB-C sort par le côté). Ancienne valeur : (60.0, 16.0, 0.0, -5.0)
 
 parts = {}
 
 # ---------- COQUE (repère coque : fond sur z=0, face avant z=SD) ----------
 holes = [circle(INSERT_D / 2, x, y) for x, y in MOUNT]   # seuls les trous du pied traversent le fond
-holes.append(rrect(CABLE[0], CABLE[1], 2.0, CABLE[2], CABLE[3]))
+if CABLE:
+    holes.append(rrect(CABLE[0], CABLE[1], 2.0, CABLE[2], CABLE[3]))
 for y in (28.0, 34.0, 40.0):
     holes += [rrect(30.0, 3.0, 1.4, -20.0, y), rrect(30.0, 3.0, 1.4, 20.0, y)]
 for y in (-38.0, -44.0):
@@ -177,8 +178,8 @@ def hex_ok(cx, cy):
     for x, y in MOUNT:
         if np.hypot(cx - x, cy - (y + U0)) < HEX_R + SCREW_D / 2 + 5.0:
             return False
-    cw, ch = CABLE[0] + 4, CABLE[1] + 4
-    if abs(cx - CABLE[2]) < cw / 2 + HEX_R + 2.4 and abs(cy - (CABLE[3] + U0)) < ch / 2 + HEX_R + 2.4:
+    cw, ch = (CABLE[0] + 4, CABLE[1] + 4) if CABLE else (0, 0)
+    if CABLE and abs(cx - CABLE[2]) < cw / 2 + HEX_R + 2.4 and abs(cy - (CABLE[3] + U0)) < ch / 2 + HEX_R + 2.4:
         return False
     for x0 in RIBS_X:
         if x0 - HEX_R - 2.0 < cx < x0 + 5.0 + HEX_R + 2.0:
@@ -199,7 +200,7 @@ for j in range(-2, 20):
 
 stand = [extrude(rrect(W_ST, L_ST, 2.0, 0.0, L_ST / 2),
                  [circle(SCREW_D / 2, x, y + U0) for x, y in MOUNT]
-                 + [rrect(CABLE[0] + 4, CABLE[1] + 4, 2.0, CABLE[2], CABLE[3] + U0)] + hexes,
+                 + ([rrect(CABLE[0] + 4, CABLE[1] + 4, 2.0, CABLE[2], CABLE[3] + U0)] if CABLE else []) + hexes,
                  0.0, PT)]
 
 
