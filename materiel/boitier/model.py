@@ -2,7 +2,7 @@
 Génère 3 STL (cadre, coque, pied) + assembly.json pour la vue 3D.
 Toutes les cotes en mm. Les valeurs marquées SUPPOSE sont à mesurer sur la carte reçue.
 """
-import json, base64, sys
+import json, base64, sys, os
 import numpy as np
 from meshlib import *
 
@@ -138,6 +138,17 @@ for sx in (-1, 1):                       # appuis de l'écran (4 patins)
         shell.append(box(x0, x1, sy * 35 - 7.5, sy * 35 + 7.5, TB - 0.2, SD - GT))
 for x, y in MOUNT:                        # bossages des inserts du pied (sous l'écran, à côté de la carte)
     shell.append(tube(4.0, INSERT_D / 2, TB - 0.2, SD - GT - 0.4, x, y))
+# ---- option (hypothèse) : prise USB-C déportée dans une bosse au dos, tournée vers le bas ----
+# Activer avec DECK_USB_ARRIERE=1. Une rallonge nappe USB-C relie la carte à une prise femelle vissée dans la bosse.
+REAR_USB = os.environ.get('DECK_USB_ARRIERE') == '1'
+if REAR_USB:
+    BX, BW, BD = -(OW / 2 - 10.5), 16.0, 9.0           # bosse : centre x (côté gauche, hors du pied), largeur, saillie
+    BY0, BY1, BPORT = 14.0, 42.0, 8.0                   # bosse de y = 14 à 42 ; la prise occupe les 8 mm du bas
+    P_BUMP = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]], float)   # (a, b, c) -> (x = a, y = c, z = -b)
+    prof = rrect(BW, BD + 0.3, 3.0, BX, BD / 2 - 0.15)
+    port = rrect(9.2, 3.6, 1.6, BX, BD / 2 + 0.5)      # ouverture d'une prise USB-C femelle (8,9 × 3,3 mm)
+    shell.append(xform(extrude(prof, [port], BY0, BY0 + BPORT), P_BUMP))
+    shell.append(xform(extrude(prof, [], BY0 + BPORT, BY1), P_BUMP))
 parts['coque'] = shell
 
 # ---------- CADRE AVANT (repère coque, z de SD à SD+FT) ----------
