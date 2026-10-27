@@ -17,7 +17,10 @@ BACK = 5.0                      # demandé : 5 mm entre le fond et l'écran (car
 CLR = 0.4                       # jeu par côté
 WS, WTB, TB = 8.0, 3.0, 1.6     # parois latérales / haut-bas / fond
 R = 5.0                         # rayon des angles
-FT = 1.6                        # épaisseur du cadre avant
+FT = 3.0                        # épaisseur du cadre avant (3 mm : têtes de vis encastrées à fleur)
+FT_LIP = 1.6                    # épaisseur du cadre au bord de l'écran ; au-dessus, la fenêtre s'élargit (marche en biseau)
+BEVEL = 1.0                     # élargissement de la fenêtre au-dessus de FT_LIP, de chaque côté
+CB_D, CB_H = 6.0, 2.2           # logement des têtes de vis plates cruciformes M3 (tête Ø 5,5 à 5,6 × 2 à 2,2 mm)
 ANGLE = float(sys.argv[2]) if len(sys.argv) > 2 else 55.0   # inclinaison écran / bureau
 VARIANT = sys.argv[3] if len(sys.argv) > 3 else 'lamelles'   # ajourage des flancs : lamelles | treillis
 INSERT_D, SCREW_D = 4.2, 3.4    # inserts laiton M3 / passage vis M3
@@ -62,45 +65,40 @@ xo, xi = -OW / 2, -PW / 2
 bridge = [(xo, hi1), (xi, hi1), (xi, PH / 2), (-xi, PH / 2), (-xi, -PH / 2), (xi, -PH / 2), (xi, lo2), (xo, lo2)]
 lower = poly(np.vstack([outer[:k + 1], bridge, outer[k + 1:]]))
 island = rect(OW / 2 - PW / 2, lo1 - hi2, (xo + xi) / 2, (lo1 + hi2) / 2)
-# ---- fixation du cadre : rebord tout autour (pas de jour vu de côté) + 4 clips au milieu des grands côtés ----
+# ---- fixation du cadre : rebord tout autour (pas de jour vu de côté) + 4 clips cachés dans les parois des côtés ----
 RW, RD = 1.0, 1.4                        # feuillure en haut de la coque, où vient se poser le rebord du cadre
 CL = 0.15                                # jeu entre le rebord et la coque
-HOOK_X = (-45.0, 45.0)                   # clips en haut et en bas, entre les vis des coins
+HOOK_Y = (-32.0, 32.0)                   # clips dans les côtés (parois de 8 mm), loin des vis, du port USB et du bouton
 HOOK_W, HOOK_T, HOOK_L = 10.0, 1.2, 6.0  # bras du clip : largeur, épaisseur, longueur
-BARB = 0.5                               # saillie du crochet
-REC_D = HOOK_T + 0.2                     # logement du bras dans la coque (le bras affleure la paroi)
-CATCH_D = REC_D + 0.6                    # logement du crochet
-Z_REC = SD - HOOK_L - 0.2                # fond du logement
-Z_LEDGE = SD - HOOK_L + 0.9              # le crochet s'accroche sous ce rebord
-HX = [(xc - HOOK_W / 2 - 0.3, xc + HOOK_W / 2 + 0.3) for xc in HOOK_X]
+BARB = 0.5                               # saillie du crochet (vers l'extérieur)
+HOOK_X0 = PW / 2 + 1.66                  # face intérieure du bras (côté écran)
+SLOT_IN = HOOK_X0 - 0.5                  # fente dans la paroi : 0,5 mm de place pour que le bras plie
+SLOT_OUT = HOOK_X0 + HOOK_T + 0.2
+CATCH_OUT = HOOK_X0 + HOOK_T + BARB + 0.4
+Z_REC = SD - HOOK_L - 0.2                # fond de la fente
+Z_LEDGE = SD - HOOK_L + 0.9              # le crochet s'accroche sous ce rebord (dans la paroi, invisible)
+assert SLOT_IN - PW / 2 >= 1.0 and OW / 2 - CATCH_OUT >= 3.0, 'clip mal placé dans la paroi'
 
 
-def notched(loop, Y, depth, x_ranges):
-    """Creuse des encoches rectangulaires (profondeur depth) dans les bords haut (y=+Y) et bas (y=-Y) d'un contour."""
-    out, n = [], len(loop)
-    for i in range(n):
-        p_, q_ = loop[i], loop[(i + 1) % n]
-        out.append((p_[0], p_[1]))
-        for sg in (1, -1):
-            if abs(p_[1] - sg * Y) < 1e-6 and abs(q_[1] - sg * Y) < 1e-6:
-                lo_, hi_ = min(p_[0], q_[0]), max(p_[0], q_[0])
-                rs = sorted([r for r in x_ranges if lo_ < r[0] and r[1] < hi_], key=lambda r: r[0], reverse=q_[0] < p_[0])
-                for a_, b_ in rs:
-                    f_, g_ = (b_, a_) if q_[0] < p_[0] else (a_, b_)
-                    yi = sg * (Y - depth)
-                    out += [(f_, sg * Y), (f_, yi), (g_, yi), (g_, sg * Y)]
-    return poly(out)
+def slots(x_out):
+    """Fentes des clips (une par clip, dans l'épaisseur des parois des côtés)."""
+    out = []
+    for sx in (-1, 1):
+        for yc in HOOK_Y:
+            x0_, x1_ = sorted([sx * SLOT_IN, sx * x_out])
+            out.append(rect(x1_ - x0_, HOOK_W + 0.6, (x0_ + x1_) / 2, yc))
+    return out
 
 
 Z_INS = SD - INSERT_DEPTH                # fond des trous d'inserts du cadre (paroi pleine en dessous)
 inset = rrect(OW - 2 * RW, OH - 2 * RW, R - RW)
 shell.append(extrude(lower, [], TB - 0.4, Z_INS))
 shell.append(extrude(lower, ins, Z_INS, Z_REC))
-shell.append(extrude(notched(lower, OH / 2, CATCH_D, HX), ins, Z_REC, Z_LEDGE))
-shell.append(extrude(notched(lower, OH / 2, REC_D, HX), ins, Z_LEDGE, CUT_TOP))
+shell.append(extrude(lower, ins + slots(CATCH_OUT), Z_REC, Z_LEDGE))
+shell.append(extrude(lower, ins + slots(SLOT_OUT), Z_LEDGE, CUT_TOP))
 shell.append(extrude(island, [], TB - 0.4, CUT_TOP))
-shell.append(extrude(notched(outer, OH / 2, REC_D, HX), [rect(PW, PH)] + ins, CUT_TOP - 0.2, SD - RD))
-shell.append(extrude(notched(inset, OH / 2 - RW, REC_D - RW, HX), [rect(PW, PH)] + ins, SD - RD, SD))
+shell.append(extrude(outer, [rect(PW, PH)] + ins + slots(SLOT_OUT), CUT_TOP - 0.2, SD - RD))
+shell.append(extrude(inset, [rect(PW, PH)] + ins + slots(SLOT_OUT), SD - RD, SD))
 for sx in (-1, 1):                       # appuis de l'écran (4 patins)
     for sy in (-1, 1):
         x0, x1 = sorted([sx * (PW / 2 - 2.5), sx * (PW / 2 + 0.5)])
@@ -170,7 +168,7 @@ def logo_shapes(size, x0, yc):
     return [(poly(body), [poly(sl) for sl in slots]), (poly(P(cap_pts)), [])]
 
 
-TOP_Y = ((AH + 0.6) / 2 + OH / 2) / 2         # milieu du bandeau du haut
+TOP_Y = ((AH + 0.6 + 2 * BEVEL) / 2 + OH / 2) / 2   # milieu du bandeau du haut (au-dessus de la marche)
 LOGO = 6.8                                     # hauteur du logo (mm)
 CAP = 4.6                                      # hauteur des majuscules (mm)
 _, TW = text_shapes('THE DECK', CAP, 0, 0)
@@ -178,22 +176,31 @@ GAP = 2.4
 x_start = -(LOGO + GAP + TW) / 2
 ENG = logo_shapes(LOGO, x_start, TOP_Y) + text_shapes('THE DECK', CAP, x_start + LOGO + GAP, TOP_Y)[0]
 
-frame_holes = [rrect(AW + 0.6, AH + 0.6, 1.0)] + [circle(SCREW_D / 2, x, y) for x, y in SCREWS]
-frame = [extrude(rrect(OW, OH, R), frame_holes, SD, SD + FT - ENGRAVE),
-         extrude(rrect(OW, OH, R), frame_holes + [o for o, _ in ENG], SD + FT - ENGRAVE, SD + FT, maxlen=2.0)]
+win_lo = rrect(AW + 0.6, AH + 0.6, 1.0)                       # fenêtre au ras de l'écran
+win_hi = rrect(AW + 0.6 + 2 * BEVEL, AH + 0.6 + 2 * BEVEL, 2.0)   # fenêtre élargie au-dessus : marche en biseau
+screw_holes = [circle(SCREW_D / 2, x, y) for x, y in SCREWS]
+cbores = [circle(CB_D / 2, x, y) for x, y in SCREWS]           # têtes de vis encastrées à fleur
+Z_CB = SD + FT - CB_H
+assert SD + FT_LIP <= SD + FT - ENGRAVE and Z_CB > SD + 0.6, 'cadre trop fin pour encastrer les vis'
+zs_ = sorted({SD, Z_CB, SD + FT_LIP, SD + FT - ENGRAVE})
+frame = []
+for za, zb_ in zip(zs_, zs_[1:]):
+    frame.append(extrude(rrect(OW, OH, R), [win_lo if zb_ <= SD + FT_LIP + 1e-9 else win_hi] + (screw_holes if zb_ <= Z_CB + 1e-9 else cbores), za, zb_))
+frame.append(extrude(rrect(OW, OH, R), [win_hi] + cbores + [o for o, _ in ENG], SD + FT - ENGRAVE, SD + FT, maxlen=2.0))
 for _, isl in ENG:                             # intérieurs des lettres (D…) et lamelles du logo : restent en relief
     for h in isl:
         frame.append(extrude(h, [], SD + FT - ENGRAVE, SD + FT, maxlen=1.0))
 # rebord sous le cadre : il descend dans la feuillure de la coque et cache le joint
 frame.append(extrude(rrect(OW, OH, R), [rrect(OW - 2 * RW + 2 * CL, OH - 2 * RW + 2 * CL, R - RW + CL)], SD - RD + 0.1, SD))
-for xc in HOOK_X:                              # clips : bras qui affleure la paroi + crochet (entrée en pente)
-    for sg in (1, -1):
-        y_out, y_in = sg * OH / 2, sg * (OH / 2 - HOOK_T)
-        y_b, y_b2 = sg * (OH / 2 - HOOK_T - BARB), sg * (OH / 2 - HOOK_T - BARB / 2)
-        x0_, x1_ = xc - HOOK_W / 2, xc + HOOK_W / 2
-        frame.append(box(x0_, x1_, min(y_out, y_in), max(y_out, y_in), SD - HOOK_L, SD))
-        frame.append(box(x0_, x1_, min(y_in, y_b), max(y_in, y_b), SD - HOOK_L + 0.3, SD - HOOK_L + 0.8))
-        frame.append(box(x0_, x1_, min(y_in, y_b2), max(y_in, y_b2), SD - HOOK_L, SD - HOOK_L + 0.3))
+for sx in (-1, 1):                             # clips cachés : bras dans la fente de la paroi, crochet vers l'extérieur
+    for yc in HOOK_Y:
+        xa, xb = sorted([sx * HOOK_X0, sx * (HOOK_X0 + HOOK_T)])
+        xc_a, xc_b = sorted([sx * (HOOK_X0 + HOOK_T), sx * (HOOK_X0 + HOOK_T + BARB)])
+        xd_a, xd_b = sorted([sx * (HOOK_X0 + HOOK_T), sx * (HOOK_X0 + HOOK_T + BARB / 2)])
+        y0_, y1_ = yc - HOOK_W / 2, yc + HOOK_W / 2
+        frame.append(box(xa, xb, y0_, y1_, SD - HOOK_L, SD))
+        frame.append(box(xc_a, xc_b, y0_, y1_, SD - HOOK_L + 0.3, SD - HOOK_L + 0.8))
+        frame.append(box(xd_a, xd_b, y0_, y1_, SD - HOOK_L, SD - HOOK_L + 0.3))
 parts['cadre'] = frame
 
 # ---------- PIED (repère plaque : x, u le long de la pente, w sous la pente) ----------
@@ -475,7 +482,7 @@ with open(f'{OUT}/assembly.json', 'w') as fh:
 report['gravure'] = dict(largeur=round(LOGO + GAP + TW, 1), hauteur=LOGO, profondeur=ENGRAVE, y_centre=round(TOP_Y, 2))
 report['flancs'] = dict(variante=VARIANT, ouvertures=len(rib_holes), surplombs=OVERHANGS)
 report['semelles'] = dict(nombre=len(RIBS_X) * 2, y=[round(v, 1) for v in PADS_Y], patin='silicone adhésif 8 × 2 mm', logement=[BUMP_D, BUMP_DEPTH])
-report['fixation_cadre'] = dict(rebord=[RW, RD], clips=len(HOOK_X) * 2, clip_bras=[HOOK_W, HOOK_T, HOOK_L], crochet=BARB, x=list(HOOK_X))
+report['fixation_cadre'] = dict(rebord=[RW, RD], clips_caches=len(HOOK_Y) * 2, clip_bras=[HOOK_W, HOOK_T, HOOK_L], crochet=BARB, y=list(HOOK_Y), x_fente=[round(SLOT_IN, 2), round(CATCH_OUT, 2)], logement_tete=[CB_D, CB_H], cadre_ep=FT)
 report['cotes'] = dict(coque_ext=[round(OW, 2), round(OH, 2), round(SD, 2)], pied_larg=round(W_ST, 1), cadre_ep=FT, angle=ANGLE,
                        fenetre_cadre=[AW + 0.6, AH + 0.6], hauteur_max=round(float(max(
                            (xform(np.concatenate(parts['pied']), M, O)).reshape(-1, 3)[:, 2].max(),
