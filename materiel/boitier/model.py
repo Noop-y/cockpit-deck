@@ -5,6 +5,7 @@ Toutes les cotes en mm. Les valeurs marquées SUPPOSE sont à mesurer sur la car
 import json, base64, sys, os
 import numpy as np
 from meshlib import *
+from meshlib import _ccw
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else '.'
 
@@ -42,10 +43,22 @@ USB_CUT = (0.0, 16.0)            # port USB-C, environ au milieu ; 16 mm de larg
 BTN_CUT = (19.0, 10.0)           # SUPPOSE : bouton marche/arrêt, au-dessus du port
 CABLE = None                     # fenêtre câbles dans le fond : supprimée (l'USB-C sort par le côté). Ancienne valeur : (60.0, 16.0, 0.0, -5.0)
 
+# option (hypothèse) : prise USB-C au dos, dans une capsule collée (DECK_USB_ARRIERE=1)
+REAR_USB = os.environ.get('DECK_USB_ARRIERE') == '1'
+POD_YC = 0.0                         # hauteur de la capsule sur le dos : au milieu
+POD_XF, POD_LEN = -40.0, 21.0        # face de la prise (x), longueur totale vers le bord
+POD_W, POD_H, POD_R = 17.0, 11.0, 5.5    # largeur, saillie, arrondi du dessus
+POD_FILLET = 2.5                     # raccord arrondi avec le dos
+PORT_Z = 7.0                         # hauteur de l'axe de la prise au-dessus du dos
+POD_FRONT, POD_BODY = 1.6, 10.0      # épaisseur de la paroi avant ; fin du corps creux
+POD_SLOT = (9.6, 9.0)                # creux intérieur (largeur, hauteur) et fente dans le fond de la coque
+
 parts = {}
 
 # ---------- COQUE (repère coque : fond sur z=0, face avant z=SD) ----------
 holes = [circle(INSERT_D / 2, x, y) for x, y in MOUNT]   # seuls les trous du pied traversent le fond
+if REAR_USB:                             # fente pour la nappe, sous la capsule
+    holes.append(rect(POD_BODY - POD_FRONT, POD_SLOT[0], POD_XF - (POD_FRONT + POD_BODY) / 2, POD_YC))
 if CABLE:
     holes.append(rrect(CABLE[0], CABLE[1], 2.0, CABLE[2], CABLE[3]))
 for y in (28.0, 34.0, 40.0):
@@ -138,44 +151,60 @@ for sx in (-1, 1):                       # appuis de l'écran (4 patins)
         shell.append(box(x0, x1, sy * 35 - 7.5, sy * 35 + 7.5, TB - 0.2, SD - GT))
 for x, y in MOUNT:                        # bossages des inserts du pied (sous l'écran, à côté de la carte)
     shell.append(tube(4.0, INSERT_D / 2, TB - 0.2, SD - GT - 0.4, x, y))
-# ---- option (hypothèse) : prise USB-C déportée dans une bosse au dos, tournée vers le bas ----
-# Activer avec DECK_USB_ARRIERE=1. Une rallonge nappe USB-C relie la carte à une prise femelle vissée dans la bosse.
-REAR_USB = os.environ.get('DECK_USB_ARRIERE') == '1'
+# ---- option (hypothèse) : prise USB-C déportée dans une capsule collée au dos ----
+# Activer avec DECK_USB_ARRIERE=1. Une rallonge nappe USB-C relie la carte à une prise femelle logée dans la capsule.
+# La capsule est une pièce à part (capsule.stl) : imprimée à plat sur sa base, sa forme arrondie sort lisse, sans support.
 POD_CUT = None
 if REAR_USB:
-    # capsule profilée entre la 1re et la 2e nervure du pied (côté gauche), prise tournée vers le centre (+x)
-    POD_YC = 20.0                        # hauteur de la capsule sur le dos (repère coque)
-    POD_XF, POD_LEN = -40.0, 21.0        # face de la prise (x), longueur totale vers le bord
-    POD_W, POD_H, POD_R = 17.0, 11.0, 5.5    # largeur, saillie, arrondi du dessus
-    POD_FILLET = 2.5                     # raccord arrondi avec le dos
-    PORT_Z = 7.0                         # profondeur de l'axe de la prise sous le dos
+    # capsule profilée entre la 1re et la 2e nervure du pied (côté gauche), centrée en hauteur, prise tournée vers le centre (+x)
     P_POD = np.array([[0, 0, -1], [1, 0, 0], [0, -1, 0]], float)   # (a, b, c) -> (x = -c, y = a, z = -b)
-
-    def pod_profile(sw, sh):
-        """Section de la capsule (a = y, b = saillie) : flancs droits, dessus arrondi, pied évasé en congé."""
-        w, h, r = POD_W / 2 * sw, POD_H * sh, min(POD_R * sh, POD_W / 2 * sw - 0.5)
-        f = POD_FILLET * min(sw, 1.0)
-        pts = [(POD_YC - w - f, -0.3)]
-        for t in np.linspace(0, np.pi / 2, 7):                # congé concave du pied (gauche)
-            pts.append((POD_YC - w - f + f * np.sin(t), f - f * np.cos(t)))
-        for t in np.linspace(np.pi, np.pi / 2, 9):            # arrondi du dessus (gauche)
-            pts.append((POD_YC - w + r + r * np.cos(t), h - r + r * np.sin(t)))
-        for t in np.linspace(np.pi / 2, 0, 9):                # arrondi du dessus (droite)
-            pts.append((POD_YC + w - r + r * np.cos(t), h - r + r * np.sin(t)))
-        for t in np.linspace(np.pi / 2, 0, 7):                # congé concave du pied (droite)
-            pts.append((POD_YC + w + f - f * np.sin(t), f - f * np.cos(t)))
-        pts.append((POD_YC + w + f, -0.3))
-        return poly(pts)
-
-    port = rrect(9.2, 3.6, 1.6, POD_YC, PORT_Z)           # ouverture d'une prise USB-C femelle (8,9 × 3,3 mm)
     c0 = -POD_XF
-    shell.append(xform(extrude(pod_profile(1.0, 1.0), [port], c0, c0 + 9.0), P_POD))   # partie de la prise
-    n_ = 14
-    for i in range(n_):                                    # queue qui s'affine vers le bord (profil d'ellipse)
-        t0, t1 = i / n_, (i + 1) / n_
-        sc = np.sqrt(max(1 - ((t0 + t1) / 2) ** 2, 0.0))
-        za, zb2 = c0 + 9.0 + t0 * (POD_LEN - 9.0), c0 + 9.0 + t1 * (POD_LEN - 9.0)
-        shell.append(xform(extrude(pod_profile(0.35 + 0.65 * sc, 0.3 + 0.7 * sc), [], za, zb2), P_POD))
+
+    def pod_ring(sw, sh, n_arc=24, n_fil=12):
+        """Contour de la section (a = y, b = saillie), même nombre de points quelle que soit l'échelle."""
+        w, h = POD_W / 2 * sw, POD_H * sh
+        r = min(POD_R * sh, w * 0.92)
+        f = POD_FILLET * min(sw, sh)
+        pts = []
+        for t in np.linspace(0, np.pi / 2, n_fil):                     # congé du pied (gauche)
+            pts.append((POD_YC - w - f + f * np.sin(t), f - f * np.cos(t)))
+        for t in np.linspace(np.pi, np.pi / 2, n_arc)[1:]:              # arrondi du dessus (gauche)
+            pts.append((POD_YC - w + r + r * np.cos(t), h - r + r * np.sin(t)))
+        for t in np.linspace(np.pi / 2, 0, n_arc)[1:]:                  # arrondi du dessus (droite)
+            pts.append((POD_YC + w - r + r * np.cos(t), h - r + r * np.sin(t)))
+        for t in np.linspace(np.pi / 2, 0, n_fil)[1:]:                  # congé du pied (droite)
+            pts.append((POD_YC + w + f - f * np.sin(t), f - f * np.cos(t)))
+        return np.array(pts)                                            # la base (b = 0) ferme le contour
+
+    def loft(rings, cs):
+        """Surface lisse entre des sections successives (même nombre de points), fermée par deux bouchons plats."""
+        rings = [_ccw(r) for r in rings]
+        tris = []
+        for (ra, ca), (rb, cb) in zip(zip(rings, cs), zip(rings[1:], cs[1:])):
+            A, B = np.c_[ra, np.full(len(ra), ca)], np.c_[rb, np.full(len(rb), cb)]
+            A2, B2 = np.roll(A, -1, 0), np.roll(B, -1, 0)
+            tris.append(np.stack([A, A2, B2], 1))
+            tris.append(np.stack([A, B2, B], 1))
+        for ring, c, top in ((rings[0], cs[0], False), (rings[-1], cs[-1], True)):
+            pts, simp, _ = triangulate(ring, [], maxlen=50)
+            assert len(pts) == len(ring), 'bouchon : points ajoutés'
+            P = np.c_[pts, np.full(len(pts), c)]
+            tris.append(P[simp] if top else P[simp[:, [0, 2, 1]]])
+        return np.concatenate(tris)
+
+    port = rrect(9.2, 3.6, 1.6, POD_YC, PORT_Z)           # ouverture de la prise USB-C femelle (8,9 × 3,3 mm)
+    full = pod_ring(1.0, 1.0)
+    # creux ouvert sur la base : logement de la prise et passage de la nappe vers l'intérieur de la coque
+    notch = np.vstack([full, [(POD_YC + POD_SLOT[0] / 2, 0.0), (POD_YC + POD_SLOT[0] / 2, POD_SLOT[1]),
+                              (POD_YC - POD_SLOT[0] / 2, POD_SLOT[1]), (POD_YC - POD_SLOT[0] / 2, 0.0)]])
+    capsule = [xform(extrude(poly(full), [port], c0, c0 + POD_FRONT, maxlen=50), P_POD),            # paroi avant percée
+               xform(extrude(poly(notch), [], c0 + POD_FRONT, c0 + POD_BODY, maxlen=50), P_POD)]    # corps creux
+    # queue : s'affine en dôme (quart d'ellipse), pente nulle au départ -> aucune marche visible
+    th = np.linspace(0, np.pi / 2, 61)
+    cs = c0 + POD_BODY + (POD_LEN - POD_BODY) * np.sin(th) ** 1.0
+    sc = np.maximum(np.cos(th), 0.04)
+    capsule.append(xform(loft([pod_ring(0.25 + 0.75 * s, s) for s in sc], cs), P_POD))
+    parts['capsule'] = capsule
     # ouverture dans la plaque du pied : la capsule et la fiche du câble passent à travers
     POD_CUT = (POD_XF - POD_LEN - 2.0, POD_XF + 14.5, POD_YC - POD_W / 2 - POD_FILLET - 2.0, POD_YC + POD_W / 2 + POD_FILLET + 2.0)
 parts['coque'] = shell
@@ -524,6 +553,7 @@ to_print = {
     'coque': lambda tr: tr,
     'cadre': lambda tr: xform(tr, rot_y(180), [0, 0, SD + FT]),
     'pied': lambda tr: tr,
+    'capsule': lambda tr: xform(tr, rot_x(180)),     # à plat sur sa base, dôme vers le haut
 }
 for name, solids in parts.items():
     tr = to_print[name](np.concatenate(solids))
@@ -551,6 +581,8 @@ scene = {
     'carte': (world_shell(np.concatenate(pcb)), 'pcb', 0.3),
     'pied': (xform(np.concatenate(parts['pied']), M, O), 'stand', -0.6),
 }
+if 'capsule' in parts:
+    scene['capsule'] = (world_shell(np.concatenate(parts['capsule'])), 'shell', -0.25)
 ex3 = (TO3 @ n).tolist()
 out = {'explode_dir': ex3, 'parts': {}}
 for k, (tr, mat, e) in scene.items():
