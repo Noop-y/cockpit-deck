@@ -161,7 +161,9 @@ M = np.column_stack([ex, t, -n])         # repère plaque -> monde
 INSET = 19.5                             # le pied est 19,5 mm plus étroit que la coque de chaque côté
 L_ST, W_ST, PT = 92.0, OW - 2 * INSET, 4.0
 
-RIBS_X = (-W_ST / 2 + 2.0, -43.0, 38.0, W_ST / 2 - 7.0)      # 4 nervures de 5 mm
+RIB_W = 5.0
+_xe = W_ST / 2 - 2.0 - RIB_W / 2                                # centre des nervures du bord
+RIBS_X = tuple(xc - RIB_W / 2 for xc in (-_xe, -_xe / 3, _xe / 3, _xe))   # 4 nervures de 5 mm, régulièrement espacées
 HEX_R, HEX_WALL = 4.6, 2.2
 
 
