@@ -17,6 +17,8 @@ Un espace dont `layout` vaut `"player"` (Spotify) n'a pas de cases : l'écran af
 
 Réglages de navigation dans `data.device` : `swipe` (glisser gauche/droite = page suivante/précédente de l'espace, ou de l'accueil), `swipeV` (glisser haut/bas = espace suivant/précédent dans l'ordre de `home`, en arrivant sur la première page), `loop` (après le dernier, revenir au premier). Dans un espace `player`, glisser gauche/droite change de morceau au lieu de page.
 
+Bouton Accueil : chaque espace affiche en haut à gauche un carré (contour et maison de la couleur `look.accent`). Le toucher ramène à l'écran d'accueil (liste `home`).
+
 ### `media` — le morceau en cours, envoyé en direct
 
 Envoyé dès que l'écran est relié, puis à chaque changement (morceau, lecture/pause).

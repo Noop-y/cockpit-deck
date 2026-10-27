@@ -239,6 +239,10 @@ function deckCell(c, look, opts) {
   if (prog != null) inner += `<div class="bar" style="width:${prog}%;background:${look.accent}"></div>`;
   return `<div class="dcell" style="background:${fill};border:${edge}${photoBg ? ';backdrop-filter:blur(6px)' : ''}" ${opts && opts.attrs ? opts.attrs : ''}>${inner}</div>`;
 }
+// bouton Accueil : un carré bien visible en haut à gauche de chaque espace
+function homeBtn(look, sim) {
+  return `<div class="dhomebtn" style="border-color:${look.accent}" title="Écran d\u2019accueil" ${sim ? 'data-sim="home"' : ''}>${svg('maison', 24, look.accent, 2)}</div>`;
+}
 function deckFrame(look, inner, extra, overlay) {
   let bg = extra || '';
   if (!extra && look.bgType === 'photo' && look.bgPhoto) bg = `<div class="bgph" style="background-image:url('${look.bgPhoto}')"></div><div class="bgdim" style="opacity:${look.bgDim || 0}"></div>`;
@@ -277,7 +281,7 @@ function deckPlayer(space, sim) {
   const info = has
     ? `<div class="pinfo"><div class="ptitle disp">${esc(m.title)}</div><div class="partist">${esc(m.artist)}</div>${m.album ? `<div class="palbum">${esc(m.album)}</div>` : ''}<div class="pstate" style="color:${look.accent}">${playing ? 'En lecture' : 'En pause'}</div></div>`
     : `<div class="pinfo"><div class="ptitle disp">Rien en lecture</div><div class="partist">${esc(m.unavailable ? (m.message || 'Lecteur indisponible') : 'Lancez un morceau dans Spotify')}</div></div>`;
-  const tabs = `<div class="dtabs"><div class="dtab home" ${sim ? 'data-sim="home"' : ''}>${svg('maison', 16, '#C9D6E2')}</div></div>`;
+  const tabs = `<div class="dtabs">${homeBtn(look, sim)}</div>`;
   const inner = `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div>
     <div class="dplayer${sim && sim.anim ? ' ' + sim.anim : ''}">${btn('prev', 'pside')}<div class="pmid">${cover}${info}</div>${btn('next', 'pside')}</div>
     <div class="pctrl">${o.volume !== false ? btn('vmoins', 'pvol') : ''}${btn('play', 'pbig', playing ? 'pause' : 'play')}${o.volume !== false ? btn('vplus', 'pvol') : ''}</div>`;
@@ -304,7 +308,7 @@ function deckSound(space, pageIdx, sim) {
   const sel = sbSel(space, sim);
   const none = !SOUND_DESTS.some(d => sel[d.k]);
   const vol = sim && sim.sbVol != null ? sim.sbVol : cfg.audio.master;
-  const tabs = `<div class="dtabs"><div class="dtab home" ${sim ? 'data-sim="home"' : ''}>${svg('maison', 16, '#C9D6E2')}</div>` +
+  const tabs = `<div class="dtabs">${homeBtn(look, sim)}` +
     space.pages.map((p, i) => `<div class="dtab disp" ${sim ? `data-sim="page" data-i="${i}"` : ''} style="${i === pageIdx ? `border-color:${look.accent};color:${look.accent}` : ''}">${esc(p.name)}</div>`).join('') + '</div>';
   const top = `<div class="dtop">${tabs}<div class="sbtop"><div class="sbbtn vol" ${sim ? 'data-simsb="vol"' : ''}>${pIcon('vplus')}${vol} %</div><div class="sbbtn stop" ${sim ? 'data-simsb="stop"' : ''}><i></i>Stop tout</div></div></div>`;
   const dests = SOUND_DESTS.map(d => {
@@ -362,7 +366,7 @@ function deckPage(space, pageIdx, sim) {
   if (isSoundboard(space)) return deckSound(space, pageIdx, sim);
   const look = lookFor(space);
   const page = space.pages[pageIdx] || space.pages[0];
-  const tabs = `<div class="dtabs"><div class="dtab home" ${sim ? 'data-sim="home"' : ''}>${svg('maison', 16, '#C9D6E2')}</div>` +
+  const tabs = `<div class="dtabs">${homeBtn(look, sim)}` +
     space.pages.map((p, i) => `<div class="dtab disp" ${sim ? `data-sim="page" data-i="${i}"` : ''} style="${i === pageIdx ? `border-color:${look.accent};color:${look.accent}` : ''}">${esc(p.name)}</div>`).join('') + '</div>';
   const cells = page.cells.map((c, i) => {
     const st = sim ? sim.cells[`${space.id}|${pageIdx}|${i}`] || {} : {};
