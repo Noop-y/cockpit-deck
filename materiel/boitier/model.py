@@ -43,7 +43,7 @@ USB_CUT = (0.0, 16.0)            # port USB-C, environ au milieu ; 16 mm de larg
 BTN_CUT = (19.0, 10.0)           # SUPPOSE : bouton marche/arrêt, au-dessus du port
 CABLE = None                     # fenêtre câbles dans le fond : supprimée (l'USB-C sort par le côté). Ancienne valeur : (60.0, 16.0, 0.0, -5.0)
 
-# option (hypothèse) : prise USB-C au dos, dans une capsule collée (DECK_USB_ARRIERE=1)
+# « option de déport USB-C » (pas dans le boîtier par défaut) : prise USB-C au dos, dans une capsule collée (DECK_USB_ARRIERE=1)
 REAR_USB = os.environ.get('DECK_USB_ARRIERE') == '1'
 POD_YC = 0.0                         # hauteur de la capsule sur le dos : au milieu
 POD_XF, POD_LEN = -40.0, 21.0        # face de la prise (x), longueur totale vers le bord
@@ -151,7 +151,7 @@ for sx in (-1, 1):                       # appuis de l'écran (4 patins)
         shell.append(box(x0, x1, sy * 35 - 7.5, sy * 35 + 7.5, TB - 0.2, SD - GT))
 for x, y in MOUNT:                        # bossages des inserts du pied (sous l'écran, à côté de la carte)
     shell.append(tube(4.0, INSERT_D / 2, TB - 0.2, SD - GT - 0.4, x, y))
-# ---- option (hypothèse) : prise USB-C déportée dans une capsule collée au dos ----
+# ---- option de déport USB-C : prise USB-C dans une capsule collée au dos ----
 # Activer avec DECK_USB_ARRIERE=1. Une rallonge nappe USB-C relie la carte à une prise femelle logée dans la capsule.
 # La capsule est une pièce à part (capsule.stl) : imprimée à plat sur sa base, sa forme arrondie sort lisse, sans support.
 POD_CUT = None

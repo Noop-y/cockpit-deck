@@ -16,3 +16,18 @@
 | Câble USB-C magnétique orange **avec transfert de données** (480 Mbit/s mini), tête qui reste dans la prise | 1 | retenu : AUFU 240 W magnétique 16 broches, 1,8 m, données — https://www.amazon.fr/AUFU-Magn%C3%A9tique-Transfert-Donn%C3%A9es-Samsung/dp/B0D962HKSB (vérifier la couleur à la commande ; mesurer la tête aimantée pour ajuster l'ouverture USB du boîtier) |
 | Adaptateur USB-A → USB-C | 0 ou 1 | seulement si le PC n'a pas de prise USB-C libre |
 | Filament : gris (coque et cadre), orange (pied) | — | PETG conseillé pour le cadre (clips plus souples) |
+
+## Option de déport USB-C (pas dans le boîtier par défaut)
+
+Le câble se branche au dos, dans une petite capsule arrondie collée entre la 1re et la 2e nervure du pied, au lieu du côté gauche. Une rallonge plate (nappe) relie la prise de la carte à une prise femelle logée dans la capsule.
+
+- Fabriquer les pièces avec l'option : `DECK_USB_ARRIERE=1 python3 model.py <dossier>` → en plus des 3 pièces, `capsule.stl` (imprimée à plat sur sa base, sans support), et une fente dans le fond de la coque pour la nappe.
+- Sans la variable, le boîtier reste celui par défaut (prise sur le côté).
+- Le creux de la capsule (9,6 mm de large) sera ajusté à la petite carte de la prise femelle une fois la nappe reçue et mesurée.
+
+| Pièce | Nombre | Référence proposée |
+|---|---|---|
+| Nappe USB-C plate, mâle **coudé à 90°** → femelle droite, 10 cm | 1 | https://www.amazon.fr/C%C3%A2ble-Type-C-coud%C3%A9-synchronisation-Chargement/dp/B07MKY2C1S (le sens du coude est à vérifier avec la carte) |
+| Variante plus longue si besoin : nappe plate USB-C mâle → femelle, 20 cm | 0 ou 1 | https://www.amazon.fr/JSADZKJ-C%C3%A2ble-plat-USB-C-femelle/dp/B0GSXZ1SYJ |
+| Colle gel pour pièces imprimées (PETG) | 1 | https://www.amazon.fr/instantan%C3%A9e-impression-anti-dess%C3%A8chement-KRAFTPROTZ-%C3%A9tanche/dp/B0CBSKGFLM |
+| Câble AUFU magnétique | — | le même que pour le boîtier normal : sa tête aimantée se met dans la prise de la capsule |
