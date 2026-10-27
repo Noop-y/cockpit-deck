@@ -141,14 +141,43 @@ for x, y in MOUNT:                        # bossages des inserts du pied (sous l
 # ---- option (hypothèse) : prise USB-C déportée dans une bosse au dos, tournée vers le bas ----
 # Activer avec DECK_USB_ARRIERE=1. Une rallonge nappe USB-C relie la carte à une prise femelle vissée dans la bosse.
 REAR_USB = os.environ.get('DECK_USB_ARRIERE') == '1'
+POD_CUT = None
 if REAR_USB:
-    BX, BW, BD = -(OW / 2 - 10.5), 16.0, 9.0           # bosse : centre x (côté gauche, hors du pied), largeur, saillie
-    BY0, BY1, BPORT = 14.0, 42.0, 8.0                   # bosse de y = 14 à 42 ; la prise occupe les 8 mm du bas
-    P_BUMP = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]], float)   # (a, b, c) -> (x = a, y = c, z = -b)
-    prof = rrect(BW, BD + 0.3, 3.0, BX, BD / 2 - 0.15)
-    port = rrect(9.2, 3.6, 1.6, BX, BD / 2 + 0.5)      # ouverture d'une prise USB-C femelle (8,9 × 3,3 mm)
-    shell.append(xform(extrude(prof, [port], BY0, BY0 + BPORT), P_BUMP))
-    shell.append(xform(extrude(prof, [], BY0 + BPORT, BY1), P_BUMP))
+    # capsule profilée entre la 1re et la 2e nervure du pied (côté gauche), prise tournée vers le centre (+x)
+    POD_YC = 20.0                        # hauteur de la capsule sur le dos (repère coque)
+    POD_XF, POD_LEN = -40.0, 21.0        # face de la prise (x), longueur totale vers le bord
+    POD_W, POD_H, POD_R = 17.0, 11.0, 5.5    # largeur, saillie, arrondi du dessus
+    POD_FILLET = 2.5                     # raccord arrondi avec le dos
+    PORT_Z = 7.0                         # profondeur de l'axe de la prise sous le dos
+    P_POD = np.array([[0, 0, -1], [1, 0, 0], [0, -1, 0]], float)   # (a, b, c) -> (x = -c, y = a, z = -b)
+
+    def pod_profile(sw, sh):
+        """Section de la capsule (a = y, b = saillie) : flancs droits, dessus arrondi, pied évasé en congé."""
+        w, h, r = POD_W / 2 * sw, POD_H * sh, min(POD_R * sh, POD_W / 2 * sw - 0.5)
+        f = POD_FILLET * min(sw, 1.0)
+        pts = [(POD_YC - w - f, -0.3)]
+        for t in np.linspace(0, np.pi / 2, 7):                # congé concave du pied (gauche)
+            pts.append((POD_YC - w - f + f * np.sin(t), f - f * np.cos(t)))
+        for t in np.linspace(np.pi, np.pi / 2, 9):            # arrondi du dessus (gauche)
+            pts.append((POD_YC - w + r + r * np.cos(t), h - r + r * np.sin(t)))
+        for t in np.linspace(np.pi / 2, 0, 9):                # arrondi du dessus (droite)
+            pts.append((POD_YC + w - r + r * np.cos(t), h - r + r * np.sin(t)))
+        for t in np.linspace(np.pi / 2, 0, 7):                # congé concave du pied (droite)
+            pts.append((POD_YC + w + f - f * np.sin(t), f - f * np.cos(t)))
+        pts.append((POD_YC + w + f, -0.3))
+        return poly(pts)
+
+    port = rrect(9.2, 3.6, 1.6, POD_YC, PORT_Z)           # ouverture d'une prise USB-C femelle (8,9 × 3,3 mm)
+    c0 = -POD_XF
+    shell.append(xform(extrude(pod_profile(1.0, 1.0), [port], c0, c0 + 9.0), P_POD))   # partie de la prise
+    n_ = 14
+    for i in range(n_):                                    # queue qui s'affine vers le bord (profil d'ellipse)
+        t0, t1 = i / n_, (i + 1) / n_
+        sc = np.sqrt(max(1 - ((t0 + t1) / 2) ** 2, 0.0))
+        za, zb2 = c0 + 9.0 + t0 * (POD_LEN - 9.0), c0 + 9.0 + t1 * (POD_LEN - 9.0)
+        shell.append(xform(extrude(pod_profile(0.35 + 0.65 * sc, 0.3 + 0.7 * sc), [], za, zb2), P_POD))
+    # ouverture dans la plaque du pied : la capsule et la fiche du câble passent à travers
+    POD_CUT = (POD_XF - POD_LEN - 2.0, POD_XF + 14.5, POD_YC - POD_W / 2 - POD_FILLET - 2.0, POD_YC + POD_W / 2 + POD_FILLET + 2.0)
 parts['coque'] = shell
 
 # ---------- CADRE AVANT (repère coque, z de SD à SD+FT) ----------
@@ -289,6 +318,8 @@ def hex_ok(cx, cy):
     for x0 in RIBS_X:
         if x0 - HEX_R - 2.0 < cx < x0 + 5.0 + HEX_R + 2.0:
             return False
+    if POD_CUT and POD_CUT[0] - HEX_R - 2.4 < cx < POD_CUT[1] + HEX_R + 2.4 and POD_CUT[2] + U0 - HEX_R - 2.4 < cy < POD_CUT[3] + U0 + HEX_R + 2.4:
+        return False
     return True
 
 
@@ -305,7 +336,8 @@ for j in range(-2, 20):
 
 stand = [extrude(rrect(W_ST, L_ST, 2.0, 0.0, L_ST / 2),
                  [circle(SCREW_D / 2, x, y + U0) for x, y in MOUNT]
-                 + ([rrect(CABLE[0] + 4, CABLE[1] + 4, 2.0, CABLE[2], CABLE[3] + U0)] if CABLE else []) + hexes,
+                 + ([rrect(CABLE[0] + 4, CABLE[1] + 4, 2.0, CABLE[2], CABLE[3] + U0)] if CABLE else [])
+                 + ([rrect(POD_CUT[1] - POD_CUT[0], POD_CUT[3] - POD_CUT[2], 4.0, (POD_CUT[0] + POD_CUT[1]) / 2, (POD_CUT[2] + POD_CUT[3]) / 2 + U0)] if POD_CUT else []) + hexes,
                  0.0, PT)]
 
 
