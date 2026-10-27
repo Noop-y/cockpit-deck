@@ -77,7 +77,21 @@ SLOT_OUT = HOOK_X0 + HOOK_T + 0.2
 CATCH_OUT = HOOK_X0 + HOOK_T + BARB + 0.4
 Z_REC = SD - HOOK_L - 0.2                # fond de la fente
 Z_LEDGE = SD - HOOK_L + 0.9              # le crochet s'accroche sous ce rebord (dans la paroi, invisible)
+CATCH_MID = (SLOT_OUT + CATCH_OUT) / 2   # rebord en pente (marche) : le clip se déclipse en tirant, sans outil
+PRY_W, PRY_D, PRY_H = 10.0, 0.8, 1.2     # encoche d'ouverture au milieu du bord du bas, juste sous le rebord du cadre
 assert SLOT_IN - PW / 2 >= 1.0 and OW / 2 - CATCH_OUT >= 3.0, 'clip mal placé dans la paroi'
+
+
+def bottom_notch(loop, Y, depth, x0, x1):
+    """Creuse une encoche (profondeur depth, de x0 à x1) dans le bord du bas (y = -Y) d'un contour."""
+    out, n = [], len(loop)
+    for i in range(n):
+        p_, q_ = loop[i], loop[(i + 1) % n]
+        out.append((p_[0], p_[1]))
+        if abs(p_[1] + Y) < 1e-6 and abs(q_[1] + Y) < 1e-6 and min(p_[0], q_[0]) < x0 and x1 < max(p_[0], q_[0]):
+            a_, b_ = (x0, x1) if q_[0] > p_[0] else (x1, x0)
+            out += [(a_, -Y), (a_, -Y + depth), (b_, -Y + depth), (b_, -Y)]
+    return poly(out)
 
 
 def slots(x_out):
@@ -95,9 +109,12 @@ inset = rrect(OW - 2 * RW, OH - 2 * RW, R - RW)
 shell.append(extrude(lower, [], TB - 0.4, Z_INS))
 shell.append(extrude(lower, ins, Z_INS, Z_REC))
 shell.append(extrude(lower, ins + slots(CATCH_OUT), Z_REC, Z_LEDGE))
-shell.append(extrude(lower, ins + slots(SLOT_OUT), Z_LEDGE, CUT_TOP))
+Z_PRY = SD - RD - PRY_H
+shell.append(extrude(lower, ins + slots(CATCH_MID), Z_LEDGE, Z_LEDGE + 0.3))
+shell.append(extrude(lower, ins + slots(SLOT_OUT), Z_LEDGE + 0.3, Z_PRY))
+shell.append(extrude(bottom_notch(lower, OH / 2, PRY_D, -PRY_W / 2, PRY_W / 2), ins + slots(SLOT_OUT), Z_PRY, CUT_TOP))
 shell.append(extrude(island, [], TB - 0.4, CUT_TOP))
-shell.append(extrude(outer, [rect(PW, PH)] + ins + slots(SLOT_OUT), CUT_TOP - 0.2, SD - RD))
+shell.append(extrude(bottom_notch(outer, OH / 2, PRY_D, -PRY_W / 2, PRY_W / 2), [rect(PW, PH)] + ins + slots(SLOT_OUT), CUT_TOP - 0.2, SD - RD))
 shell.append(extrude(inset, [rect(PW, PH)] + ins + slots(SLOT_OUT), SD - RD, SD))
 for sx in (-1, 1):                       # appuis de l'écran (4 patins)
     for sy in (-1, 1):
@@ -199,8 +216,9 @@ for sx in (-1, 1):                             # clips cachés : bras dans la fe
         xd_a, xd_b = sorted([sx * (HOOK_X0 + HOOK_T), sx * (HOOK_X0 + HOOK_T + BARB / 2)])
         y0_, y1_ = yc - HOOK_W / 2, yc + HOOK_W / 2
         frame.append(box(xa, xb, y0_, y1_, SD - HOOK_L, SD))
-        frame.append(box(xc_a, xc_b, y0_, y1_, SD - HOOK_L + 0.3, SD - HOOK_L + 0.8))
-        frame.append(box(xd_a, xd_b, y0_, y1_, SD - HOOK_L, SD - HOOK_L + 0.3))
+        frame.append(box(xc_a, xc_b, y0_, y1_, SD - HOOK_L + 0.25, SD - HOOK_L + 0.55))   # crochet : pentes des deux côtés
+        frame.append(box(xd_a, xd_b, y0_, y1_, SD - HOOK_L, SD - HOOK_L + 0.25))          # (se clipse et se déclipse)
+        frame.append(box(xd_a, xd_b, y0_, y1_, SD - HOOK_L + 0.55, SD - HOOK_L + 0.8))
 parts['cadre'] = frame
 
 # ---------- PIED (repère plaque : x, u le long de la pente, w sous la pente) ----------
