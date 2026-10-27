@@ -347,13 +347,30 @@ def overhangs(holes2d):
 
 rib_holes = lamelles() if VARIANT == 'lamelles' else treillis()
 OVERHANGS = overhangs(rib_holes)
-rib2d = poly([(yf, 0.0), (YB, 0.0), (YB, zb), (yf, zf)])
+BUMP_DEPTH = 1.0                         # profondeur du logement des patins (voir semelles)
+# la nervure s'arrête 1 mm au-dessus du bureau : seules les semelles (et leurs patins) touchent le bureau
+rib2d = poly([(yf, BUMP_DEPTH), (YB, BUMP_DEPTH), (YB, zb), (yf, zf)])
+assert zf > BUMP_DEPTH + 0.5, 'nervure trop basse à l’avant'
 P_RIB = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]], float)        # (a,b,c) -> (x=c, y=a, z=b)
 world_bits = []
 for x0 in RIBS_X:
     world_bits.append(xform(extrude(rib2d, rib_holes, x0, x0 + 5.0), P_RIB))
 for wb in world_bits:                    # monde -> repère plaque
     stand.append(xform(wb, M.T, -M.T @ O))
+
+# ---------- semelles antidérapantes : 2 par nervure, avec un logement pour un patin silicone adhésif ----------
+PAD_W, PAD_L, PAD_H = 10.0, 14.0, 3.0    # semelle sous chaque bout de nervure
+BUMP_D = 8.4                             # patins silicone 8 × 2 mm : 1 mm dépasse sous la semelle
+y_front = yf + 1.0
+while ztop(y_front) < PAD_H + 1.0:       # la semelle avant commence là où la nervure est assez haute
+    y_front += 0.5
+PADS_Y = (y_front + PAD_L / 2, YB - 1.0 - PAD_L / 2)
+for x0 in RIBS_X:
+    xc = x0 + RIB_W / 2
+    for yc in PADS_Y:
+        outline = rrect(PAD_W, PAD_L, 2.0, xc, yc)
+        for pb in (extrude(outline, [circle(BUMP_D / 2, xc, yc)], 0.0, BUMP_DEPTH), extrude(outline, [], BUMP_DEPTH, PAD_H)):
+            stand.append(xform(pb, M.T, -M.T @ O))
 parts['pied'] = stand
 
 # ---------- contrôles ----------
@@ -409,6 +426,7 @@ with open(f'{OUT}/assembly.json', 'w') as fh:
 
 report['gravure'] = dict(largeur=round(LOGO + GAP + TW, 1), hauteur=LOGO, profondeur=ENGRAVE, y_centre=round(TOP_Y, 2))
 report['flancs'] = dict(variante=VARIANT, ouvertures=len(rib_holes), surplombs=OVERHANGS)
+report['semelles'] = dict(nombre=len(RIBS_X) * 2, y=[round(v, 1) for v in PADS_Y], patin='silicone adhésif 8 × 2 mm', logement=[BUMP_D, BUMP_DEPTH])
 report['cotes'] = dict(coque_ext=[round(OW, 2), round(OH, 2), round(SD, 2)], pied_larg=round(W_ST, 1), cadre_ep=FT, angle=ANGLE,
                        fenetre_cadre=[AW + 0.6, AH + 0.6], hauteur_max=round(float(max(
                            (xform(np.concatenate(parts['pied']), M, O)).reshape(-1, 3)[:, 2].max(),
