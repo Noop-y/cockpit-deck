@@ -27,7 +27,11 @@ PW, PH = GW + 2 * CLR, GH + 2 * CLR
 OW, OH = PW + 2 * WS, PH + 2 * WTB
 SD = TB + BACK + GT              # profondeur coque
 SX = PW / 2 + WS / 2             # x des vis du cadre
-SCREWS = [(sx * SX, sy * 30.0) for sx in (-1, 1) for sy in (-1, 1)]
+SCREW_M = 4.8                    # vis du cadre dans les coins : même distance (4,8 mm) du bord du côté et du bord du haut/bas
+SCREWS = [(sx * (OW / 2 - SCREW_M), sy * (OH / 2 - SCREW_M)) for sx in (-1, 1) for sy in (-1, 1)]
+# contrôle : l'insert garde au moins 1 mm de matière vers le logement de l'écran
+_dx = max(0.0, abs(SCREWS[0][0]) - PW / 2); _dy = max(0.0, abs(SCREWS[0][1]) - PH / 2)
+assert np.hypot(_dx, _dy) >= INSERT_D / 2 + 1.0, 'insert trop près du logement de l’écran'
 MX = 60.0                        # inserts du pied : rentrés sous l'écran (pied plus étroit que la coque)
 MOUNT = [(sx * MX, y) for sx in (-1, 1) for y in (-42.0, 37.0)]     # inserts au dos, dans des bossages
 # ouvertures côté gauche (vu de face) : (centre y, largeur) — d'après les photos Waveshare, à confirmer
