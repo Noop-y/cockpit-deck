@@ -10,8 +10,8 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const EventEmitter = require('events');
 
-const RES = { 720: [1280, 720], 1080: [1920, 1080], 1440: [2560, 1440] };
-const MBPS = { 720: 8, 1080: 15, 1440: 25 };
+const RES = { 720: [1280, 720], 1080: [1920, 1080], 1440: [2560, 1440], 2160: [3840, 2160] };
+const MBPS = { 720: 8, 1080: 15, 1440: 25, 2160: 45 };   // Mbit/s à 30 images/s (× 1,6 à 60 images/s)
 const SEG = 2;                       // durée d'un morceau de mémoire (s)
 const VIDEO_EXT = /\.(mp4|png)$/i;
 
@@ -104,13 +104,14 @@ class ClipRecorder extends EventEmitter {
     if (enc.id === 'nvenc') return ['-c:v', 'h264_nvenc', '-preset', 'p4', '-rc', 'vbr', '-b:v', b, '-maxrate', mx, '-bufsize', bs, '-g', g, '-forced-idr', '1'];
     if (enc.id === 'amf') return ['-c:v', 'h264_amf', '-usage', 'transcoding', '-quality', 'speed', '-rc', 'vbr_peak', '-b:v', b, '-maxrate', mx, '-bufsize', bs, '-g', g];
     if (enc.id === 'qsv') return ['-c:v', 'h264_qsv', '-preset', 'veryfast', '-b:v', b, '-maxrate', mx, '-bufsize', bs, '-g', g];
-    return ['-c:v', 'libx264', '-preset', 'veryfast', '-b:v', b, '-maxrate', mx, '-bufsize', bs, '-g', g, '-pix_fmt', 'yuv420p'];
+    // sans carte graphique, la 4K est très lourde pour le processeur : réglage le plus rapide
+    return ['-c:v', 'libx264', '-preset', this.conf.res >= 2160 ? 'ultrafast' : 'veryfast', '-b:v', b, '-maxrate', mx, '-bufsize', bs, '-g', g, '-pix_fmt', 'yuv420p'];
   }
 
   // ---------- réglages venus de l'interface ----------
   setConfig(c) {
     const n = Object.assign({}, this.conf, c || {});
-    n.res = +n.res || 1080; n.fps = +n.fps === 30 ? 30 : 60; n.dur = Math.max(10, Math.min(600, +n.dur || 60)); n.monitor = +n.monitor || 0;
+    n.res = RES[+n.res] ? +n.res : 1080; n.fps = +n.fps === 30 ? 30 : 60; n.dur = Math.max(10, Math.min(600, +n.dur || 60)); n.monitor = +n.monitor || 0;
     n.games = Array.isArray(n.games) ? n.games.filter(g => g && g.exe).map(g => ({ name: String(g.name || g.exe), exe: String(g.exe) })) : [];
     this.conf = n;
     this.tick();

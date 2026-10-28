@@ -62,3 +62,15 @@ test('enregistreur de clips : mémoire, clip, vidéo, liste, découpe', { skip: 
     if (sockDir) fs.rmSync(sockDir, { recursive: true, force: true });
   }
 });
+
+test('qualité 4K : taille d’image et débit', () => {
+  const r = new ClipRecorder({ ffmpeg: null, temp: os.tmpdir(), data: os.tmpdir(), videos: os.tmpdir(), scanScript: '', shell: {}, nativeImage: null });
+  r.setConfig({ res: 2160, fps: 60 });
+  assert.strictEqual(r.conf.res, 2160);
+  const nv = r.encArgs({ id: 'nvenc' });
+  assert.strictEqual(nv[nv.indexOf('-b:v') + 1], '72M');                 // 45 Mbit/s × 1,6 à 60 images/s
+  assert.ok(r.videoChain({ cap: 'dda', enc: { id: 'nvenc' }, mode: 'down' }, { kind: 'mon', idx: 0 }).includes('scale=3840:2160'));
+  assert.strictEqual(r.encArgs({ id: 'x264' })[3], 'ultrafast');         // sans carte graphique : le plus rapide
+  r.setConfig({ res: 999 });
+  assert.strictEqual(r.conf.res, 1080);                                   // valeur inconnue : retour à 1080p
+});

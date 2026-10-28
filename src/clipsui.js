@@ -7,7 +7,7 @@ let clipsRecent = [];                 // les 3 derniers fichiers (pour l'écran)
 ui.clipsTab = 'reglages'; ui.clipsLib = null; ui.clipsSel = null; ui.clipsFilter = 'tout'; ui.clipsGame = ''; ui.clipToast = null;
 
 // ---------- petits outils ----------
-const CLIP_MBPS = { 720: 8, 1080: 15, 1440: 25 };
+const CLIP_MBPS = { 720: 8, 1080: 15, 1440: 25, 2160: 45 };
 const clipDurLabel = (d) => { d = d == null ? cfg.clips.dur : d; const x = CLIP_DURS.find(k => k[0] === d); return x ? x[1] : d + ' s'; };
 const clipKeepText = (d) => { d = d == null ? cfg.clips.dur : d; return d < 60 ? `Garde les ${d} secondes d’avant` : (d === 60 ? 'Garde la minute d’avant' : `Garde les ${Math.round(d / 60)} minutes d’avant`); };
 const fmtClock = (s) => { if (s == null) return ''; s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
@@ -214,7 +214,8 @@ function viewClipsSettings() {
         ${radio('clips-src', 'ecran', c.src, 'Écran entier', 'Tout ce qui s’affiche sur l’écran principal.')}
         ${radio('clips-src', 'choisir', c.src, 'Choisir un écran', 'Si vous en avez plusieurs.', scrSel)}
         <h2 class="disp" style="margin-top:6px">Qualité</h2>
-        <div class="clchips">${chip('clips-res', 720, c.res, '720p')}${chip('clips-res', 1080, c.res, '1080p')}${chip('clips-res', 1440, c.res, '1440p')}</div>
+        <div class="clchips">${chip('clips-res', 720, c.res, '720p')}${chip('clips-res', 1080, c.res, '1080p')}${chip('clips-res', 1440, c.res, '1440p')}${chip('clips-res', 2160, c.res, '4K')}</div>
+        ${c.res === 2160 ? '<div class="small muted" style="line-height:1.5">4K : utile seulement si l’écran ou le jeu est lui-même en 4K. Les fichiers sont environ 3 fois plus gros qu’en 1080p, et il faut une carte graphique récente (NVIDIA, AMD ou Intel) pour que le jeu ne ralentisse pas.</div>' : ''}
         <div class="clchips">${chip('clips-fps', 30, c.fps, '30 images/s')}${chip('clips-fps', 60, c.fps, '60 images/s')}</div>
         <div class="small muted">Changer ce qu’on filme ou la qualité vide la mémoire : elle repart de zéro.</div></section>
       <section class="panel"><h2 class="disp">Son dans les clips</h2>

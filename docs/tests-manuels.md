@@ -16,6 +16,7 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] « Pendant un jeu » : la mémoire démarre seule au lancement de Star Citizen et s'arrête quand on le quitte.
 - [ ] Avec SteelSeries Sonar : « Le son du PC vient de » › Sonar – Stream, « Ma voix » coupée : Discord et la musique sont dans le clip.
 - [ ] ENREGISTRER puis ARRÊTER : un fichier « (vidéo) » de la bonne durée.
+- [ ] Qualité **4K** (avec un écran 4K) : clip net, le jeu ne ralentit pas ; un clip de 1 min à 60 images/s fait environ 540 Mo.
 - [ ] CAPTURE : une image PNG nette.
 - [ ] Mes clips : Couper le début / la fin, Renommer, Voir dans le dossier, Copier puis Ctrl+V dans Discord, Supprimer (part dans la corbeille).
 - [ ] Une case Clip dans Star Citizen (« Clips (clip, vidéo, capture) ») marche avec le bouton Tester.
