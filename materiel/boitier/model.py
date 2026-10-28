@@ -249,7 +249,7 @@ if REAR_USB:
     capsule.append(xform(loft([pod_ring(0.25 + 0.75 * s, s) for s in sc], cs), P_POD))
     parts['capsule'] = capsule
     # ouverture dans la plaque du pied : la capsule et la fiche du câble passent à travers
-    POD_CUT = (POD_XF - POD_LEN - 2.0, POD_XF + 14.5, POD_YC - POD_W / 2 - POD_FILLET - 2.0, POD_YC + POD_W / 2 + POD_FILLET + 2.0)
+    POD_CUT = (POD_XF - POD_LEN - 2.0, POD_XF + 14.5, POD_YC - POD_W / 2 - POD_FILLET - 4.0, POD_YC + POD_W / 2 + POD_FILLET + 4.0)
 parts['coque'] = shell
 
 # ---------- CADRE AVANT (repère coque, z de SD à SD+FT) ----------
@@ -433,15 +433,16 @@ def hex_ok(cx, cy):
 
 # goulotte du câble USB-C : de la capsule jusqu'au milieu du pied, à travers la nervure n° 2, pour que le câble
 # reste droit en sortant de la prise et redescende au milieu, sans pli serré
-CH_W = 12.0                              # largeur de la goulotte (le câble se pose dedans par l'arrière)
+CH_W = 20.0                              # largeur de la goulotte (le câble se pose dedans par l'arrière)
 CH_END = 0.0                             # bout de la goulotte : au milieu du pied
-CH_SEAT = PORT_Z + 3.0                   # fond de l'encoche des nervures, sous le dos (axe du câble + 3 mm)
+CH_SEAT = PORT_Z + 7.0                   # fond de l'encoche des nervures, sous le dos (axe du câble + 7 mm)
 
 
 def pod_cut_shape():
     """Ouverture de la plaque : la capsule (rectangle arrondi) + la goulotte vers le milieu, en un seul contour."""
     x0, x1, y0, y1 = POD_CUT[0], POD_CUT[1], POD_CUT[2] + U0, POD_CUT[3] + U0
     yc, r, rr = POD_YC + U0, CH_W / 2, 4.0
+    assert y0 + rr + 0.5 < yc - r and yc + r < y1 - rr - 0.5, 'goulotte plus large que l’ouverture de la capsule'
     pts = []
     def arc(cx, cy, a0, a1, rad, n=8):
         for k in range(n + 1):
