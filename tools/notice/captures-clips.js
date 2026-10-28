@@ -10,7 +10,7 @@ const STUB = `
     loadConfig: async () => store, saveConfig: async (c) => { store = JSON.parse(JSON.stringify(c)); return true; },
     createBackup: async () => 'x', listBackups: async () => [], readBackup: async () => null, openBackupsFolder: async () => null,
     exportSpace: async () => null, importSpace: async () => null, chooseExe: async () => null,
-    runApp: async () => ({ ok: true, message: '' }), version: async () => '1.1.0', env: async () => ({}), setStartWithWindows: async (on) => on,
+    runApp: async () => ({ ok: true, message: '' }), version: async () => '1.1.1', env: async () => ({}), setStartWithWindows: async (on) => on,
     setShortcuts: async () => ({}), onShortcut: () => {},
     discordConnect: async () => ({ status: 'off' }), discordDisconnect: async () => ({ status: 'off' }), discordState: async () => ({ status: 'off' }),
     discordRun: async () => ({ ok: true, message: '' }), onDiscordState: () => {},
@@ -51,7 +51,7 @@ const STUB = `
   await p.dispatchEvent('#sim [data-simclip="dur"]', 'pointerdown'); await p.waitForTimeout(200);
   console.log('dur after', await p.evaluate(() => cfg.clips.dur));
   // case clip dans Star Citizen
-  await p.evaluate(() => { ui.modal = null; const s = cfg.spaces[0]; s.pages[0].cells[14] = cell('Clip', 'retour', { type: 'clip', op: 'clip' }, { mode: 'tap', holdMs: 1500 }, '#FF6B79'); ui.spaceId = s.id; ui.page = 0; ui.cell = 14; ui.view = 'editeur'; commit(); });
+  await p.evaluate(() => { ui.modal = null; const s = cfg.spaces.find(s => s.name === 'Star Citizen'); s.pages[0].cells[14] = cell('Clip', 'retour', { type: 'clip', op: 'clip' }, { mode: 'tap', holdMs: 1500 }, '#FF6B79'); ui.spaceId = s.id; ui.page = 0; ui.cell = 14; ui.view = 'editeur'; commit(); });
   await p.setViewportSize({ width: 1320, height: 1080 }); await p.waitForTimeout(200);
   await p.waitForTimeout(400);
   await p.screenshot({ path: OUT + 'clips-case.png' });

@@ -33,7 +33,7 @@ const STUB = `
   });
   await shot('espaces', { fullPage: false });
   // éditeur Star Citizen, case sélectionnée
-  const sc = await p.evaluate(() => cfg.spaces[0].id);
+  const sc = await p.evaluate(() => cfg.spaces.find(s => s.name === 'Star Citizen').id);
   await p.click(`[data-act="open-space"][data-id="${sc}"]`); await p.waitForTimeout(200);
   await p.click('[data-act="cell"][data-i="1"]'); await shot('editeur');
   await p.click('[data-act="picto-open"]'); await shot('picto'); await p.keyboard.press('Escape');

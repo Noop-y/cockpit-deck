@@ -52,7 +52,7 @@ th { background: #F1F4F7; font-weight: 600; }
     <h1>Notice d’utilisation du logiciel</h1>
     <p>Préparez vos espaces, vos pages et vos cases sur le PC, puis envoyez-les sur l’écran tactile The Deck pour piloter vos jeux, votre bureau, votre stream, Discord et votre musique.</p>
   </div>
-  <div class="meta">Logiciel version 1.1.0 · octobre 2026</div>
+  <div class="meta">Logiciel version 1.1.1 · octobre 2026</div>
 </div>
 
 <div class="section">
@@ -95,8 +95,8 @@ th { background: #F1F4F7; font-weight: 600; }
     <li>En bas de la page, dans <b>Artifacts</b>, cliquez sur <b>The-Deck-Windows</b>. Un fichier zip se télécharge.</li>
     <li>Décompressez-le. Vous y trouvez deux fichiers :
       <ul>
-        <li><span class="k">The-Deck-Installation-1.1.0.exe</span> : installe le logiciel, avec un raccourci sur le bureau. <b>C’est celui à utiliser.</b></li>
-        <li><span class="k">The-Deck-Portable-1.1.0.exe</span> : se lance directement, sans installation.</li>
+        <li><span class="k">The-Deck-Installation-1.1.1.exe</span> : installe le logiciel, avec un raccourci sur le bureau. <b>C’est celui à utiliser.</b></li>
+        <li><span class="k">The-Deck-Portable-1.1.1.exe</span> : se lance directement, sans installation.</li>
       </ul></li>
     <li>Lancez l’installation et suivez les étapes.</li>
   </ol>
@@ -172,7 +172,20 @@ th { background: #F1F4F7; font-weight: 600; }
     <tr><td><b>Discord</b></td><td>Voir le chapitre 10.</td></tr>
     <tr><td><b>Changer de page</b></td><td>Aller à une autre page de l’espace, ou revenir à l’accueil.</td></tr>
   </table>
-  <div class="tip"><b>Astuces</b>Faites glisser une case sur une autre pour les échanger. Le bouton <b>Tester</b> essaie tout de suite les actions faites par le PC (appli, OBS, Discord). Tout est enregistré automatiquement.</div>
+  <div class="tip"><b>Astuces</b>Le bouton <b>Tester</b> essaie tout de suite les actions faites par le PC (appli, OBS, Discord, clips). Tout est enregistré automatiquement.</div>
+  <h3>Déplacer une case</h3>
+  <p>Restez appuyé sur une case (souris ou doigt) : elle se soulève. Gardez appuyé, faites-la glisser, puis relâchez à la place voulue : les deux cases échangent leur place. Relâchée sur un <b>onglet de page</b>, elle part dans cette page, à la première place libre. Ça ne marche que dans le logiciel, pas sur l’écran du Deck.</p>
+  <figure class="half"><img src="img/deplacer.png" alt="Une case déplacée dans l’éditeur"><figcaption>La case « VTOL » soulevée, en train d’être posée sur une autre place.</figcaption></figure>
+  <h3>Favoris</h3>
+  <p>L’espace <b>Favoris</b> (étoile, en premier sur l’accueil) rassemble vos cases préférées, quel que soit leur espace : une touche de Star Citizen, le micro Discord, un clip, un son de la soundboard…</p>
+  <ol>
+    <li>Ouvrez l’espace d’origine et cliquez sur la case.</li>
+    <li>En bas de ses réglages, cliquez sur <b>☆ Ajouter aux favoris</b>. Une copie va tout de suite dans Favoris, à la première place libre (une nouvelle page est créée si besoin). Le bouton devient <b>★ Dans les favoris</b> ; un nouveau clic retire la copie.</li>
+    <li>Dans l’espace Favoris, rangez les cases comme vous voulez (voir « Déplacer une case »).</li>
+  </ol>
+  <div class="tip"><b>Bon à savoir</b>La copie est indépendante : si vous modifiez la case d’origine, retirez-la des favoris puis ajoutez-la à nouveau. Un son copié part toujours vers les sorties cochées sur la soundboard au moment de la copie.</div>
+  <figure class="half"><img src="img/fav-bouton.png" alt="Bouton Ajouter aux favoris"><figcaption>Le bouton, en bas des réglages de la case.</figcaption></figure>
+  <figure><img src="img/favoris.png" alt="L’espace Favoris"><figcaption>L’espace Favoris : des cases de Star Citizen, Discord, Clips et Soundboard réunies.</figcaption></figure>
   <figure><img src="img/combos.png" alt="Combinaisons photo, pictogramme et nom"><figcaption>Photo + pictogramme + nom, photo + nom, photo + pictogramme, photo seule, nom seul, et deux contours de couleur (rose, vert).</figcaption></figure>
   <figure class="half"><img src="img/picto.png" alt="Catalogue de pictogrammes"><figcaption>Le catalogue de pictogrammes, avec recherche et catégories.</figcaption></figure>
 </div>
@@ -370,7 +383,7 @@ th { background: #F1F4F7; font-weight: 600; }
   <ul>
     <li><b>Retour en arrière</b> : la durée gardée par CLIP. À côté, la place prise sur le disque pendant le jeu, et la taille d’un clip. La mémoire s’efface au fur et à mesure : elle ne grossit jamais.</li>
     <li><b>Ce qu’on filme</b> : <b>Le jeu</b> (la fenêtre du jeu en cours, sans les notifications ni Discord ; sans jeu lancé, l’écran principal), <b>Écran entier</b>, ou <b>Choisir un écran</b>.</li>
-    <li><b>Qualité</b> : 720p, 1080p ou 1440p, à 30 ou 60 images par seconde. Changer ce réglage vide la mémoire.</li>
+    <li><b>Qualité</b> : 1080p, 1440p, 1800p ou 4K, à 60, 120 ou 144 images par seconde. 1800p, 4K, 120 et 144 images/s ne servent que si votre écran (et le jeu) va jusque-là ; les fichiers sont alors bien plus gros. Bon compromis pour un jeu rapide : 1440p à 144 images/s. Changer ce réglage vide la mémoire.</li>
     <li><b>Son dans les clips</b> : le son du PC, votre voix, et les sons de la soundboard joués avec la case « Stream ».</li>
     <li><b>Mémoire en marche</b> : <b>Toujours</b>, <b>Pendant un jeu</b> (quand un jeu de « Mes espaces » est lancé, d’après le programme indiqué dans l’espace), ou <b>Jamais</b> (seule ENREGISTRER filme).</li>
     <li><b>Dossier</b> : l’ouvrir, ou en choisir un autre.</li>
