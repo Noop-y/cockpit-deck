@@ -14,20 +14,19 @@
 | Inserts laiton à chaud M3 (longueur 4 à 6 mm) | 8 | ✅ déjà en stock — 4 pour les pattes de l'écran, 4 pour le pied |
 | Vis M3 cruciformes à tête plate (cylindrique), tête Ø 5,6 mm max × 2,2 mm max | 4 (pattes) + 4 (pied) | ✅ déjà en stock — pattes : M3 × 8 mm (la tête se loge dans une poche sous la façade) ; pied : M3 × 10 mm |
 | Écran Waveshare ESP32-P4-WIFI6-Touch-LCD-7B (7 pouces, 1024 × 600) | 1 | retenu |
-| Câble USB-C magnétique orange **avec transfert de données** (480 Mbit/s mini), tête qui reste dans la prise | 1 | retenu : AUFU 240 W magnétique 16 broches, 1,8 m, données — https://www.amazon.fr/AUFU-Magn%C3%A9tique-Transfert-Donn%C3%A9es-Samsung/dp/B0D962HKSB (vérifier la couleur à la commande ; mesurer la tête aimantée pour ajuster l'ouverture USB du boîtier) |
+| Câble USB-C magnétique orange **avec transfert de données** (480 Mbit/s mini), tête qui reste dans la prise | 1 | retenu : AUFU 240 W magnétique 16 broches, 1,8 m, données — https://www.amazon.fr/AUFU-Magn%C3%A9tique-Transfert-Donn%C3%A9es-Samsung/dp/B0D962HKSB (vérifier la couleur à la commande ; la tête aimantée reste dans la prise de la capsule, au dos) |
 | Adaptateur USB-A → USB-C | 0 ou 1 | seulement si le PC n'a pas de prise USB-C libre |
 | Filament : gris (coque, façade, pattes), orange (pied) | — | PETG conseillé pour la façade (clips plus souples) et les pattes |
 
-## Option de déport USB-C (pas dans le boîtier par défaut)
+## Déport USB-C (validé le 28/10/2026)
 
-Le câble se branche au dos, dans une petite capsule arrondie collée entre la 1re et la 2e nervure du pied, au lieu du côté gauche. Une rallonge plate (nappe) relie la prise de la carte à une prise femelle logée dans la capsule.
+Le câble se branche au dos, dans une petite capsule arrondie collée entre la 1re et la 2e nervure du pied. La fenêtre USB du côté gauche est rebouchée (il reste dedans une niche pour la fiche coudée de la nappe ; la fenêtre du bouton marche/arrêt reste ouverte). Une nappe USB-C relie la prise de la carte à la prise femelle logée dans la capsule.
 
-- Fabriquer les pièces avec l'option : `DECK_USB_ARRIERE=1 python3 model.py <dossier>` → en plus des 3 pièces, `capsule.stl` (imprimée à plat sur sa base, sans support), et une fente dans le fond de la coque pour la nappe.
-- Sans la variable, le boîtier reste celui par défaut (prise sur le côté).
-- Le creux de la capsule (9,6 mm de large) sera ajusté à la petite carte de la prise femelle une fois la nappe reçue et mesurée.
+- `python3 model.py <dossier>` fabrique aussi `capsule.stl` (imprimée à plat sur sa base, sans support) et la fente pour la nappe dans le fond de la coque. Ancienne prise sur le côté : `DECK_USB_ARRIERE=0`.
+- Le creux de la capsule (9,6 mm de large) et la niche du côté seront ajustés une fois la nappe et l'écran reçus et mesurés.
 
-| Pièce | Nombre | Référence proposée |
+| Pièce | Nombre | Référence |
 |---|---|---|
 | Nappe USB-C plate (type drone FPV), **mâle coudé à 90° → femelle droite**, 5 cm | 1 | **retenue** : https://www.amazon.fr/Ruban-connecteur-Femelle-synchronisation-Chargement/dp/B07Q432F3H (le sens du coude n'a pas d'importance : la fiche USB-C se retourne ; à la réception, mesurer la petite carte du bout femelle pour ajuster le creux de la capsule) |
 | Colle gel pour pièces imprimées (PETG) | 1 | https://www.amazon.fr/instantan%C3%A9e-impression-anti-dess%C3%A8chement-KRAFTPROTZ-%C3%A9tanche/dp/B0CBSKGFLM |
-| Câble AUFU magnétique | — | le même que pour le boîtier normal : sa tête aimantée se met dans la prise de la capsule |
+| Câble AUFU magnétique | — | celui de la liste ci-dessus : sa tête aimantée se met dans la prise de la capsule |

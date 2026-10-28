@@ -48,8 +48,10 @@ USB_CUT = (0.0, 16.0)            # port USB-C, environ au milieu ; 16 mm de larg
 BTN_CUT = (19.0, 10.0)           # SUPPOSE : bouton marche/arrêt, au-dessus du port
 CABLE = None                     # fenêtre câbles dans le fond : supprimée (l'USB-C sort par le côté). Ancienne valeur : (60.0, 16.0, 0.0, -5.0)
 
-# « option de déport USB-C » (pas dans le boîtier par défaut) : prise USB-C au dos, dans une capsule collée (DECK_USB_ARRIERE=1)
-REAR_USB = os.environ.get('DECK_USB_ARRIERE') == '1'
+# déport USB-C (validé le 28/10/2026) : prise USB-C au dos, dans une capsule collée ; la fenêtre USB du côté est rebouchée
+# de l'extérieur (il reste une niche intérieure pour la fiche coudée de la nappe). Ancienne prise sur le côté : DECK_USB_ARRIERE=0.
+REAR_USB = os.environ.get('DECK_USB_ARRIERE', '1') == '1'
+SKIN_USB = 1.6                       # épaisseur de la paroi qui rebouche la fenêtre USB (vue de l'extérieur)
 POD_YC = 0.0                         # hauteur de la capsule sur le dos : au milieu
 POD_XF, POD_LEN = -40.0, 21.0        # face de la prise (x), longueur totale vers le bord
 POD_W, POD_H, POD_R = 17.0, 11.0, 5.5    # largeur, saillie, arrondi du dessus
@@ -181,13 +183,15 @@ shell.append(extrude(island, [], TB - 0.4, Z_R))
 shell.append(extrude(rect(OW / 2 - a_ - REC, lo1 - hi2, (xo - a_ - REC) / 2, (lo1 + hi2) / 2), [], Z_R, CUT_TOP))
 shell.append(extrude(outer, [cav] + top_holes, CUT_TOP - 0.2, SD - PRY_D))
 shell.append(extrude(bottom_notch(outer, OH / 2, PRY_D, -PRY_W / 2, PRY_W / 2), [cav] + top_holes, SD - PRY_D, SD))
+if REAR_USB:                             # fenêtre USB du côté rebouchée : peau extérieure, niche dedans pour la fiche de la nappe
+    shell.append(box(xo, xo + SKIN_USB, lo2, hi2, TB - 0.4, CUT_TOP))
 for sx in (-1, 1):                       # appuis de l'écran (4 patins)
     for sy in (-1, 1):
         x0, x1 = sorted([sx * (PW / 2 - 2.5), sx * (PW / 2 + 0.5)])
         shell.append(box(x0, x1, sy * 35 - 7.5, sy * 35 + 7.5, TB - 0.2, SD - GT))
 for x, y in MOUNT:                        # bossages des inserts du pied (sous l'écran, à côté de la carte)
     shell.append(tube(4.0, INSERT_D / 2, TB - 0.2, SD - GT - 0.4, x, y))
-# ---- option de déport USB-C : prise USB-C dans une capsule collée au dos ----
+# ---- déport USB-C : prise USB-C dans une capsule collée au dos ----
 # Activer avec DECK_USB_ARRIERE=1. Une rallonge nappe USB-C relie la carte à une prise femelle logée dans la capsule.
 # La capsule est une pièce à part (capsule.stl) : imprimée à plat sur sa base, sa forme arrondie sort lisse, sans support.
 POD_CUT = None
