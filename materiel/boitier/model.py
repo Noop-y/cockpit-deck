@@ -95,6 +95,9 @@ XB, YB = 75.0, 40.0                      # longueur des rebords : haut/bas de -X
 BEAD = 0.45 if FACADE_CLIPS else 0.35   # saillie des bourrelets (vers la paroi) ; plus fermes sans vis
 BEADS_X = (-55.0, -20.0, 20.0, 55.0)     # 4 bourrelets de 14 mm, en haut et en bas
 BEAD_L = 16.0 if FACADE_CLIPS else 14.0
+SIDE_L = 12.0                            # bourrelets des côtés (variante façade clipsée)
+SIDE_R = (-22.0, 22.0) if FACADE_CLIPS else ()                 # côté droit
+SIDE_LO, SIDE_HI = ((-24.5,), (32.0,)) if FACADE_CLIPS else ((), ())   # côté gauche : sous l'USB / au-dessus du bouton
 G_D = BEAD + 0.15                        # profondeur de la rainure au-delà du creux
 Z_R = SD - LIP_H - 0.1                   # fond du creux pour le rebord
 Z_G0, Z_G1 = SD - 2.6, SD - 2.0          # rainure des bourrelets
@@ -116,8 +119,18 @@ def inner_path(groove):
             bot += [(x1_, -b_ - REC), (x1_, -b_ - REC - G_D), (x0_, -b_ - REC - G_D), (x0_, -b_ - REC)]
     top += [(XB, b_ + REC)]
     bot += [(-XB, -b_ - REC)]
-    return ([(-a_ - REC, YB), (-a_, YB), (-a_, b_), (-XB, b_)] + top + [(XB, b_), (a_, b_), (a_, YB), (a_ + REC, YB),
-            (a_ + REC, -YB), (a_, -YB), (a_, -b_), (XB, -b_)] + bot + [(-XB, -b_), (-a_, -b_), (-a_, -YB), (-a_ - REC, -YB)])
+    right, l_hi, l_lo = [], [], []
+    xr, xl = a_ + REC, -a_ - REC
+    if groove:
+        for yc in sorted(SIDE_R, reverse=True):        # côté droit, en descendant
+            y1_, y0_ = yc + SIDE_L / 2 + 0.5, yc - SIDE_L / 2 - 0.5
+            right += [(xr, y1_), (xr + G_D, y1_), (xr + G_D, y0_), (xr, y0_)]
+        for ys, out in ((SIDE_HI, l_hi), (SIDE_LO, l_lo)):   # côté gauche, en montant
+            for yc in sorted(ys):
+                y0_, y1_ = yc - SIDE_L / 2 - 0.5, yc + SIDE_L / 2 + 0.5
+                out += [(xl, y0_), (xl - G_D, y0_), (xl - G_D, y1_), (xl, y1_)]
+    return (l_hi + [(-a_ - REC, YB), (-a_, YB), (-a_, b_), (-XB, b_)] + top + [(XB, b_), (a_, b_), (a_, YB), (a_ + REC, YB)]
+            + right + [(a_ + REC, -YB), (a_, -YB), (a_, -b_), (XB, -b_)] + bot + [(-XB, -b_), (-a_, -b_), (-a_, -YB), (-a_ - REC, -YB)] + l_lo)
 
 
 def lower_with(path):
@@ -348,6 +361,14 @@ for sx in (-1, 1):                             # rebords des côtés (à gauche,
     spans = [(-YB + CL, YB - CL)] if sx > 0 else [(-YB + CL, lo2 - 1.0), (hi1 + 1.0, YB - CL)]
     for y0_, y1_ in spans:
         frame.append(box(xa_, xb_, y0_, y1_, SD - LIP_H, SD))
+for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI)):   # bourrelets des côtés (variante façade clipsée)
+    x_out = sx * (GW / 2 + LIP_GAP + LIP_T)
+    x_b, x_h = sx * (GW / 2 + LIP_GAP + LIP_T + BEAD), sx * (GW / 2 + LIP_GAP + LIP_T + BEAD / 2)
+    for yc in ys:
+        y0_, y1_ = yc - SIDE_L / 2, yc + SIDE_L / 2
+        frame.append(box(min(x_out, x_b), max(x_out, x_b), y0_, y1_, Z_G0 + 0.15, Z_G1 - 0.15))
+        frame.append(box(min(x_out, x_h), max(x_out, x_h), y0_, y1_, Z_G0 + 0.05, Z_G0 + 0.15))
+        frame.append(box(min(x_out, x_h), max(x_out, x_h), y0_, y1_, Z_G1 - 0.15, Z_G1 - 0.05))
 parts['cadre'] = frame
 if FACADE_CLIPS:
     pattes = []
