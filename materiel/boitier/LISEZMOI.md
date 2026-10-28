@@ -22,6 +22,7 @@
 
 Le câble se branche au dos, dans une petite capsule arrondie collée entre la 1re et la 2e nervure du pied. Le côté gauche est entièrement fermé : la fenêtre USB et celle du bouton marche/arrêt sont rebouchées (le bouton reste sur marche ; il reste dedans une niche pour la fiche coudée de la nappe). Pour rouvrir la fenêtre du bouton : `DECK_BOUTON_OUVERT=1`. Une nappe USB-C relie la prise de la carte à la prise femelle logée dans la capsule.
 
+- Goulotte du câble : une ouverture dans la plaque du pied et une encoche ronde dans la nervure n° 2 mènent le câble de la capsule jusqu'au milieu du pied. Il sort tout droit de la prise (pas de pli serré), se pose dans la goulotte par l'arrière et redescend au milieu.
 - `python3 model.py <dossier>` fabrique aussi `capsule.stl` (imprimée à plat sur sa base, sans support) et la fente pour la nappe dans le fond de la coque. Ancienne prise sur le côté : `DECK_USB_ARRIERE=0`.
 - Le creux de la capsule (9,6 mm de large) et la niche du côté seront ajustés une fois la nappe et l'écran reçus et mesurés.
 

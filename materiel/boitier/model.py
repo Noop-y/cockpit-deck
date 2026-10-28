@@ -426,7 +426,35 @@ def hex_ok(cx, cy):
             return False
     if POD_CUT and POD_CUT[0] - HEX_R - 2.4 < cx < POD_CUT[1] + HEX_R + 2.4 and POD_CUT[2] + U0 - HEX_R - 2.4 < cy < POD_CUT[3] + U0 + HEX_R + 2.4:
         return False
+    if POD_CUT and POD_CUT[1] - 1.0 < cx < CH_END + CH_W / 2 + HEX_R + 2.4 and abs(cy - (POD_YC + U0)) < CH_W / 2 + HEX_R + 2.4:
+        return False
     return True
+
+
+# goulotte du câble USB-C : de la capsule jusqu'au milieu du pied, à travers la nervure n° 2, pour que le câble
+# reste droit en sortant de la prise et redescende au milieu, sans pli serré
+CH_W = 12.0                              # largeur de la goulotte (le câble se pose dedans par l'arrière)
+CH_END = 0.0                             # bout de la goulotte : au milieu du pied
+CH_SEAT = PORT_Z + 3.0                   # fond de l'encoche des nervures, sous le dos (axe du câble + 3 mm)
+
+
+def pod_cut_shape():
+    """Ouverture de la plaque : la capsule (rectangle arrondi) + la goulotte vers le milieu, en un seul contour."""
+    x0, x1, y0, y1 = POD_CUT[0], POD_CUT[1], POD_CUT[2] + U0, POD_CUT[3] + U0
+    yc, r, rr = POD_YC + U0, CH_W / 2, 4.0
+    pts = []
+    def arc(cx, cy, a0, a1, rad, n=8):
+        for k in range(n + 1):
+            a = np.radians(a0 + (a1 - a0) * k / n)
+            pts.append((cx + rad * np.cos(a), cy + rad * np.sin(a)))
+    arc(x0 + rr, y0 + rr, 180, 270, rr)
+    arc(x1 - rr, y0 + rr, 270, 360, rr)
+    pts += [(x1, yc - r)]
+    arc(CH_END, yc, -90, 90, r, 12)
+    pts += [(x1, yc + r)]
+    arc(x1 - rr, y1 - rr, 0, 90, rr)
+    arc(x0 + rr, y1 - rr, 90, 180, rr)
+    return poly(pts)
 
 
 pitch = HEX_R * np.sqrt(3) + HEX_WALL
@@ -443,7 +471,7 @@ for j in range(-2, 20):
 stand = [extrude(rrect(W_ST, L_ST, 2.0, 0.0, L_ST / 2),
                  [circle(SCREW_D / 2, x, y + U0) for x, y in MOUNT]
                  + ([rrect(CABLE[0] + 4, CABLE[1] + 4, 2.0, CABLE[2], CABLE[3] + U0)] if CABLE else [])
-                 + ([rrect(POD_CUT[1] - POD_CUT[0], POD_CUT[3] - POD_CUT[2], 4.0, (POD_CUT[0] + POD_CUT[1]) / 2, (POD_CUT[2] + POD_CUT[3]) / 2 + U0)] if POD_CUT else []) + hexes,
+                 + ([pod_cut_shape()] if POD_CUT else []) + hexes,
                  0.0, PT)]
 
 
@@ -593,9 +621,22 @@ BUMP_DEPTH = 1.0                         # profondeur du logement des patins (vo
 rib2d = poly([(yf, BUMP_DEPTH), (YB, BUMP_DEPTH), (YB, zb), (yf, zf)])
 assert zf > BUMP_DEPTH + 0.5, 'nervure trop basse à l’avant'
 P_RIB = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]], float)        # (a,b,c) -> (x=c, y=a, z=b)
+if POD_CUT:
+    u_c = POD_YC + U0
+    wt_ = PT - 0.3
+    rr_ = CH_W / 2
+    wc_ = CH_SEAT - rr_                  # centre de l'arrondi du fond de l'encoche
+    notch = [under(u_c + rr_, wt_)] + [under(u_c + rr_ * np.cos(a), wc_ + rr_ * np.sin(a)) for a in np.linspace(0, np.pi, 17)] + [under(u_c - rr_, wt_)]
+    rib2d_n = poly([(yf, BUMP_DEPTH), (YB, BUMP_DEPTH), (YB, zb)] + notch + [(yf, zf)])
+    C_ = np.array(under(u_c, wc_))
+    def _near(h, d):                     # distance minimale du contour (points rapprochés) au centre de l'encoche
+        q = np.vstack([h[i] + (h[(i + 1) % len(h)] - h[i]) * k / 20 for i in range(len(h)) for k in range(20)])
+        return np.min(np.hypot(q[:, 0] - C_[0], q[:, 1] - C_[1])) > d
+    rib_holes_n = [h for h in rib_holes if _near(h, rr_ + 2.4)]
 world_bits = []
 for x0 in RIBS_X:
-    world_bits.append(xform(extrude(rib2d, rib_holes, x0, x0 + 5.0), P_RIB))
+    crossed = POD_CUT and POD_CUT[1] < x0 + 5.0 and x0 < CH_END
+    world_bits.append(xform(extrude(rib2d_n if crossed else rib2d, rib_holes_n if crossed else rib_holes, x0, x0 + 5.0), P_RIB))
 for wb in world_bits:                    # monde -> repère plaque
     stand.append(xform(wb, M.T, -M.T @ O))
 
@@ -676,6 +717,47 @@ scene = {
 }
 if 'capsule' in parts:
     scene['capsule'] = (world_shell(np.concatenate(parts['capsule'])), 'shell', -0.25)
+
+
+def tube_path(path, r, nseg=20):
+    """Tube rond le long d'une suite de points (repères transportés le long de la courbe), bouts fermés."""
+    path = np.asarray(path, float)
+    d = np.gradient(path, axis=0); d /= np.linalg.norm(d, axis=1, keepdims=True)
+    e1 = np.cross(d[0], [0, 0, 1.0]) if abs(d[0][2]) < 0.9 else np.cross(d[0], [1.0, 0, 0])
+    e1 /= np.linalg.norm(e1)
+    ang = np.linspace(0, 2 * np.pi, nseg, endpoint=False)
+    rings = []
+    for i, p in enumerate(path):
+        if i:
+            e1 = e1 - d[i] * (e1 @ d[i]); e1 /= np.linalg.norm(e1)
+        e2 = np.cross(d[i], e1)
+        rings.append(p + r * (np.outer(np.cos(ang), e1) + np.outer(np.sin(ang), e2)))
+    tr = []
+    for a_, b_ in zip(rings, rings[1:]):
+        a2, b2 = np.roll(a_, -1, 0), np.roll(b_, -1, 0)
+        tr += [np.stack([a_, a2, b2], 1), np.stack([a_, b2, b_], 1)]
+    for ring, end in ((rings[0], False), (rings[-1], True)):
+        cc = np.repeat(ring.mean(0)[None], len(ring), 0); r2 = np.roll(ring, -1, 0)
+        tr.append(np.stack([cc, ring, r2], 1) if end else np.stack([cc, r2, ring], 1))
+    tr = np.concatenate(tr)
+    vol = np.sum(np.einsum('ij,ij->i', tr[:, 0], np.cross(tr[:, 1], tr[:, 2])))
+    return tr if vol > 0 else tr[:, [0, 2, 1]]
+
+
+if REAR_USB:
+    # câble de démonstration (vue 3D seulement) : tête aimantée dans la capsule, câble dans la goulotte, descente au milieu
+    to_w = lambda p: SHELL_R @ np.asarray(p, float) + SHELL_T
+    P0, P1 = to_w([POD_XF, POD_YC, -PORT_Z]), to_w([POD_XF + 13.0, POD_YC, -PORT_Z])
+    P2 = to_w([CH_END - 8.0, POD_YC, -PORT_Z])
+    Rb = 9.0                                              # rayon du coude vers le bas (doux)
+    cen = P2 + np.array([0, 0, -Rb])
+    arc = [cen + Rb * np.array([np.sin(a), 0, np.cos(a)]) for a in np.linspace(0, np.pi / 2, 14)]
+    low = arc[-1] + np.array([0, 0, -(arc[-1][2] - 2.2 - Rb)])
+    cen2 = low + np.array([0, Rb, 0])
+    arc2 = [cen2 + Rb * np.array([0, -np.cos(a), -np.sin(a)]) for a in np.linspace(0, np.pi / 2, 14)]
+    path = np.vstack([np.linspace(P1, P2, 12)[:-1], arc, np.linspace(arc[-1], low, 10)[1:-1], arc2, [arc2[-1] + [0, 60.0, 0]]])
+    plug = tube_path(np.linspace(P0, P1, 6), 4.6, 28)
+    scene['cable'] = (np.concatenate([plug, tube_path(path, 2.0)]), 'cable', 0.0)
 ex3 = (TO3 @ n).tolist()
 out = {'explode_dir': ex3, 'parts': {}}
 for k, (tr, mat, e) in scene.items():
