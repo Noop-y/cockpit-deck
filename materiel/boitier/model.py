@@ -34,9 +34,9 @@ SX = PW / 2 + WS / 2             # x des vis du cadre
 SCREW_M = 4.8                    # vis du cadre dans les coins : même distance (4,8 mm) du bord du côté et du bord du haut/bas
 SCREWS = [(sx * (OW / 2 - SCREW_M), sy * (OH / 2 - SCREW_M)) for sx in (-1, 1) for sy in (-1, 1)]
 # contrôle : l'insert garde au moins 1 mm de matière vers le logement de l'écran
-# variante « façade clipsée » (DECK_FACADE_CLIPS=1) : plus aucune vis sur la façade. 4 pattes vissées dans les coins
-# tiennent l'écran ; la façade se clipse par-dessus et les cache.
-FACADE_CLIPS = os.environ.get('DECK_FACADE_CLIPS') == '1'
+# façade clipsée (validée le 28/10/2026) : plus aucune vis sur la façade. 4 pattes vissées dans les parois des côtés
+# tiennent l'écran ; la façade se clipse par-dessus (12 clips) et les cache. Ancienne façade vissée : DECK_FACADE_CLIPS=0.
+FACADE_CLIPS = os.environ.get('DECK_FACADE_CLIPS', '1') == '1'
 if FACADE_CLIPS:
     SCREWS = [(sx * (OW / 2 - 4.0), sy * (PH / 2 - 6.5)) for sx in (-1, 1) for sy in (-1, 1)]   # dans les parois des côtés (8 mm)
 _dx = max(0.0, abs(SCREWS[0][0]) - PW / 2); _dy = max(0.0, abs(SCREWS[0][1]) - PH / 2)
