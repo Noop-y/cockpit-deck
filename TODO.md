@@ -16,10 +16,12 @@ Relu au début de chaque session, mis à jour à la fin.
 - Liaison USB permanente (protocole JSON, `PROTOCOLE.md`).
 - Logo (piste 2 « Profil », version sombre), notice PDF, modèle 3D du boîtier (cadre gravé, pied à lamelles).
 - Mise en place du suivi : `CLAUDE.md`, `TODO.md`, `docs/`, ADR, premier test automatique.
+- Boîtier : façade clipsée sans vis (12 clips), écran tenu par 4 pattes vissées ; option de déport USB-C au dos (capsule à part) ; styles essayés, modèle Colonne mis de côté (`materiel/boitier/styles/`).
 
 ## En cours
 
 - Passage à Claude Code sur le PC (étapes 2 et 3 du prompt : installation, git). Recommandé : Claude Code directement sous Windows. À confirmer : choix Windows ou WSL, et l'abonnement.
+- Activer la double vérification sur le compte GitHub (seule clé pour modifier le code) ; choisir dépôt public ou privé.
 - Tester la version 1.1.0 sur le vrai PC (voir `docs/tests-manuels.md`), surtout les clips.
 
 ## À faire
