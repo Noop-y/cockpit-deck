@@ -13,6 +13,7 @@ Relu au début de chaque session, mis à jour à la fin.
 - Spotify : lecteur avec jaquette (commandes multimédia de Windows), envoyé en direct à l'écran.
 - Soundboard : sorties Moi / Discord / Jeu / Stream, page Sorties audio (VB-CABLE, Sonar).
 - Clips (v1.1.0) : enregistreur intégré FFmpeg, mémoire 15 s à 5 min, clip, vidéo, capture, « Mes clips ».
+- Version 1.1.1 : clips en 1080p, 1440p, 1800p ou 4K, à 60, 120 ou 144 images/s ; espace Favoris (« Ajouter aux favoris » sur n'importe quelle case) ; déplacer une case par appui long dans l'éditeur ; notice à jour.
 - Liaison USB permanente (protocole JSON, `PROTOCOLE.md`).
 - Logo (piste 2 « Profil », version sombre), notice PDF, modèle 3D du boîtier (cadre gravé, pied à lamelles).
 - Mise en place du suivi : `CLAUDE.md`, `TODO.md`, `docs/`, ADR, premier test automatique.
@@ -22,7 +23,7 @@ Relu au début de chaque session, mis à jour à la fin.
 
 - Passage à Claude Code sur le PC (étapes 2 et 3 du prompt : installation, git). Recommandé : Claude Code directement sous Windows. À confirmer : choix Windows ou WSL, et l'abonnement.
 - Activer la double vérification sur le compte GitHub (seule clé pour modifier le code) ; choisir dépôt public ou privé.
-- Tester la version 1.1.0 sur le vrai PC (voir `docs/tests-manuels.md`), surtout les clips.
+- Tester la version 1.1.1 sur le vrai PC (voir `docs/tests-manuels.md`) : clips (4K, 144 images/s), Favoris, déplacement des cases.
 
 ## À faire
 
