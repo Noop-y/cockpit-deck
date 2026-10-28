@@ -1,4 +1,4 @@
-# The Deck 1.1 — fabriquer le fichier .exe
+# The Deck 1.1.1 — fabriquer le fichier .exe
 
 Ce dossier contient le logiciel The Deck complet. Il faut le transformer une fois en fichier `.exe` pour Windows. Deux façons, au choix.
 
@@ -15,8 +15,8 @@ GitHub fabrique le `.exe` pour vous sur ses ordinateurs. Comptez 10 minutes la p
 7. Cliquez sur l'onglet **Actions** en haut. Une fabrication « Fabriquer The Deck pour Windows » démarre. Elle dure environ 5 minutes.
 8. Quand la pastille devient verte, cliquez sur cette ligne. En bas, dans **Artifacts**, cliquez sur **The-Deck-Windows** pour télécharger un zip.
 9. Dans ce zip, il y a deux fichiers :
-   - `The-Deck-Installation-1.1.0.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
-   - `The-Deck-Portable-1.1.0.exe` : se lance directement, sans installation.
+   - `The-Deck-Installation-1.1.1.exe` : installe le logiciel (raccourci sur le bureau, lancement avec Windows).
+   - `The-Deck-Portable-1.1.1.exe` : se lance directement, sans installation.
 
 Pour une nouvelle version, il suffit de renvoyer les fichiers modifiés dans le même dépôt : GitHub refabrique le `.exe` tout seul.
 
@@ -37,10 +37,12 @@ Windows peut afficher « Windows a protégé votre ordinateur », car le logicie
 
 - Mes espaces : créer (modèles Star Citizen, Elite Dangerous, Flight Simulator, Bureau, OBS, ou grille vide), renommer, dupliquer, exporter, importer, supprimer, afficher ou masquer sur l'accueil.
 - Pages et cases : nom libre, pictogramme du catalogue, photo recadrée ou texte seul, couleur, action, comportement (appui, maintenir, bascule).
+- Déplacer une case (nouveau en 1.1.1) : dans l'éditeur, restez appuyé sur une case, faites-la glisser et relâchez-la à la place voulue (ou sur un onglet de page pour la changer de page).
+- Favoris (nouveau en 1.1.1) : un espace « Favoris » en premier sur l'accueil. Dans les réglages de n'importe quelle case (jeu, Discord, OBS, clips, son de la soundboard…), « ☆ Ajouter aux favoris » y met une copie ; un nouveau clic la retire.
 - Espace Spotify (lecteur) sur l'accueil : la jaquette en grand avec le titre et l'artiste, morceau précédent à gauche et suivant à droite (ou en glissant le doigt), lecture / pause et volume. Rien à connecter : le logiciel lit le morceau en cours avec les commandes multimédia de Windows (marche aussi avec les autres lecteurs). Bouton « Tester sur ce PC » dans l'espace. Quand l'écran est branché, le logiciel lui envoie en direct le morceau en cours et sa jaquette (voir PROTOCOLE.md).
 - Soundboard (nouveau en 1.0) : importez vos sons (MP3, WAV, OGG…), cochez sur l'écran où ils partent (Moi, Discord, Jeu, Stream), puis touchez-les. Découpe, volume, boucle, « tant qu'on appuie », photo, contour. Menu « Sorties audio » : le micro virtuel gratuit VB-CABLE à installer une fois, puis « CABLE Output » à choisir comme micro dans Discord et dans le jeu. Rien d'autre à changer (casque, SteelSeries Sonar, OBS).
 - Cases : photo, pictogramme et nom se combinent librement ; couleur de contour par case.
-- Clips (nouveau en 1.1) : enregistreur intégré, sans OBS ni NVIDIA. Une « mémoire » garde les dernières secondes (15 s à 5 min, au choix) ; la case **CLIP** les enregistre en MP4 dans `Vidéos\The Deck\Clips`. Aussi : **ENREGISTRER** (vidéo longue, marche / arrêt) et **CAPTURE** (image PNG). Filme la fenêtre du jeu de « Mes espaces » (Star Citizen…) ou l'écran entier, en 720p, 1080p ou 1440p, 30 ou 60 images/s, avec l'encodage de la carte graphique (NVIDIA, AMD ou Intel). Son du PC, votre voix et sons de la soundboard : tout mélangé, plus deux pistes séparées pour le montage. Menu **Clips** : réglages et « Mes clips » (lire, couper le début / la fin, renommer, copier pour Discord, supprimer). Une case Clip peut aller dans n'importe quel espace. L'outil vidéo FFmpeg (gratuit) est inclus dans le `.exe`.
+- Clips (nouveau en 1.1) : enregistreur intégré, sans OBS ni NVIDIA. Une « mémoire » garde les dernières secondes (15 s à 5 min, au choix) ; la case **CLIP** les enregistre en MP4 dans `Vidéos\The Deck\Clips`. Aussi : **ENREGISTRER** (vidéo longue, marche / arrêt) et **CAPTURE** (image PNG). Filme la fenêtre du jeu de « Mes espaces » (Star Citizen…) ou l'écran entier, en 1080p, 1440p, 1800p ou 4K, à 60, 120 ou 144 images/s (nouveau en 1.1.1), avec l'encodage de la carte graphique (NVIDIA, AMD ou Intel). Son du PC, votre voix et sons de la soundboard : tout mélangé, plus deux pistes séparées pour le montage. Menu **Clips** : réglages et « Mes clips » (lire, couper le début / la fin, renommer, copier pour Discord, supprimer). Une case Clip peut aller dans n'importe quel espace. L'outil vidéo FFmpeg (gratuit) est inclus dans le `.exe`.
 - Bouton Accueil (nouveau en 1.0.1) : un carré avec une maison, en haut à gauche de chaque espace, pour revenir au choix des espaces (Star Citizen, Discord, Spotify…).
 - Catégories personnelles : bouton « + Nouvelle catégorie » dans Mes espaces (nom, couleur, pictogramme), en plus de Jeux, Bureau, Streaming et Discord. Un espace peut changer de catégorie (menu ⋯).
 - Écran d'accueil : ordre et espaces affichés, 5 espaces par page ; au-delà, l'accueil a plusieurs pages.
