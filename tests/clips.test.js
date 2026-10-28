@@ -37,7 +37,7 @@ test('enregistreur de clips : mémoire, clip, vidéo, liste, découpe', { skip: 
   }, 50);
   const sleep = (ms) => new Promise(x => setTimeout(x, ms));
   try {
-    r.setConfig({ when: 'toujours', dur: 10, res: 1080, fps: 30 });
+    r.setConfig({ when: 'toujours', dur: 10, res: 1080, fps: 60 });
     await sleep(9000);
     assert.ok(r.segs.size > 0, 'la mémoire doit contenir des morceaux');
     const c = await r.clip();
@@ -73,6 +73,12 @@ test('qualité 4K : taille d’image et débit', () => {
   assert.strictEqual(r.encArgs({ id: 'x264' })[3], 'ultrafast');         // sans carte graphique : le plus rapide
   r.setConfig({ res: 1800 });
   assert.ok(r.videoChain({ cap: 'dda', enc: { id: 'nvenc' }, mode: 'down' }, { kind: 'mon', idx: 0 }).includes('scale=3200:1800'));
+  r.setConfig({ res: 1440, fps: 144 });
+  const a = r.encArgs({ id: 'nvenc' });
+  assert.strictEqual(a[a.indexOf('-b:v') + 1], '75M');                 // 25 Mbit/s × 3 à 144 images/s
+  assert.strictEqual(a[a.indexOf('-g') + 1], '144');                    // une image clé par seconde
+  r.setConfig({ fps: 30 });
+  assert.strictEqual(r.conf.fps, 60);                                     // 30 images/s retiré : retour à 60
   r.setConfig({ res: 720 });
   assert.strictEqual(r.conf.res, 1080);                                   // 720p retiré : retour à 1080p
 });

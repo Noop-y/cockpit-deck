@@ -11,7 +11,8 @@ const { spawn } = require('child_process');
 const EventEmitter = require('events');
 
 const RES = { 1080: [1920, 1080], 1440: [2560, 1440], 1800: [3200, 1800], 2160: [3840, 2160] };
-const MBPS = { 1080: 15, 1440: 25, 1800: 35, 2160: 45 };   // Mbit/s à 30 images/s (× 1,6 à 60 images/s)
+const MBPS = { 1080: 15, 1440: 25, 1800: 35, 2160: 45 };   // Mbit/s de base, multipliés selon les images/s
+const FPSK = { 60: 1.6, 120: 2.6, 144: 3.0 };            // 60, 120 ou 144 images/s   // Mbit/s à 30 images/s (× 1,6 à 60 images/s)
 const SEG = 2;                       // durée d'un morceau de mémoire (s)
 const VIDEO_EXT = /\.(mp4|png)$/i;
 
@@ -99,7 +100,7 @@ class ClipRecorder extends EventEmitter {
     return `ddagrab=output_idx=${idx}:framerate=${F},hwdownload,format=bgra,scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2,format=nv12`;
   }
   encArgs(enc) {
-    const mb = (MBPS[this.conf.res] || 15) * (this.conf.fps >= 60 ? 1.6 : 1);
+    const mb = (MBPS[this.conf.res] || 15) * (FPSK[this.conf.fps] || 1.6);
     const b = Math.round(mb) + 'M', mx = Math.round(mb * 1.5) + 'M', bs = Math.round(mb * 2) + 'M', g = String(this.conf.fps);
     if (enc.id === 'nvenc') return ['-c:v', 'h264_nvenc', '-preset', 'p4', '-rc', 'vbr', '-b:v', b, '-maxrate', mx, '-bufsize', bs, '-g', g, '-forced-idr', '1'];
     if (enc.id === 'amf') return ['-c:v', 'h264_amf', '-usage', 'transcoding', '-quality', 'speed', '-rc', 'vbr_peak', '-b:v', b, '-maxrate', mx, '-bufsize', bs, '-g', g];
@@ -111,7 +112,7 @@ class ClipRecorder extends EventEmitter {
   // ---------- réglages venus de l'interface ----------
   setConfig(c) {
     const n = Object.assign({}, this.conf, c || {});
-    n.res = RES[+n.res] ? +n.res : 1080; n.fps = +n.fps === 30 ? 30 : 60; n.dur = Math.max(10, Math.min(600, +n.dur || 60)); n.monitor = +n.monitor || 0;
+    n.res = RES[+n.res] ? +n.res : 1080; n.fps = FPSK[+n.fps] ? +n.fps : 60; n.dur = Math.max(10, Math.min(600, +n.dur || 60)); n.monitor = +n.monitor || 0;
     n.games = Array.isArray(n.games) ? n.games.filter(g => g && g.exe).map(g => ({ name: String(g.name || g.exe), exe: String(g.exe) })) : [];
     this.conf = n;
     this.tick();

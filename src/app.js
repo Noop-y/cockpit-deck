@@ -1766,6 +1766,7 @@ function migrate(c) {
   // version 1.1 : enregistreur de clips
   out.clips = Object.assign({}, d.clips, c.clips || {});
   if (![1080, 1440, 1800, 2160].includes(+out.clips.res)) out.clips.res = 1080;   // 720p retiré (version 1.1.1)
+  if (![60, 120, 144].includes(+out.clips.fps)) out.clips.fps = 60;               // 30 images/s retiré (version 1.1.1)
   if (!c.clipsAdded) {
     out.clipsAdded = true;
     if (!out.spaces.some(s => s.layout === 'clips')) out.spaces.push(newSpace('clips', TEMPLATES.clips[0], 'Clips', ''));

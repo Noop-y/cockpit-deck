@@ -12,7 +12,8 @@ const clipDurLabel = (d) => { d = d == null ? cfg.clips.dur : d; const x = CLIP_
 const clipKeepText = (d) => { d = d == null ? cfg.clips.dur : d; return d < 60 ? `Garde les ${d} secondes d’avant` : (d === 60 ? 'Garde la minute d’avant' : `Garde les ${Math.round(d / 60)} minutes d’avant`); };
 const fmtClock = (s) => { if (s == null) return ''; s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
 const fmtSize = (b) => b == null ? '?' : (b >= 1e9 ? (b / 1e9).toFixed(1).replace('.', ',') + ' Go' : Math.max(1, Math.round(b / 1e6)) + ' Mo');
-const estBytes = (sec) => CLIP_MBPS[cfg.clips.res] * (cfg.clips.fps >= 60 ? 1.6 : 1) * sec / 8 * 1e6 + 3 * 20000 * sec;
+const CLIP_FPSK = { 60: 1.6, 120: 2.6, 144: 3.0 };
+const estBytes = (sec) => CLIP_MBPS[cfg.clips.res] * (CLIP_FPSK[cfg.clips.fps] || 1.6) * sec / 8 * 1e6 + 3 * 20000 * sec;
 function fmtWhen(ms) {
   if (!ms) return '';
   const d = new Date(ms), now = new Date();
@@ -216,7 +217,8 @@ function viewClipsSettings() {
         <h2 class="disp" style="margin-top:6px">Qualité</h2>
         <div class="clchips">${chip('clips-res', 1080, c.res, '1080p')}${chip('clips-res', 1440, c.res, '1440p')}${chip('clips-res', 1800, c.res, '1800p')}${chip('clips-res', 2160, c.res, '4K')}</div>
         ${c.res >= 1800 ? `<div class="small muted" style="line-height:1.5">${c.res === 2160 ? '4K' : '1800p'} : utile seulement si l’écran ou le jeu est au moins dans cette définition. Les fichiers sont environ ${c.res === 2160 ? '3' : '2,3'} fois plus gros qu’en 1080p, et il faut une carte graphique récente (NVIDIA, AMD ou Intel) pour que le jeu ne ralentisse pas.</div>` : ''}
-        <div class="clchips">${chip('clips-fps', 30, c.fps, '30 images/s')}${chip('clips-fps', 60, c.fps, '60 images/s')}</div>
+        <div class="clchips">${chip('clips-fps', 60, c.fps, '60 im/s')}${chip('clips-fps', 120, c.fps, '120 im/s')}${chip('clips-fps', 144, c.fps, '144 im/s')}</div>
+        ${c.fps > 60 ? `<div class="small muted" style="line-height:1.5">${c.fps} images/s : utile seulement si l’écran va au moins à ${c.fps} Hz et si le jeu tient cette vitesse. ${c.res >= 1800 ? 'En 1800p ou 4K, c’est très lourd : la carte graphique risque de ne pas suivre, préférez 1440p.' : 'Les fichiers sont plus gros qu’en 60 images/s.'}</div>` : ''}
         <div class="small muted">Changer ce qu’on filme ou la qualité vide la mémoire : elle repart de zéro.</div></section>
       <section class="panel"><h2 class="disp">Son dans les clips</h2>
         ${tg('pc', 'Son du PC', c.pcDev ? 'Depuis : ' + esc(((SOUND.state.inputs.find(x => x.id === c.pcDev) || {}).label) || 'appareil choisi') : 'Le jeu, la musique, Discord')}
