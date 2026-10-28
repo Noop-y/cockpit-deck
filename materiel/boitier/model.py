@@ -745,8 +745,8 @@ def tube_path(path, r, nseg=20):
     return tr if vol > 0 else tr[:, [0, 2, 1]]
 
 
-if REAR_USB:
-    # câble de démonstration (vue 3D seulement) : tête aimantée dans la capsule, câble dans la goulotte, descente au milieu
+if REAR_USB and os.environ.get('DECK_CABLE_DEMO') == '1':
+    # câble de démonstration (vue 3D seulement, désactivé par défaut) : tête aimantée dans la capsule, câble dans la goulotte, descente au milieu
     to_w = lambda p: SHELL_R @ np.asarray(p, float) + SHELL_T
     P0, P1 = to_w([POD_XF, POD_YC, -PORT_Z]), to_w([POD_XF + 13.0, POD_YC, -PORT_Z])
     P2 = to_w([CH_END - 8.0, POD_YC, -PORT_Z])
