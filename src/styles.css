@@ -94,6 +94,13 @@ input[type=range] { accent-color: var(--amber); width: 100%; }
 .ecell .ph { position: absolute; inset: 0; background-size: cover; background-position: center; }
 .ecell .top { display: flex; justify-content: space-between; align-items: center; position: relative; }
 .ecell.dragover { outline: 2px dashed var(--amber); }
+/* déplacer une case : appui long puis glisser */
+.grid .ecell { touch-action: none; user-select: none; }
+.ecell.lifted { opacity: .3; }
+.ecell.ghost { position: fixed; z-index: 1000; pointer-events: none; transform: scale(1.06) rotate(-2deg); box-shadow: 0 14px 32px rgba(0,0,0,.6); border: 2px solid var(--amber); opacity: .96; }
+.ptab.dragover { outline: 2px dashed var(--amber); outline-offset: 2px; }
+body.celldragging, body.celldragging * { cursor: grabbing !important; }
+.btn.fav.on { border-color: #FFD45C; color: #FFD45C; }
 .cellpanel { flex: 1 1 380px; min-width: 0; }
 
 /* catalogue */

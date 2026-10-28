@@ -63,6 +63,10 @@ L'écran affiche à gauche les quatre sorties (`moi`, `discord`, `jeu`, `stream`
 - Un son dont `action.route` vaut `"fixed"` part toujours sur `action.dests`, quelles que soient les cases cochées.
 - Bouton « Stop tout » : `{"t":"sound-stop"}`. Bouton volume : `{"t":"volume","value":75}` (0 à 100).
 
+### Son dans une grille normale (espace Favoris)
+
+Une case de type `sound` peut aussi se trouver dans un espace en grille (copie d'un son dans les Favoris). Elle a toujours `route: "fixed"` et ses propres `dests` : l'écran envoie le même message `{"t":"sound","space":…,"page":…,"cell":…,"down":true}`, sans `dests`. Au relâchement d'un son « maintenir » : `"down":false`.
+
 ### Clips (espace dont `layout` vaut `"clips"`, et cases dont `action.type` vaut `"clip"`)
 
 L'espace Clips a une disposition fixe : CLIP (grande case, 2 × 2), ENREGISTRER, CAPTURE, RETOUR EN ARRIÈRE, DERNIERS CLIPS (3 cases de large), MÉMOIRE, MA VOIX, LE JEU / L'ÉCRAN, DOSSIER. Chaque appui envoie :

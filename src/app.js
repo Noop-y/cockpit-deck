@@ -121,10 +121,12 @@ function defaultConfig() {
   const sp = newSpace('spotify', TEMPLATES.spotify[0], 'Spotify', '');
   const sb = newSpace('soundboard', TEMPLATES.soundboard[0], 'Soundboard', '');
   const cl = newSpace('clips', TEMPLATES.clips[0], 'Clips', '');
+  const fv = newSpace('favoris', tplsOf('favoris')[0], 'Favoris', '');
   return {
     format: 'cockpit-deck', version: 1,
-    spaces: [sc, bu, st, dc, sp, sb, cl],
-    homeOrder: [sc.id, bu.id, st.id, dc.id, sp.id, sb.id, cl.id],
+    spaces: [fv, sc, bu, st, dc, sp, sb, cl],
+    homeOrder: [fv.id, sc.id, bu.id, st.id, dc.id, sp.id, sb.id, cl.id],
+    favorisAdded: true,
     discordSpaceAdded: true,
     spotifySpaceAdded: true,
     soundboardAdded: true,
@@ -447,7 +449,7 @@ function viewEspaces() {
     }).join('');
     const tools = isCustomCat(cat) ? `<button class="btn sm" data-act="cat-edit" data-id="${cat}">Modifier</button><button class="btn sm danger" data-act="cat-del" data-id="${cat}">Supprimer</button>` : '';
     return `<section style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${isCustomCat(cat) ? svg(meta.icon, 22, meta.color, 1.8) : ''}<h2 class="cat-title disp" style="color:${meta.color}">${esc(meta.label)}</h2>${tools}</div>
-      <div class="cards">${cards}<button class="empty-add" data-act="new-space" data-cat="${cat}">${svg('plus', 28, '#C9D6E2')}<span class="disp" style="font-size:17px;text-transform:uppercase">Nouvel espace</span></button></div></section>`;
+      <div class="cards">${cards}${cat === 'favoris' ? '' : `<button class="empty-add" data-act="new-space" data-cat="${cat}">${svg('plus', 28, '#C9D6E2')}<span class="disp" style="font-size:17px;text-transform:uppercase">Nouvel espace</span></button>`}</div></section>`;
   }).join('');
   return `<div class="head"><div><h1 class="disp">Mes espaces</h1><div class="muted" style="margin-top:4px">Chaque espace a ses pages et ses cases. Modifiez-les ici, puis envoyez-les sur l\u2019écran.</div></div>
     <div class="row"><button class="btn" data-act="cat-new">+ Nouvelle catégorie</button><button class="btn" data-act="space-import">Importer un espace</button><button class="btn" data-act="simulate">Aperçu de l\u2019écran</button><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div></div>${groups}`;
@@ -482,12 +484,12 @@ function viewEditeur() {
   const cat = catOf(s.category);
   const tabs = s.pages.map((p, i) => `<button class="ptab disp${i === ui.page ? ' on' : ''}" data-act="page" data-i="${i}">${esc(p.name)}</button>`).join('');
   const cells = page.cells.slice(0, sound ? 12 : 15).map((c, i) => {
-    if (!c) return `<button class="ecell empty${ui.cell === i ? ' sel' : ''}" data-act="cell" data-i="${i}" draggable="true" data-drag="${i}" aria-label="Case vide ${i + 1}">+</button>`;
+    if (!c) return `<button class="ecell empty${ui.cell === i ? ' sel' : ''}" data-act="cell" data-i="${i}" data-drag="${i}" aria-label="Case vide ${i + 1}">+</button>`;
     const im = c.image || {};
     const ph = im.usePhoto && im.photo ? `<div class="ph" style="background-image:url('${im.photo}')"></div>${im.showName || im.showIcon ? '<div class="shade"></div>' : ''}` : '';
     const ico = im.showIcon ? svg(im.icon, 22, ui.cell === i ? '#5CC8FF' : (ph ? '#fff' : (im.color || '#9FB0C0'))) : '<span></span>';
     const edge = c.edge && ui.cell !== i ? ` style="border:2px solid ${c.edge}"` : '';
-    return `<button class="ecell${ui.cell === i ? ' sel' : ''}" data-act="cell" data-i="${i}" draggable="true" data-drag="${i}"${edge}>${ph}
+    return `<button class="ecell${ui.cell === i ? ' sel' : ''}" data-act="cell" data-i="${i}" data-drag="${i}"${edge}>${ph}
       <div class="top">${ico}<span class="bind">${esc(cellSub(c))}</span></div><div class="nm disp" style="${ph ? 'text-shadow:0 1px 3px #000' : ''}">${im.showName ? esc(c.name) : ''}</div></button>`;
   }).join('');
   return `<div class="head"><div><div class="crumb"><button data-act="nav" data-view="espaces">Mes espaces</button> › ${cat.label}</div><h1 class="disp">${esc(s.name)}</h1></div>
@@ -498,7 +500,7 @@ function viewEditeur() {
       <button class="btn sm" data-act="page-move" data-d="1" ${ui.page === s.pages.length - 1 ? 'disabled' : ''} aria-label="Déplacer la page à droite">→</button>
       <button class="btn sm danger" data-act="page-del" ${s.pages.length < 2 ? 'disabled' : ''}>Supprimer la page</button></div>
     <div class="editor"><div class="gridwrap"${sound ? ' data-sounddrop="1"' : ''}><div class="grid"${sound ? ' style="grid-template-columns:repeat(4,minmax(0,1fr))"' : ''}>${cells}</div>
-      <div class="small muted" style="margin-top:10px">${sound ? 'Glissez des fichiers son (MP3, WAV, OGG…) sur la grille pour les ajouter. ' : ''}Cliquez sur une case pour la régler. Faites glisser une case pour la déplacer.</div>
+      <div class="small muted" style="margin-top:10px">${sound ? 'Glissez des fichiers son (MP3, WAV, OGG…) sur la grille pour les ajouter. ' : ''}Cliquez sur une case pour la régler. Pour la déplacer : restez appuyé dessus, faites-la glisser, puis relâchez à la place voulue (ou sur un onglet de page).</div>
       ${sound ? '<div class="note" style="margin-top:12px">Sur l\u2019écran, les sorties se cochent dans la colonne de gauche (Moi, Discord, Jeu, Stream), puis on touche les sons. Réglez les sorties dans le menu <button class="linkbtn" data-act="nav" data-view="audio">Sorties audio</button>.</div>' : ''}${s.category === 'discord' ? discordSpacePanels() : ''}</div>
       <div class="cellpanel">${cellPanel()}</div></div>`;
 }
@@ -545,7 +547,7 @@ function soundPanel(c, img) {
       ${a.route === 'fixed' ? `<div class="row" style="gap:8px;margin-top:8px">${SOUND_DESTS.map(d => chip(d.k, !!a.dests[d.k], d.label, d.color)).join('')}</div>` : ''}</div>
     <div class="row" style="gap:10px"><div class="grow"><label class="lab" for="f-smode">Lecture</label><select id="f-smode" class="inp" data-field="snd-mode">${[['once', 'Une fois'], ['loop', 'En boucle'], ['hold', 'Tant qu\u2019on appuie']].map(([v, l]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="grow"><label class="lab" for="f-sretrig">Si on rappuie</label><select id="f-sretrig" class="inp" data-field="snd-retrig">${[['stop', 'Arrêter'], ['restart', 'Recommencer'], ['overlap', 'Superposer']].map(([v, l]) => `<option value="${v}" ${a.retrig === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
-    <div class="row"><button class="btn" data-act="cell-test">Tester</button><button class="btn danger" data-act="cell-clear">Effacer la case</button></div>
+    <div class="row"><button class="btn" data-act="cell-test">Tester</button>${favButton(c)}<button class="btn danger" data-act="cell-clear">Effacer la case</button></div>
   </div>`;
 }
 const peakCache = {};
@@ -583,6 +585,33 @@ async function addSounds(list, fromIndex) {
     }
   }
   commit();
+}
+
+// ---------- Favoris : une copie de la case dans l'espace Favoris ----------
+const favSpace = () => cfg.spaces.find(s => s.category === 'favoris');
+const favCopies = (c) => { const f = favSpace(); return f && c && c.id ? f.pages.flatMap(p => p.cells).filter(x => x && x.fromId === c.id) : []; };
+function favButton(c) {
+  if (!c || (curSpace() && curSpace().category === 'favoris')) return '';
+  const on = favCopies(c).length > 0;
+  return `<button class="btn${on ? ' fav on' : ' fav'}" data-act="cell-fav" aria-pressed="${on}" title="${on ? 'Retirer des favoris' : 'Copier cette case dans l’espace Favoris'}">${on ? '★ Dans les favoris' : '☆ Ajouter aux favoris'}</button>`;
+}
+function toggleFav() {
+  const c = curCell(), s = curSpace(); if (!c || !s) return;
+  if (!c.id) c.id = uid();
+  let f = favSpace();
+  if (!f) { f = newSpace('favoris', tplsOf('favoris')[0], 'Favoris', ''); cfg.spaces.unshift(f); cfg.homeOrder.unshift(f.id); }
+  if (favCopies(c).length) {
+    f.pages.forEach(p => { p.cells = p.cells.map(x => x && x.fromId === c.id ? null : x); });
+    commit(); toast('Retirée des favoris.'); return;
+  }
+  const copy = clone(c); delete copy.id; copy.fromId = c.id;
+  if (copy.action) delete copy.action.hotkey;
+  // un son de la soundboard garde les sorties choisies sur la soundboard
+  if (copy.action && copy.action.type === 'sound' && copy.action.route !== 'fixed') { copy.action.route = 'fixed'; copy.action.dests = clone(sbSel(s)); }
+  let placed = false;
+  for (const p of f.pages) { const k = p.cells.findIndex((x, i) => i < 15 && !x); if (k >= 0) { p.cells[k] = copy; placed = true; break; } }
+  if (!placed) { const cells = pad([]); cells[0] = copy; f.pages.push({ id: uid(), name: 'PAGE ' + (f.pages.length + 1), cells }); }
+  commit(); toast('Ajoutée aux favoris.', 'ok');
 }
 
 function cellPanel() {
@@ -624,17 +653,18 @@ function cellPanel() {
   }
   if (a.type === 'discord') act = discordCellFields(a);
   if (a.type === 'clip') act = clipCellFields(a);
+  if (a.type === 'sound') act = `<div class="note">Son de la soundboard : <b>${esc(a.fileName || 'aucun fichier')}</b>${a.file ? ' · ' + fmtDur(a.dur) : ''}. Il part toujours vers : ${SOUND_DESTS.filter(d => (a.dests || {})[d.k]).map(d => d.label).join(', ') || 'aucune sortie'}. Pour changer le son, modifiez-le dans l’espace Soundboard puis ajoutez-le à nouveau.</div>`;
   const b = c.behavior || { mode: 'tap', holdMs: 1500 };
   return `<div class="panel">
     <div class="row" style="justify-content:space-between"><h2 class="disp">Case ${ui.cell + 1} · ${esc(c.name || 'Sans nom')}</h2><span class="tag">sélectionnée</span></div>
     ${img}
     <div><label class="lab" for="f-type">Ce que fait la case</label><select id="f-type" class="inp" data-field="type">
-      ${[['joy', 'Bouton de manette (jeux)'], ['key', 'Touche ou raccourci clavier'], ['media', 'Touche multimédia'], ['app', 'Ouvrir une appli sur un écran'], ['obs', 'OBS (streaming)'], ['discord', 'Discord (micro, casque, audio)'], ['clip', 'Clips (clip, vidéo, capture)'], ['page', 'Changer de page'], ['none', 'Rien (case décorative)']].map(([v, l]) => `<option value="${v}" ${a.type === v ? 'selected' : ''}>${l}</option>`).join('')}
+      ${[['joy', 'Bouton de manette (jeux)'], ['key', 'Touche ou raccourci clavier'], ['media', 'Touche multimédia'], ['app', 'Ouvrir une appli sur un écran'], ['obs', 'OBS (streaming)'], ['discord', 'Discord (micro, casque, audio)'], ['clip', 'Clips (clip, vidéo, capture)'], ['page', 'Changer de page'], ['none', 'Rien (case décorative)']].concat(a.type === 'sound' ? [['sound', 'Son de la soundboard']] : []).map(([v, l]) => `<option value="${v}" ${a.type === v ? 'selected' : ''}>${l}</option>`).join('')}
     </select></div>
     ${act}
     <div><span class="lab">Comportement</span>${seg('beh', [['tap', 'Appui'], ['hold', 'Maintenir'], ['toggle', 'Bascule']], b.mode)}</div>
     ${b.mode === 'hold' ? `<div><div class="row" style="justify-content:space-between"><label class="lab" for="f-hold">Durée de maintien</label><span class="mono" style="color:var(--cyan)">${(b.holdMs / 1000).toFixed(1).replace('.', ',')} s</span></div><input id="f-hold" type="range" min="200" max="5000" step="100" value="${b.holdMs}" data-field="hold"></div>` : ''}
-    <div class="row"><button class="btn" data-act="cell-test">Tester</button><button class="btn danger" data-act="cell-clear">Effacer la case</button></div>
+    <div class="row"><button class="btn" data-act="cell-test">Tester</button>${favButton(c)}<button class="btn danger" data-act="cell-clear">Effacer la case</button></div>
   </div>`;
 }
 
@@ -863,7 +893,7 @@ function modalHTML() {
     const list = tplsOf(m.cat);
     const t = list[m.tpl] || list[0];
     return `<div class="modal md" role="dialog" aria-label="Nouvel espace"><div class="modal-head"><h2 class="disp" style="font-size:25px">Nouvel espace</h2><button class="iconbtn" data-act="modal-close" aria-label="Fermer">✕</button></div>
-      <div><span class="lab">1 · Catégorie</span><div class="row" style="gap:8px">${catKeys().map(k => `<button class="pill${m.cat === k ? ' on' : ''}" data-act="ns-cat" data-v="${k}">${esc(catOf(k).label)}</button>`).join('')}</div></div>
+      <div><span class="lab">1 · Catégorie</span><div class="row" style="gap:8px">${catKeys().filter(k => k !== 'favoris').map(k => `<button class="pill${m.cat === k ? ' on' : ''}" data-act="ns-cat" data-v="${k}">${esc(catOf(k).label)}</button>`).join('')}</div></div>
       <div style="display:flex;flex-direction:column;gap:8px"><span class="lab" style="margin:0">2 · Partir d\u2019un modèle</span>
         ${list.map((x, i) => `<button class="btn" style="height:auto;padding:10px 14px;flex-direction:column;align-items:flex-start;gap:2px;${i === m.tpl ? 'border-color:var(--amber);background:#1A222B' : ''}" data-act="ns-tpl" data-i="${i}"><b>${esc(x.name)}</b><span class="small muted">${esc(x.desc)}</span></button>`).join('')}</div>
       <div><label class="lab" for="f-nsname">3 · Nom affiché sur l\u2019accueil</label><input id="f-nsname" class="inp" value="${esc(m.name)}" placeholder="${esc(t.name)}" data-field="ns-name" maxlength="24"></div>
@@ -882,7 +912,7 @@ function modalHTML() {
   if (m.type === 'movecat') {
     const sp = spaceById(m.id);
     return `<div class="modal sm" role="dialog" aria-label="Changer de catégorie"><h2 class="disp">« ${esc(sp.name)} » va dans…</h2>
-      <div style="display:flex;flex-direction:column;gap:8px">${catKeys().map(k => `<button class="btn" style="justify-content:flex-start;${k === sp.category ? 'border-color:var(--amber)' : ''}" data-act="movecat-ok" data-v="${k}">${svg(catOf(k).icon, 20, catOf(k).color)}${esc(catOf(k).label)}</button>`).join('')}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">${catKeys().filter(k => k !== 'favoris').map(k => `<button class="btn" style="justify-content:flex-start;${k === sp.category ? 'border-color:var(--amber)' : ''}" data-act="movecat-ok" data-v="${k}">${svg(catOf(k).icon, 20, catOf(k).color)}${esc(catOf(k).label)}</button>`).join('')}</div>
       <div class="row" style="justify-content:flex-end"><button class="btn" data-act="modal-close">Annuler</button></div></div>`;
   }
   if (m.type === 'picto') {
@@ -1223,6 +1253,7 @@ function simTap(i) {
   if (mode === 'toggle') { st.on = !st.on; simRender(); return; }
   st.flash = true; simRender(); setTimeout(() => { st.flash = false; simRender(); }, 220);
   if (c.action && c.action.type === 'clip') runClip(c.action.op || 'clip');
+  if (c.action && c.action.type === 'sound') sbPlay(s, m.page, i, sbSel(s, m));
   if (c.action && c.action.type === 'page') {
     if (c.action.page === 'home') { m.screen = 'home'; } else { m.page = Math.min(+c.action.page, s.pages.length - 1); }
     setTimeout(simRender, 230);
@@ -1387,6 +1418,7 @@ const ACTIONS = {
     commit();
   },
   'cell-clear': () => { confirmBox('Effacer cette case ?', 'Elle redeviendra vide.', 'Effacer', true, () => { curPage().cells[ui.cell] = null; commit(); }); },
+  'cell-fav': () => toggleFav(),
   'cell-test': () => {
     const c = curCell(); const t = c.action && c.action.type;
     if (t === 'sound') { const s = curSpace(); sbPlay(s, ui.page, ui.cell, sbSel(s)); return; }
@@ -1632,6 +1664,74 @@ document.addEventListener('drop', (ev) => {
   ui.cell = to; commit();
 });
 
+// déplacer une case dans l'éditeur : rester appuyé sur la case, la déplacer, relâcher pour la poser
+// (souris ou doigt ; seulement dans le logiciel, pas sur l'écran du Deck). Lâchée sur un onglet de page : elle va dans cette page.
+let cellDrag = null, eatClick = false;
+function cellDragTarget(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el && el.closest ? (el.closest('.grid .ecell[data-drag]') || el.closest('.ptab[data-act="page"]')) : null;
+}
+function cellDragStart() {
+  const d = cellDrag; if (!d || d.started) return;
+  d.started = true;
+  const r = d.el.getBoundingClientRect();
+  d.dx = d.x - r.left; d.dy = d.y - r.top;
+  d.ghost = d.el.cloneNode(true);
+  d.ghost.classList.add('ghost'); d.ghost.classList.remove('sel', 'dragover');
+  Object.assign(d.ghost.style, { width: r.width + 'px', height: r.height + 'px', left: r.left + 'px', top: r.top + 'px' });
+  document.body.appendChild(d.ghost);
+  d.el.classList.add('lifted');
+  document.body.classList.add('celldragging');
+}
+function cellDragEnd(drop) {
+  const d = cellDrag; cellDrag = null;
+  if (!d) return;
+  clearTimeout(d.timer);
+  if (!d.started) return;
+  eatClick = true; setTimeout(() => { eatClick = false; }, 300);
+  if (d.ghost) d.ghost.remove();
+  document.body.classList.remove('celldragging');
+  document.querySelectorAll('.dragover').forEach(e => e.classList.remove('dragover'));
+  d.el.classList.remove('lifted');
+  const t = drop ? cellDragTarget(drop.x, drop.y) : null;
+  if (!t) return;
+  const cells = curPage().cells;
+  if (t.classList.contains('ptab')) {                     // vers une autre page : première place libre
+    const s = curSpace(), j = +t.dataset.i;
+    if (j === ui.page || !s.pages[j]) return;
+    const dest = s.pages[j].cells, max = isSoundboard(s) ? 12 : 15;
+    const k = dest.findIndex((x, i) => i < max && !x);
+    if (k < 0) { toast('La page « ' + s.pages[j].name + ' » est pleine.', 'err'); return; }
+    dest[k] = cells[d.from]; cells[d.from] = null; ui.page = j; ui.cell = k; commit();
+    toast('Case déplacée dans la page « ' + s.pages[j].name + ' ».'); return;
+  }
+  const to = +t.dataset.drag;
+  if (to === d.from) return;
+  const tmp = cells[d.from]; cells[d.from] = cells[to]; cells[to] = tmp;
+  ui.cell = to; commit();
+}
+document.addEventListener('pointerdown', (ev) => {
+  if (ui.modal || ui.view !== 'editeur' || ev.button !== 0) return;
+  const el = ev.target.closest && ev.target.closest('.grid .ecell[data-drag]');
+  if (!el || !curPage() || !curPage().cells[+el.dataset.drag]) return;   // une case vide ne se déplace pas
+  cellDrag = { el, from: +el.dataset.drag, x: ev.clientX, y: ev.clientY, started: false, id: ev.pointerId };
+  cellDrag.timer = setTimeout(cellDragStart, 350);                          // appui long : la case se soulève
+  try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+});
+document.addEventListener('pointermove', (ev) => {
+  const d = cellDrag; if (!d || ev.pointerId !== d.id) return;
+  if (!d.started && Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > 6) cellDragStart();
+  if (!d.started) return;
+  ev.preventDefault();
+  d.ghost.style.left = (ev.clientX - d.dx) + 'px'; d.ghost.style.top = (ev.clientY - d.dy) + 'px';
+  const t = cellDragTarget(ev.clientX, ev.clientY);
+  document.querySelectorAll('.dragover').forEach(e => { if (e !== t) e.classList.remove('dragover'); });
+  if (t && t !== d.el) t.classList.add('dragover');
+});
+document.addEventListener('pointerup', (ev) => { if (cellDrag && ev.pointerId === cellDrag.id) cellDragEnd({ x: ev.clientX, y: ev.clientY }); });
+document.addEventListener('pointercancel', (ev) => { if (cellDrag && ev.pointerId === cellDrag.id) cellDragEnd(null); });
+document.addEventListener('click', (ev) => { if (eatClick) { eatClick = false; ev.stopPropagation(); ev.preventDefault(); } }, true);
+
 // recadrage : déplacer la photo
 let cropDrag = null;
 let swipe = null;
@@ -1774,6 +1874,11 @@ function migrate(c) {
   if (!c.spotifySpaceAdded) {
     out.spotifySpaceAdded = true;
     if (!out.spaces.some(s => s.category === 'spotify')) out.spaces.push(newSpace('spotify', TEMPLATES.spotify[0], 'Spotify', ''));
+  }
+  // version 1.1.1 : espace Favoris, en premier sur l'accueil
+  if (!c.favorisAdded) {
+    out.favorisAdded = true;
+    if (!out.spaces.some(s => s.category === 'favoris')) { const fv = newSpace('favoris', tplsOf('favoris')[0], 'Favoris', ''); out.spaces.unshift(fv); out.homeOrder.unshift(fv.id); }
   }
   out.spaces.forEach(s => { if (!out.homeOrder.includes(s.id)) out.homeOrder.push(s.id); });
   return out;

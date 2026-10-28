@@ -23,6 +23,13 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Mes clips : Couper le début / la fin, Renommer, Voir dans le dossier, Copier puis Ctrl+V dans Discord, Supprimer (part dans la corbeille).
 - [ ] Une case Clip dans Star Citizen (« Clips (clip, vidéo, capture) ») marche avec le bouton Tester.
 
+## Favoris et déplacement des cases (version 1.1.1)
+- [ ] L'espace Favoris apparaît en premier (Mes espaces et accueil), même avec une ancienne configuration.
+- [ ] « ☆ Ajouter aux favoris » sur une case Star Citizen, Discord, Clips et sur un son de la soundboard : chaque copie arrive dans Favoris et marche (bouton Tester, aperçu de l'écran, puis sur l'écran).
+- [ ] Recliquer « ★ Dans les favoris » retire la copie.
+- [ ] Éditeur : rester appuyé sur une case, la glisser sur une autre, relâcher : elles échangent leur place. Glisser sur un onglet de page : la case part dans cette page (message si la page est pleine).
+- [ ] Un clic simple sur une case la sélectionne toujours (pas de déplacement par erreur).
+
 ## Soundboard
 - [ ] Sorties audio : VB-CABLE détecté après installation et redémarrage.
 - [ ] Un son coché Moi s'entend dans le casque ; coché Discord, les amis l'entendent avec la voix ; coché Stream, il passe dans OBS.

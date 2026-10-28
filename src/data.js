@@ -78,6 +78,7 @@ const PICTOS = {
   // Symboles
   maison: ['Accueil', 'Symboles', 'maison accueil', 'M4 11l8-7 8 7 M6 9.5V20h12V9.5'],
   etoile: ['Étoile', 'Symboles', 'étoile favori', 'M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3z'],
+  favori: ['Favori', 'Symboles', 'favori étoile préféré', 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z'],
   coeur: ['Cœur', 'Symboles', 'coeur', 'M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z'],
   alerte: ['Alerte', 'Symboles', 'alerte attention', 'M12 3l9 16H3z M12 9v4 M12 16h.01'],
   valider: ['Valider', 'Symboles', 'valider ok coche', 'M5 12l5 5 9-10'],
@@ -107,6 +108,7 @@ const THEMES = [
 const DEFAULT_LOOK = { bgType: 'color', bgColor: '#07090C', bgPhoto: null, bgDim: 0.3, idleEdge: '#26303A', accent: '#FFB547' };
 
 const CATEGORIES = {
+  favoris: { label: 'Favoris', color: '#FFD45C', icon: 'favori' },
   jeu: { label: 'Jeux', color: '#FFB547', icon: 'manette' },
   bureau: { label: 'Bureau', color: '#5CC8FF', icon: 'bureau' },
   stream: { label: 'Streaming', color: '#B79CFF', icon: 'live' },

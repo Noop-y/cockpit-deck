@@ -7,6 +7,16 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 - **Comment** : tout est dans l'objet `cfg` (enregistré dans `%APPDATA%\The Deck\config.json`). Une case = `{ name, image, edge, action, behavior }`.
 - **Code** : `src/data.js` (modèles, pictogrammes), `src/app.js` (`viewEditeur`, `cellPanel`, `imagePanel`, `newSpace`, `migrate`).
 
+## Favoris
+- **Ce que ça fait** : un espace « Favoris » (étoile, en premier sur l'accueil). Dans les réglages de n'importe quelle case (jeu, Discord, OBS, clips, son de la soundboard…), le bouton « ☆ Ajouter aux favoris » en met une copie dans Favoris, à la première place libre (nouvelle page si besoin). Recliquer (« ★ Dans les favoris ») la retire.
+- **Comment** : la case d'origine reçoit un `id`, la copie garde `fromId`. Une copie de son passe en sorties fixes (`route: 'fixed'`) avec les sorties cochées sur la soundboard. Un seul espace Favoris (catégorie `favoris`, absente du choix « Nouvel espace »).
+- **Code** : `src/app.js` (`favSpace`, `favButton`, `toggleFav`, `migrate` : `favorisAdded`), `src/data.js` (catégorie `favoris`, pictogramme `favori`).
+
+## Déplacer les cases (éditeur)
+- **Ce que ça fait** : dans l'éditeur du logiciel (pas sur l'écran du Deck), on reste appuyé sur une case, on la déplace, et on relâche à la place voulue : les deux cases échangent leur place. Relâchée sur un onglet de page, elle part dans cette page (première place libre).
+- **Comment** : événements `pointerdown/move/up` (souris et doigt). La case se soulève après 0,35 s d'appui ou dès qu'on bouge de quelques pixels ; une copie suit le pointeur.
+- **Code** : `src/app.js` (`cellDrag`, `cellDragStart`, `cellDragEnd`), `src/styles.css` (`.ecell.ghost`, `.lifted`).
+
 ## Écran d'accueil et navigation
 - **Ce que ça fait** : accueil de 5 espaces par page ; glisser gauche/droite = page, haut/bas = espace ; carré Accueil en haut à gauche.
 - **Code** : `src/app.js` (`deckHome`, `homeBtn`, `simSwipe`, `simSwipeV`, `spaceOverlay`).
