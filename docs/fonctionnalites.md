@@ -40,7 +40,7 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 - **Code** : `src/sound.js` (Web Audio), `src/obs.js` (`playSound`), `main.js` (`sound:*`), `src/app.js` (`deckSound`, `soundPanel`, `viewAudio`).
 
 ## Clips (version 1.1.0)
-- **Ce que ça fait** : une mémoire garde les dernières secondes (15 s à 5 min), en 720p, 1080p, 1440p ou 4K, à 30 ou 60 images/s. CLIP → MP4 dans `Vidéos\The Deck\Clips` ; ENREGISTRER → vidéo longue ; CAPTURE → PNG. Page « Mes clips » : lire, couper, renommer, copier pour Discord, supprimer.
+- **Ce que ça fait** : une mémoire garde les dernières secondes (15 s à 5 min), en 1080p, 1440p, 1800p ou 4K, à 30 ou 60 images/s. CLIP → MP4 dans `Vidéos\The Deck\Clips` ; ENREGISTRER → vidéo longue ; CAPTURE → PNG. Page « Mes clips » : lire, couper, renommer, copier pour Discord, supprimer.
 - **Comment** :
   - `clips.js` lance FFmpeg en continu : image par `gfxcapture` (fenêtre du jeu ou écran, mise à l'échelle par la carte graphique ; repli `ddagrab`), encodage NVENC / AMF / QSV (repli x264), morceaux de 2 s (`-f segment`, liste `liste.csv`) dans `%TEMP%\TheDeck-memoire`. Les vieux morceaux sont effacés au fur et à mesure.
   - Un clip = les derniers morceaux recollés sans réencodage (`-f concat -c copy`).

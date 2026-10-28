@@ -10,8 +10,8 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const EventEmitter = require('events');
 
-const RES = { 720: [1280, 720], 1080: [1920, 1080], 1440: [2560, 1440], 2160: [3840, 2160] };
-const MBPS = { 720: 8, 1080: 15, 1440: 25, 2160: 45 };   // Mbit/s à 30 images/s (× 1,6 à 60 images/s)
+const RES = { 1080: [1920, 1080], 1440: [2560, 1440], 1800: [3200, 1800], 2160: [3840, 2160] };
+const MBPS = { 1080: 15, 1440: 25, 1800: 35, 2160: 45 };   // Mbit/s à 30 images/s (× 1,6 à 60 images/s)
 const SEG = 2;                       // durée d'un morceau de mémoire (s)
 const VIDEO_EXT = /\.(mp4|png)$/i;
 
