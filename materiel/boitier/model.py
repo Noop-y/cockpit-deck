@@ -60,11 +60,16 @@ POD_FILLET = 2.5                     # raccord arrondi avec le dos
 PORT_Z = 7.0                         # hauteur de l'axe de la prise au-dessus du dos
 POD_FRONT, POD_BODY = 1.6, 10.0      # épaisseur de la paroi avant ; fin du corps creux
 POD_SLOT = (9.6, 9.0)                # creux intérieur (largeur, hauteur) et fente dans le fond de la coque
+# pions de centrage : 3 pions sous la capsule (en triangle : un seul sens possible), 3 trous dans le dos de la coque
+PIN_D, PIN_H, PIN_HOLE = 3.0, 1.3, 3.4  # diamètre et hauteur des pions, trou dans le dos (1,6 mm d'épaisseur)
+PINS = [(POD_XF - 5.0, POD_YC + 7.6), (POD_XF - 5.0, POD_YC - 7.6), (POD_XF - 14.0, POD_YC)]
 
 parts = {}
 
 # ---------- COQUE (repère coque : fond sur z=0, face avant z=SD) ----------
 holes = [circle(INSERT_D / 2, x, y) for x, y in MOUNT]   # seuls les trous du pied traversent le fond
+if REAR_USB:                             # trous des pions de centrage de la capsule
+    holes += [circle(PIN_HOLE / 2, x, y, 24) for x, y in PINS]
 if REAR_USB:                             # fente pour la nappe, sous la capsule
     holes.append(rect(POD_BODY - POD_FRONT, POD_SLOT[0], POD_XF - (POD_FRONT + POD_BODY) / 2, POD_YC))
 if CABLE:
@@ -247,6 +252,9 @@ if REAR_USB:
     cs = c0 + POD_BODY + (POD_LEN - POD_BODY) * np.sin(th) ** 1.0
     sc = np.maximum(np.cos(th), 0.04)
     capsule.append(xform(loft([pod_ring(0.25 + 0.75 * s, s) for s in sc], cs), P_POD))
+    for x, y in PINS:                    # pions sous la base (ils entrent dans le dos de la coque), bout chanfreiné
+        capsule.append(tube(PIN_D / 2, 0, -0.3, PIN_H - 0.3, x, y, 24))
+        capsule.append(tube(PIN_D / 2 - 0.3, 0, PIN_H - 0.31, PIN_H, x, y, 24))
     parts['capsule'] = capsule
     # ouverture dans la plaque du pied : la capsule et la fiche du câble passent à travers
     POD_CUT = (POD_XF - POD_LEN - 2.0, POD_XF + 14.5, POD_YC - POD_W / 2 - POD_FILLET - 4.0, POD_YC + POD_W / 2 + POD_FILLET + 4.0)
@@ -672,7 +680,8 @@ to_print = {
     'coque': lambda tr: tr,
     'cadre': lambda tr: xform(tr, rot_y(180), [0, 0, SD + FT]),
     'pied': lambda tr: tr,
-    'capsule': lambda tr: xform(tr, rot_x(180)),     # à plat sur sa base, dôme vers le haut
+    # debout sur sa face avant (celle de la prise) : pions couchés, dôme vers le haut, rien en porte-à-faux
+    'capsule': lambda tr: (lambda r: r - [0, 0, r.reshape(-1, 3)[:, 2].min()])(xform(tr, rot_y(90))),
 }
 
 
