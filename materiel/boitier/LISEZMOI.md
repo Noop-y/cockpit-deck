@@ -6,6 +6,15 @@
 - Besoins : Python 3, numpy, scipy, matplotlib, et la police Inter Display Bold (chemin dans `model.py`, ligne `FontProperties`).
 - Cotes de l'écran : Waveshare ESP32-P4-WIFI6-Touch-LCD-7B. Le boîtier définitif attend les photos et mesures de la carte.
 
+## Avant d'imprimer : la pièce de test
+
+`python3 test_tolerances.py <dossier>` fabrique `The-Deck-0-test-tolerances.stl` (6 × 6 cm, quelques minutes d'impression), avec les mêmes cotes que le vrai boîtier :
+- un morceau de corps (paroi avec la rainure des clips, logement d'une patte avec son trou d'insert, 2 trous de pions) ;
+- un morceau de façade (rebord + 1 clip, poches de la languette et de la tête de vis) ;
+- une languette à 2 pions et une vraie patte.
+
+À vérifier : la façade se clipse et se déclipse avec l'encoche (ni trop dur ni trop mou) ; l'insert M3 entre à chaud bien droit ; la patte entre dans son logement sans forcer et sa vis serre ; la tête de vis ne dépasse pas sous la façade ; les 2 pions entrent sans forcer et sans jeu. Noter ce qui est trop serré ou trop lâche pour corriger `model.py` (et ce fichier).
+
 ## À acheter
 
 | Pièce | Nombre | Référence retenue |
