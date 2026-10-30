@@ -68,6 +68,7 @@ B.append(box(CL, L - CL, y_in, y_out, SD - LIP_H, SD))
 B.append(box(XB0, XB1, y_out, y_out + BEAD, Z_G0 + 0.15, Z_G1 - 0.15))
 B.append(box(XB0, XB1, y_out, y_out + BEAD / 2, Z_G0 + 0.05, Z_G0 + 0.15))
 B.append(box(XB0, XB1, y_out, y_out + BEAD / 2, Z_G1 - 0.15, Z_G1 - 0.05))
+B_ASM = list(B)                              # position montée (pour la vue 3D)
 B = [xform(t, rot_y(180), [0, 0, SD + FT]) for t in B]
 
 # ======== C · languette à 2 pions (debout, pions couchés comme sous la capsule) ========
@@ -78,8 +79,11 @@ for x in (10.0, 22.0):                       # même écart que les 2 trous de A
 
 # ======== une vraie patte (debout sur son bout extérieur) ========
 P = [extrude(rr(PB, 3.0), [circle(SCREW_D / 2, *SCREW, 32)], SD - PAT_H, SD), extrude(rr(PL, 0.8), [], SD - 0.02, SD + PAT_T)]
+P_ASM = list(P)
+C_ASM = [xform(t, np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]], float), [0, -12.5, 0]) for t in C]   # pions dans les trous de A
 P = [xform(t, rot_y(90)) for t in P]
 
+A_ASM = list(A)
 # ---- mise en place sur le plateau ----
 def bb(ts):
     v = np.concatenate(ts).reshape(-1, 3); return v.min(0), v.max(0)
@@ -105,3 +109,14 @@ mn, mx = bb(solids)
 allv = allv - np.array([(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, 0])      # centré sur le plateau
 write_stl(os.path.join(OUT, 'The-Deck-0-test-tolerances.stl'), allv)
 print('test-tolerances : taille', np.round(mx - mn, 1))
+
+# ---- vue 3D : pièces montées (assembly.json, même format que model.py) ----
+import json, base64
+TO3 = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]], float)
+cx = 30.0
+scene = {'corps': (A_ASM, 'shell', 0.0), 'facade': (B_ASM, 'frame', 1.0), 'patte': (P_ASM, 'patte', 0.5), 'pions': (C_ASM, 'capsule', -0.6)}
+out = {'explode_dir': [0, 1, 0], 'parts': {}}
+for k, (ts, mat, e) in scene.items():
+    v = xform(np.concatenate(ts) - np.array([cx, 0, 0]), TO3).astype(np.float32).reshape(-1)
+    out['parts'][k] = {'mat': mat, 'explode': e, 'pos': base64.b64encode(v.tobytes()).decode()}
+json.dump(out, open(os.path.join(OUT, 'test-assembly.json'), 'w'))
