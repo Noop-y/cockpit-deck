@@ -16,7 +16,8 @@ GT = 5.0                        # SUPPOSE : épaisseur du module écran (vitre +
 BACK = 5.0                      # demandé : 5 mm entre le fond et l'écran (carte à vérifier !)
 # ---- boîtier ----
 CLR = 0.4                       # jeu par côté
-WS, WTB, TB = 8.0, 3.0, 1.6     # parois latérales / haut-bas / fond
+WS, TB = 8.0, 1.6               # parois latérales / fond
+WTB = 4.0 if os.environ.get('DECK_FACADE_CLIPS', '1') == '1' else 3.0   # haut-bas : 4 mm pour loger les gros clips (30/10/2026)
 R = 5.0                         # rayon des angles
 FT = 3.0                        # épaisseur du cadre avant (3 mm : têtes de vis encastrées à fleur)
 FT_LIP = 1.6                    # épaisseur du cadre au bord de l'écran ; au-dessus, la fenêtre s'élargit (marche en biseau)
@@ -95,26 +96,26 @@ island = rect(OW / 2 - PW / 2, lo1 - hi2, (xo + xi) / 2, (lo1 + hi2) / 2)
 # Rien ne se voit de l'extérieur. Le rebord court le long des 4 côtés (pas dans les coins, où sont les vis) et
 # cache le joint par l'intérieur. En haut et en bas, des bourrelets s'enclenchent dans une rainure de la paroi.
 # Bourrelets en pente des deux côtés : on déclipse en tirant (après avoir retiré les vis).
-LIP_T, LIP_H = (1.0, 3.4) if FACADE_CLIPS else (0.85, 2.9)   # rebord intérieur haut/bas : épaisseur, hauteur
-LIP_T_S = 1.6 if FACADE_CLIPS else LIP_T  # rebord des côtés, plus épais (les parois des côtés font 8 mm)
+LIP_T, LIP_H = (1.3, 4.0) if FACADE_CLIPS else (0.85, 2.9)   # rebord intérieur haut/bas : épaisseur, hauteur
+LIP_T_S = 2.0 if FACADE_CLIPS else LIP_T  # rebord des côtés, plus épais (les parois des côtés font 8 mm)
 LIP_GAP = 0.2                            # jeu entre le rebord et le bord de la vitre
 CL = 0.15                                # jeu entre le rebord et la paroi
 REC = LIP_GAP + LIP_T + CL - (PW - GW) / 2   # la paroi est creusée de REC (le logement de l'écran a déjà 0,4 mm de jeu)
 REC_S = LIP_GAP + LIP_T_S + CL - (PW - GW) / 2   # creux des parois des côtés
 XB, YB = 75.0, 40.0                      # longueur des rebords : haut/bas de -XB à XB, côtés de -YB à YB (coins pleins)
-BEAD = 0.6 if FACADE_CLIPS else 0.35    # saillie des bourrelets haut/bas (vers la paroi) ; plus fermes sans vis
-BEAD_S = 1.0 if FACADE_CLIPS else BEAD   # saillie des bourrelets des côtés (essai du 30/10 : les clips étaient trop petits)
+BEAD = 0.8 if FACADE_CLIPS else 0.35    # saillie des bourrelets haut/bas (vers la paroi) ; plus fermes sans vis
+BEAD_S = 1.3 if FACADE_CLIPS else BEAD   # saillie des bourrelets des côtés (essai du 30/10 : les clips étaient trop petits)
 BEADS_X = (-55.0, -20.0, 20.0, 55.0)     # 4 bourrelets de 14 mm, en haut et en bas
-BEAD_L = 20.0 if FACADE_CLIPS else 14.0
-SIDE_R = ((-22.0, 20.0), (22.0, 20.0)) if FACADE_CLIPS else ()          # côté droit : (centre, longueur)
-SIDE_LO, SIDE_HI = (((-24.5, 20.0),), ((32.4, 14.0),)) if FACADE_CLIPS else ((), ())   # côté gauche : sous l'USB / au-dessus du bouton
+BEAD_L = 24.0 if FACADE_CLIPS else 14.0
+SIDE_R = ((-22.0, 24.0), (22.0, 24.0)) if FACADE_CLIPS else ()          # côté droit : (centre, longueur)
+SIDE_LO, SIDE_HI = (((-24.5, 24.0),), ((32.4, 14.0),)) if FACADE_CLIPS else ((), ())   # côté gauche : sous l'USB / au-dessus du bouton
 G_D = BEAD + 0.15                        # profondeur de la rainure au-delà du creux
 G_D_S = BEAD_S + 0.15
 Z_R = SD - LIP_H - 0.1                   # fond du creux pour le rebord
-Z_G0, Z_G1 = (SD - 3.2, SD - 1.8) if FACADE_CLIPS else (SD - 2.6, SD - 2.0)   # rainure des bourrelets
+Z_G0, Z_G1 = (SD - 3.95, SD - 1.6) if FACADE_CLIPS else (SD - 2.6, SD - 2.0)   # rainure des bourrelets
 PRY_W, PRY_D = 10.0, 0.8                 # encoche d'ouverture : petit chanfrein au milieu du bord du bas, sur le joint
 a_, b_ = PW / 2, PH / 2
-assert OH / 2 - (b_ + REC + G_D) >= 1.25, 'paroi trop fine derrière la rainure'
+assert OH / 2 - (b_ + REC + G_D) >= 1.5, 'paroi trop fine derrière la rainure'
 assert OW / 2 - (a_ + REC_S + G_D_S) >= 3.0, 'paroi des côtés trop fine derrière la rainure'
 
 

@@ -1,7 +1,7 @@
 # Boîtier 3D
 
 - `model.py` fabrique les pièces (façade gravée « THE DECK » + logo, clipsée sans vis ; coque ; cadre de maintien qui tient l'écran ; pied à lamelles) en STL : `python3 model.py <dossier-de-sortie>`.
-- Façade clipsée (validée le 28/10/2026) : 12 clips intérieurs en pente (4 en haut et 4 en bas de 0,6 mm, 2 de chaque côté de 1 mm, 20 mm de long : grossis après l'essai du 30/10/2026), ouverture par l'encoche du bas. L'écran est tenu par un cadre de maintien d'une seule pièce posé sur tout le bord noir de la vitre et vissé aux 4 coins dans les parois des côtés (remplace les 4 petites pattes, jugées trop faibles à l'essai) ; il est caché sous la façade. Ancienne façade vissée : `DECK_FACADE_CLIPS=0`.
+- Façade clipsée (validée le 28/10/2026) : 12 clips intérieurs en pente, grossis après l'essai du 30/10/2026 : rebords de 1,3 mm (haut/bas) et 2 mm (côtés), 4 mm de haut ; bourrelets de 0,8 mm (haut/bas) et 1,3 mm (côtés), 24 mm de long. Les parois du haut et du bas passent à 4 mm pour les loger (boîtier 108 mm de haut au lieu de 106), ouverture par l'encoche du bas. L'écran est tenu par un cadre de maintien d'une seule pièce posé sur tout le bord noir de la vitre et vissé aux 4 coins dans les parois des côtés (remplace les 4 petites pattes, jugées trop faibles à l'essai) ; il est caché sous la façade. Ancienne façade vissée : `DECK_FACADE_CLIPS=0`.
 - `meshlib.py` : petits outils de maillage (extrusions, triangulation) utilisés par `model.py`.
 - Besoins : Python 3, numpy, scipy, matplotlib, et la police Inter Display Bold (chemin dans `model.py`, ligne `FontProperties`).
 - Cotes de l'écran : Waveshare ESP32-P4-WIFI6-Touch-LCD-7B. Le boîtier définitif attend les photos et mesures de la carte.

@@ -1,5 +1,5 @@
 """Pièce de test des tolérances du boîtier (à imprimer avant le corps et la façade).
-Version 2 (30/10/2026) : clips plus gros, cadre de maintien à la place des pattes.
+Version 3 (30/10/2026) : clips encore plus gros (parois haut/bas de 4 mm), cadre de maintien à la place des pattes.
   A · morceau de corps : paroi du haut (3 mm) avec son clip, paroi des côtés (8 mm) avec son gros clip,
       logement d'une oreille du cadre de maintien + trou d'insert, 2 trous de pions
   B · morceau de façade : les deux rebords avec leurs bourrelets, poche du cadre et de la tête de vis
@@ -19,11 +19,11 @@ os.makedirs(OUT, exist_ok=True)
 # ---- cotes reprises de model.py ----
 TB, SD, FT, FT_LIP = 1.6, 11.6, 3.0, 1.6
 LIP_GAP, CL, CLR = 0.2, 0.15, 0.4
-LIP_H = 3.4
-Z_R, Z_G0, Z_G1 = SD - LIP_H - 0.1, SD - 3.2, SD - 1.8
+LIP_H = 4.0
+Z_R, Z_G0, Z_G1 = SD - LIP_H - 0.1, SD - 3.95, SD - 1.6
 CLIPS = {   # type : (épaisseur du rebord, saillie du bourrelet, épaisseur de la paroi)
-    'haut': (1.0, 0.6, 3.0),
-    'cote': (1.6, 1.0, 8.0),
+    'haut': (1.3, 0.8, 4.0),
+    'cote': (2.0, 1.3, 8.0),
 }
 INSERT_D, SCREW_D = 4.2, 3.4
 PAT_H, RING_T = 1.7, 1.2
@@ -42,20 +42,20 @@ def bead_profile(d0, depth, z0, z1):
 P_X = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]], float)     # (a, b, c) -> (x = c, y = a, z = b)
 
 # repère A/B : x le long de la paroi ; y = 0 au bord du logement de l'écran, y > 0 : paroi
-SEG = {'haut': (0.0, 36.0), 'cote': (64.0, 100.0)}           # deux morceaux de paroi
+SEG = {'haut': (0.0, 34.0), 'cote': (66.0, 100.0)}           # deux morceaux de paroi
 A, B = [], []
 A.append(extrude(rect(102.0, 24.0, 50.0, 0.0), [circle(PIN_HOLE / 2, 10.0, -8.0, 32), circle(PIN_HOLE / 2, 22.0, -8.0, 32)], 0.0, TB))
 for k, (x0, x1) in SEG.items():
     lip_t, bead, wall = CLIPS[k]
     rec = LIP_GAP + lip_t + CL - CLR
     gd = bead + 0.15
-    bx0, bx1 = (x0 + x1) / 2 - 10.0, (x0 + x1) / 2 + 10.0      # bourrelet de 20 mm au milieu
+    bx0, bx1 = (x0 + x1) / 2 - 12.0, (x0 + x1) / 2 + 12.0      # bourrelet de 24 mm au milieu
     A.append(box(x0, x1, 0.0, wall, TB - 0.2, Z_R))
     A.append(box(x0, x1, rec, wall, Z_R, Z_G0))
     A.append(extrude(poly([(x0, rec), (bx0 - 0.5, rec), (bx0 - 0.5, rec + gd), (bx1 + 0.5, rec + gd), (bx1 + 0.5, rec), (x1, rec), (x1, wall), (x0, wall)]), [], Z_G0, Z_G1))
     A.append(box(x0, x1, rec, wall, Z_G1, SD))
     # façade au-dessus de ce morceau : plaque + rebord + bourrelet
-    B.append(box(x0 - (0.5 if x0 < 1 else 1.2), x1 + (1.2 if x1 < 50 else 0.5), -6.0, wall, SD, SD + FT))   # touche le bloc du milieu : une seule pièce
+    B.append(box(x0 - 0.5 if x0 < 1 else 62.8, 37.2 if x1 < 50 else x1 + 0.5, -6.0, wall, SD, SD + FT))   # touche le bloc du milieu : une seule pièce
     B.append(box(x0 + CL, x1 - CL, -LIP_GAP, -LIP_GAP + lip_t, SD - LIP_H, SD))
     B.append(xform(extrude(bead_profile(-LIP_GAP + lip_t - 0.02, bead, Z_G0 + 0.1, Z_G1 - 0.1), [], bx0, bx1, maxlen=1e3), P_X))
 
