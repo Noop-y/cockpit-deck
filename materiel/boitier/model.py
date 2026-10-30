@@ -38,7 +38,7 @@ SCREWS = [(sx * (OW / 2 - SCREW_M), sy * (OH / 2 - SCREW_M)) for sx in (-1, 1) f
 # tiennent l'écran ; la façade se clipse par-dessus (12 clips) et les cache. Ancienne façade vissée : DECK_FACADE_CLIPS=0.
 FACADE_CLIPS = os.environ.get('DECK_FACADE_CLIPS', '1') == '1'
 if FACADE_CLIPS:
-    SCREWS = [(sx * (OW / 2 - 4.0), sy * (PH / 2 - 6.5)) for sx in (-1, 1) for sy in (-1, 1)]   # dans les parois des côtés (8 mm)
+    SCREWS = [(sx * (OW / 2 - 4.4), sy * (PH / 2 - 6.0)) for sx in (-1, 1) for sy in (-1, 1)]   # dans les parois des côtés (8 mm)
 _dx = max(0.0, abs(SCREWS[0][0]) - PW / 2); _dy = max(0.0, abs(SCREWS[0][1]) - PH / 2)
 assert np.hypot(_dx, _dy) >= INSERT_D / 2 + 1.0, 'insert trop près du logement de l’écran'
 MX = 60.0                        # inserts du pied : rentrés sous l'écran (pied plus étroit que la coque)
@@ -95,23 +95,27 @@ island = rect(OW / 2 - PW / 2, lo1 - hi2, (xo + xi) / 2, (lo1 + hi2) / 2)
 # Rien ne se voit de l'extérieur. Le rebord court le long des 4 côtés (pas dans les coins, où sont les vis) et
 # cache le joint par l'intérieur. En haut et en bas, des bourrelets s'enclenchent dans une rainure de la paroi.
 # Bourrelets en pente des deux côtés : on déclipse en tirant (après avoir retiré les vis).
-LIP_T, LIP_H = 0.85, 2.9                 # rebord intérieur : épaisseur, hauteur
+LIP_T, LIP_H = (1.0, 3.4) if FACADE_CLIPS else (0.85, 2.9)   # rebord intérieur haut/bas : épaisseur, hauteur
+LIP_T_S = 1.6 if FACADE_CLIPS else LIP_T  # rebord des côtés, plus épais (les parois des côtés font 8 mm)
 LIP_GAP = 0.2                            # jeu entre le rebord et le bord de la vitre
 CL = 0.15                                # jeu entre le rebord et la paroi
 REC = LIP_GAP + LIP_T + CL - (PW - GW) / 2   # la paroi est creusée de REC (le logement de l'écran a déjà 0,4 mm de jeu)
+REC_S = LIP_GAP + LIP_T_S + CL - (PW - GW) / 2   # creux des parois des côtés
 XB, YB = 75.0, 40.0                      # longueur des rebords : haut/bas de -XB à XB, côtés de -YB à YB (coins pleins)
-BEAD = 0.45 if FACADE_CLIPS else 0.35   # saillie des bourrelets (vers la paroi) ; plus fermes sans vis
+BEAD = 0.6 if FACADE_CLIPS else 0.35    # saillie des bourrelets haut/bas (vers la paroi) ; plus fermes sans vis
+BEAD_S = 1.0 if FACADE_CLIPS else BEAD   # saillie des bourrelets des côtés (essai du 30/10 : les clips étaient trop petits)
 BEADS_X = (-55.0, -20.0, 20.0, 55.0)     # 4 bourrelets de 14 mm, en haut et en bas
-BEAD_L = 16.0 if FACADE_CLIPS else 14.0
-SIDE_L = 12.0                            # bourrelets des côtés (variante façade clipsée)
-SIDE_R = (-22.0, 22.0) if FACADE_CLIPS else ()                 # côté droit
-SIDE_LO, SIDE_HI = ((-24.5,), (32.0,)) if FACADE_CLIPS else ((), ())   # côté gauche : sous l'USB / au-dessus du bouton
+BEAD_L = 20.0 if FACADE_CLIPS else 14.0
+SIDE_R = ((-22.0, 20.0), (22.0, 20.0)) if FACADE_CLIPS else ()          # côté droit : (centre, longueur)
+SIDE_LO, SIDE_HI = (((-24.5, 20.0),), ((32.4, 14.0),)) if FACADE_CLIPS else ((), ())   # côté gauche : sous l'USB / au-dessus du bouton
 G_D = BEAD + 0.15                        # profondeur de la rainure au-delà du creux
+G_D_S = BEAD_S + 0.15
 Z_R = SD - LIP_H - 0.1                   # fond du creux pour le rebord
-Z_G0, Z_G1 = SD - 2.6, SD - 2.0          # rainure des bourrelets
+Z_G0, Z_G1 = (SD - 3.2, SD - 1.8) if FACADE_CLIPS else (SD - 2.6, SD - 2.0)   # rainure des bourrelets
 PRY_W, PRY_D = 10.0, 0.8                 # encoche d'ouverture : petit chanfrein au milieu du bord du bas, sur le joint
 a_, b_ = PW / 2, PH / 2
-assert OH / 2 - (b_ + REC + G_D) >= 1.5, 'paroi trop fine derrière la rainure'
+assert OH / 2 - (b_ + REC + G_D) >= 1.25, 'paroi trop fine derrière la rainure'
+assert OW / 2 - (a_ + REC_S + G_D_S) >= 3.0, 'paroi des côtés trop fine derrière la rainure'
 
 
 def inner_path(groove):
@@ -128,22 +132,22 @@ def inner_path(groove):
     top += [(XB, b_ + REC)]
     bot += [(-XB, -b_ - REC)]
     right, l_hi, l_lo = [], [], []
-    xr, xl = a_ + REC, -a_ - REC
+    xr, xl = a_ + REC_S, -a_ - REC_S
     if groove:
-        for yc in sorted(SIDE_R, reverse=True):        # côté droit, en descendant
-            y1_, y0_ = yc + SIDE_L / 2 + 0.5, yc - SIDE_L / 2 - 0.5
-            right += [(xr, y1_), (xr + G_D, y1_), (xr + G_D, y0_), (xr, y0_)]
+        for yc, ln in sorted(SIDE_R, reverse=True):    # côté droit, en descendant
+            y1_, y0_ = yc + ln / 2 + 0.5, yc - ln / 2 - 0.5
+            right += [(xr, y1_), (xr + G_D_S, y1_), (xr + G_D_S, y0_), (xr, y0_)]
         for ys, out in ((SIDE_HI, l_hi), (SIDE_LO, l_lo)):   # côté gauche, en montant
-            for yc in sorted(ys):
-                y0_, y1_ = yc - SIDE_L / 2 - 0.5, yc + SIDE_L / 2 + 0.5
-                out += [(xl, y0_), (xl - G_D, y0_), (xl - G_D, y1_), (xl, y1_)]
-    return (l_hi + [(-a_ - REC, YB), (-a_, YB), (-a_, b_), (-XB, b_)] + top + [(XB, b_), (a_, b_), (a_, YB), (a_ + REC, YB)]
-            + right + [(a_ + REC, -YB), (a_, -YB), (a_, -b_), (XB, -b_)] + bot + [(-XB, -b_), (-a_, -b_), (-a_, -YB), (-a_ - REC, -YB)] + l_lo)
+            for yc, ln in sorted(ys):
+                y0_, y1_ = yc - ln / 2 - 0.5, yc + ln / 2 + 0.5
+                out += [(xl, y0_), (xl - G_D_S, y0_), (xl - G_D_S, y1_), (xl, y1_)]
+    return (l_hi + [(-a_ - REC_S, YB), (-a_, YB), (-a_, b_), (-XB, b_)] + top + [(XB, b_), (a_, b_), (a_, YB), (a_ + REC_S, YB)]
+            + right + [(a_ + REC_S, -YB), (a_, -YB), (a_, -b_), (XB, -b_)] + bot + [(-XB, -b_), (-a_, -b_), (-a_, -YB), (-a_ - REC_S, -YB)] + l_lo)
 
 
 def lower_with(path):
     """Paroi (avec les fenêtres USB et bouton) dont le bord intérieur suit path."""
-    br = [(xo, hi1), (-a_ - REC, hi1)] + path + [(-a_ - REC, lo2), (xo, lo2)]
+    br = [(xo, hi1), (-a_ - REC_S, hi1)] + path + [(-a_ - REC_S, lo2), (xo, lo2)]
     return poly(np.vstack([outer[:k + 1], br, outer[k + 1:]]))
 
 
@@ -162,21 +166,30 @@ def bottom_notch(loop, Y, depth, x0, x1):
 Z_INS = SD - INSERT_DEPTH                # fond des trous d'inserts du cadre (paroi pleine en dessous)
 top_holes = ins                          # trous dans le haut de la paroi (sous le cadre)
 if FACADE_CLIPS:
-    # patte = bloc vissé dans un logement du haut de la paroi + languette qui appuie sur le bord noir de la vitre
-    PAT_H = SD - (CUT_TOP - 0.2)         # épaisseur du bloc = profondeur du logement (1,7 mm)
-    PAT_T = 1.0                          # épaisseur de la languette (au-dessus de la vitre, sous la façade)
+    # cadre de maintien (30/10/2026, remplace les 4 pattes) : un cadre fin d'une seule pièce posé sur tout le bord noir
+    # de la vitre, avec 4 oreilles vissées dans des logements du haut des parois des côtés ; caché sous la façade
+    PAT_H = SD - (CUT_TOP - 0.2)         # épaisseur d'une oreille = profondeur de son logement (1,7 mm)
+    RING_T = 1.2                         # épaisseur du cadre (au-dessus de la vitre, sous la façade)
     PX, PY = abs(SCREWS[0][0]), abs(SCREWS[0][1])
     WIN_HI_X, WIN_HI_Y = (AW + 0.6) / 2 + BEVEL, (AH + 0.6) / 2 + BEVEL
-    PB = (a_ + 0.76, PX + 2.86, YB + 0.5, b_ - 1.2)             # bloc : x0, x1, y0, y1 (au-dessus des rebords des côtés)
-    PL = (WIN_HI_X + 0.7, PX + 2.46, b_ - 2.9, b_ - 1.2)        # languette : appuie sur le bord noir de la vitre, près du coin
-    assert PL[0] > WIN_HI_X + 0.3 and PL[2] > WIN_HI_Y + 0.3, 'languette visible dans la fenêtre'
+    PB = (a_ + 0.76, PX + 3.2, YB + 0.8, b_ - 1.2)              # oreille : x0, x1, y0, y1 (au-dessus des rebords des côtés)
+    assert PX + 2.95 < PB[1] - 0.2 and PY - 2.95 > PB[2] + 0.2 and PY + 2.95 < PB[3], 'tête de vis hors de l’oreille'
+    RIN = (WIN_HI_X + 0.4, WIN_HI_Y + 0.4)                      # bord intérieur du cadre : caché sous la façade
+    ROUT = (GW / 2 - 0.3, GH / 2 - 0.3)                         # bord extérieur : sur la vitre, les rebords de la façade passent autour
+
+    def ring_outline(g=0.0):
+        """Contour extérieur du cadre de maintien avec ses 4 oreilles (agrandi de g)."""
+        rx, ry, px1, py0, py1 = ROUT[0] + g, ROUT[1] + g, PB[1] + g, PB[2] - g, PB[3] + g
+        q = [(rx, 0.0), (rx, py0), (px1, py0), (px1, py1), (rx, py1), (rx, ry), (0.0, ry)]
+        pts = q + [(-x, y) for x, y in q[::-1][1:]]
+        pts += [(x, -y) for x, y in pts[::-1][1:-1]]
+        return poly(pts)
     Z_INS = SD - PAT_H - 6.5             # vis M3 × 8 : 1,7 mm de patte + 6,3 mm dans l'insert
 
     def corner_rr(b, r, grow, sx, sy):
         x0, x1, y0, y1 = b[0] - grow, b[1] + grow, b[2] - grow, b[3] + grow
         return rrect(x1 - x0, y1 - y0, r + grow, sx * (x0 + x1) / 2, sy * (y0 + y1) / 2)
     top_holes = [corner_rr(PB, 3.0, 0.2, sx, sy) for sx in (-1, 1) for sy in (-1, 1)]
-    assert PY + 2.9 < PL[2] - 0.3, 'poche de tête et poche de languette se touchent'
     assert PB[0] - 0.2 > a_ + 0.5, 'logement de patte trop près du logement de l’écran'
 cav = poly(inner_path(False))            # creux intérieur (logement de l'écran + creux du rebord), en trou
 cav_g = poly(inner_path(True))
@@ -186,7 +199,7 @@ shell.append(extrude(lower_with(inner_path(False)), ins, Z_R, Z_G0))
 shell.append(extrude(lower_with(inner_path(True)), ins, Z_G0, Z_G1))
 shell.append(extrude(lower_with(inner_path(False)), ins, Z_G1, CUT_TOP))
 shell.append(extrude(island, [], TB - 0.4, Z_R))
-shell.append(extrude(rect(OW / 2 - a_ - REC, lo1 - hi2, (xo - a_ - REC) / 2, (lo1 + hi2) / 2), [], Z_R, CUT_TOP))
+shell.append(extrude(rect(OW / 2 - a_ - REC_S, lo1 - hi2, (xo - a_ - REC_S) / 2, (lo1 + hi2) / 2), [], Z_R, CUT_TOP))
 shell.append(extrude(outer, [cav] + top_holes, CUT_TOP - 0.2, SD - PRY_D))
 shell.append(extrude(bottom_notch(outer, OH / 2, PRY_D, -PRY_W / 2, PRY_W / 2), [cav] + top_holes, SD - PRY_D, SD))
 if REAR_USB:                             # fenêtre USB du côté rebouchée : peau extérieure, niche dedans pour la fiche de la nappe
@@ -332,19 +345,17 @@ ENG = logo_shapes(LOGO, x_start, TOP_Y) + text_shapes('THE DECK', CAP, x_start +
 win_lo = rrect(AW + 0.6, AH + 0.6, 1.0)                       # fenêtre au ras de l'écran
 win_hi = rrect(AW + 0.6 + 2 * BEVEL, AH + 0.6 + 2 * BEVEL, 2.0)   # fenêtre élargie au-dessus : marche en biseau
 if FACADE_CLIPS:
-    # dessous de la façade : poches pour les languettes des pattes et les têtes de vis (rien ne se voit dessus)
+    # dessous de la façade : une poche pour le cadre de maintien et ses oreilles, et une pour chaque tête de vis
     heads = [circle(2.95, x, y) for x, y in SCREWS]
-    tongues = [corner_rr(PL, 0.8, 0.3, sx, sy) for sx in (-1, 1) for sy in (-1, 1)]
-    Z_HEAD = SD + 2.4                        # tête Ø 5,5 × 2,2 posée sur le bloc (à z = SD) + 0,2 de jeu
-    assert Z_HEAD <= SD + FT - 0.6
-    zs_ = sorted({SD, SD + PAT_T + 0.1, SD + FT_LIP, Z_HEAD, SD + FT - ENGRAVE})
-    frame = []
+    Z_HEAD = SD + 2.4                        # tête Ø 5,5 × 2,2 posée sur l'oreille (à z = SD) + 0,2 de jeu
+    Z_POCK = SD + RING_T + 0.1
+    assert Z_HEAD <= SD + FT - 0.6 and Z_POCK < SD + FT_LIP
+    island = rrect(2 * (RIN[0] - 0.3), 2 * (RIN[1] - 0.3), 1.0)     # partie de la façade à l'intérieur du cadre
+    frame = [extrude(rrect(OW, OH, R), [ring_outline(0.3)], SD, Z_POCK), extrude(island, [win_lo], SD, Z_POCK)]
+    zs_ = sorted({Z_POCK, SD + FT_LIP, Z_HEAD, SD + FT - ENGRAVE})
     for za, zb_ in zip(zs_, zs_[1:]):
         hs = [win_lo if zb_ <= SD + FT_LIP + 1e-9 else win_hi]
-        if zb_ <= SD + PAT_T + 0.1 + 1e-9:
-            # poche d'une languette + poche de la tête : on les réunit si elles se touchent
-            hs += tongues + heads
-        elif zb_ <= Z_HEAD + 1e-9:
+        if zb_ <= Z_HEAD + 1e-9:
             hs += heads
         frame.append(extrude(rrect(OW, OH, R), hs, za, zb_))
     cbores = []
@@ -361,38 +372,37 @@ frame.append(extrude(rrect(OW, OH, R), [win_hi] + cbores + [o for o, _ in ENG], 
 for _, isl in ENG:                             # intérieurs des lettres (D…) et lamelles du logo : restent en relief
     for h in isl:
         frame.append(extrude(h, [], SD + FT - ENGRAVE, SD + FT, maxlen=1.0))
-# rebord intérieur sous le cadre (entre la vitre et la paroi) + bourrelets en haut et en bas
+# rebord intérieur sous le cadre (entre la vitre et la paroi) + bourrelets en pente (entrée douce, retenue plus raide)
+def bead_profile(d0, sg, depth, z0, z1):
+    """Section d'un bourrelet : part de la face du rebord (d0) vers la paroi (sens sg), entre z0 et z1."""
+    lead, keep = min(depth * 1.2, (z1 - z0) * 0.45), min(depth * 0.8, (z1 - z0) * 0.35)
+    return poly([(d0, z0), (d0 + sg * depth, z0 + lead), (d0 + sg * depth, z1 - keep), (d0, z1)])
+
+
+P_X = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]], float)     # (a, b, c) -> (x = c, y = a, z = b)
+P_Y = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]], float)     # (a, b, c) -> (x = a, y = c, z = b)
 for sg in (1, -1):
     y_in, y_out = sg * (GH / 2 + LIP_GAP), sg * (GH / 2 + LIP_GAP + LIP_T)
     frame.append(box(-XB + CL, XB - CL, min(y_in, y_out), max(y_in, y_out), SD - LIP_H, SD))
-    y_b, y_h = sg * (GH / 2 + LIP_GAP + LIP_T + BEAD), sg * (GH / 2 + LIP_GAP + LIP_T + BEAD / 2)
     for xc in BEADS_X:
-        x0_, x1_ = xc - BEAD_L / 2, xc + BEAD_L / 2
-        frame.append(box(x0_, x1_, min(y_out, y_b), max(y_out, y_b), Z_G0 + 0.15, Z_G1 - 0.15))
-        frame.append(box(x0_, x1_, min(y_out, y_h), max(y_out, y_h), Z_G0 + 0.05, Z_G0 + 0.15))
-        frame.append(box(x0_, x1_, min(y_out, y_h), max(y_out, y_h), Z_G1 - 0.15, Z_G1 - 0.05))
-for sx in (-1, 1):                             # rebords des côtés (à gauche, pas derrière le port USB ni le bouton)
-    xa_, xb_ = sorted([sx * (GW / 2 + LIP_GAP), sx * (GW / 2 + LIP_GAP + LIP_T)])
+        frame.append(xform(extrude(bead_profile(y_out - sg * 0.02, sg, BEAD, Z_G0 + 0.1, Z_G1 - 0.1), [], xc - BEAD_L / 2, xc + BEAD_L / 2, maxlen=1e3), P_X))
+for sx in (-1, 1):                             # rebords des côtés (à gauche, pas derrière la prise USB ni le bouton)
+    xa_, xb_ = sorted([sx * (GW / 2 + LIP_GAP), sx * (GW / 2 + LIP_GAP + LIP_T_S)])
     spans = [(-YB + CL, YB - CL)] if sx > 0 else [(-YB + CL, lo2 - 1.0), (hi1 + 1.0, YB - CL)]
     for y0_, y1_ in spans:
         frame.append(box(xa_, xb_, y0_, y1_, SD - LIP_H, SD))
-for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI)):   # bourrelets des côtés (variante façade clipsée)
-    x_out = sx * (GW / 2 + LIP_GAP + LIP_T)
-    x_b, x_h = sx * (GW / 2 + LIP_GAP + LIP_T + BEAD), sx * (GW / 2 + LIP_GAP + LIP_T + BEAD / 2)
-    for yc in ys:
-        y0_, y1_ = yc - SIDE_L / 2, yc + SIDE_L / 2
-        frame.append(box(min(x_out, x_b), max(x_out, x_b), y0_, y1_, Z_G0 + 0.15, Z_G1 - 0.15))
-        frame.append(box(min(x_out, x_h), max(x_out, x_h), y0_, y1_, Z_G0 + 0.05, Z_G0 + 0.15))
-        frame.append(box(min(x_out, x_h), max(x_out, x_h), y0_, y1_, Z_G1 - 0.15, Z_G1 - 0.05))
+for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI)):   # bourrelets des côtés, plus gros
+    x_out = sx * (GW / 2 + LIP_GAP + LIP_T_S)
+    for yc, ln in ys:
+        frame.append(xform(extrude(bead_profile(x_out - sx * 0.02, sx, BEAD_S, Z_G0 + 0.1, Z_G1 - 0.1), [], yc - ln / 2, yc + ln / 2, maxlen=1e3), P_Y))
 parts['cadre'] = frame
 if FACADE_CLIPS:
-    pattes = []
+    # cadre de maintien : le cadre (sur la vitre) + 4 oreilles dans les logements des parois, trous Ø 6,2 pour les têtes de vis
+    maintien = [extrude(ring_outline(0.0), [rrect(2 * RIN[0], 2 * RIN[1], 1.0)] + [circle(2.95, x, y, 32) for x, y in SCREWS], SD - 0.02, SD + RING_T)]
     for sx in (-1, 1):
         for sy in (-1, 1):
-            hole = [circle(SCREW_D / 2, sx * PX, sy * PY)]
-            pattes.append(extrude(corner_rr(PB, 3.0, 0.0, sx, sy), hole, SD - PAT_H, SD))
-            pattes.append(extrude(corner_rr(PL, 0.8, 0.0, sx, sy), [], SD - 0.02, SD + PAT_T))
-    parts['pattes'] = pattes
+            maintien.append(extrude(corner_rr(PB, 3.0, 0.0, sx, sy), [circle(SCREW_D / 2, sx * PX, sy * PY)], SD - PAT_H, SD))
+    parts['maintien'] = maintien
 
 # ---------- PIED (repère plaque : x, u le long de la pente, w sous la pente) ----------
 A = np.radians(ANGLE)
@@ -685,19 +695,8 @@ to_print = {
 }
 
 
-def pattes_print(_):
-    """Les 4 pattes debout sur leur bout extérieur (pas de porte-à-faux), côte à côte."""
-    out = []
-    for i in range(4):
-        p = np.concatenate(parts['pattes'][2 * i:2 * i + 2])
-        sx = 1 if p.reshape(-1, 3)[:, 0].mean() > 0 else -1
-        p = xform(p, rot_y(90 if sx > 0 else -90))
-        v = p.reshape(-1, 3)
-        out.append(p - v.min(0) + [i * 14.0, 0, 0])
-    return np.concatenate(out)
-
-
-to_print['pattes'] = pattes_print
+# cadre de maintien : le cadre à plat sur le plateau, les oreilles vers le haut (rien en porte-à-faux)
+to_print['maintien'] = lambda tr: (lambda r: r - [0, 0, r.reshape(-1, 3)[:, 2].min()])(xform(tr, rot_y(180)))
 for name, solids in parts.items():
     tr = to_print[name](np.concatenate(solids))
     write_stl(f'{OUT}/{name}.stl', tr)
@@ -719,7 +718,7 @@ pcb = [box(-55, 55, -38, 38, SD - GT - 3.6, SD - GT - 2.0)]
 scene = {
     'coque': (world_shell(np.concatenate(parts['coque'])), 'shell', 0.0),
     'cadre': (world_shell(np.concatenate(parts['cadre'])), 'frame', 1.0),
-    **({'pattes': (world_shell(np.concatenate(parts['pattes'])), 'patte', 0.55)} if FACADE_CLIPS else {}),
+    **({'maintien': (world_shell(np.concatenate(parts['maintien'])), 'patte', 0.55)} if FACADE_CLIPS else {}),
     'ecran': (world_shell(np.concatenate(display)), 'glass', 0.6),
     'zone': (world_shell(np.concatenate(active)), 'active', 0.6),
     'carte': (world_shell(np.concatenate(pcb)), 'pcb', 0.3),

@@ -1,7 +1,7 @@
 # Boîtier 3D
 
-- `model.py` fabrique les pièces (façade gravée « THE DECK » + logo, clipsée sans vis ; coque ; 4 pattes qui tiennent l'écran ; pied à lamelles) en STL : `python3 model.py <dossier-de-sortie>`.
-- Façade clipsée (validée le 28/10/2026) : 12 clips intérieurs (4 en haut, 4 en bas, 2 de chaque côté), ouverture par l'encoche du bas. L'écran est tenu par 4 pattes vissées dans les parois des côtés, cachées sous la façade. Ancienne façade vissée : `DECK_FACADE_CLIPS=0`.
+- `model.py` fabrique les pièces (façade gravée « THE DECK » + logo, clipsée sans vis ; coque ; cadre de maintien qui tient l'écran ; pied à lamelles) en STL : `python3 model.py <dossier-de-sortie>`.
+- Façade clipsée (validée le 28/10/2026) : 12 clips intérieurs en pente (4 en haut et 4 en bas de 0,6 mm, 2 de chaque côté de 1 mm, 20 mm de long : grossis après l'essai du 30/10/2026), ouverture par l'encoche du bas. L'écran est tenu par un cadre de maintien d'une seule pièce posé sur tout le bord noir de la vitre et vissé aux 4 coins dans les parois des côtés (remplace les 4 petites pattes, jugées trop faibles à l'essai) ; il est caché sous la façade. Ancienne façade vissée : `DECK_FACADE_CLIPS=0`.
 - `meshlib.py` : petits outils de maillage (extrusions, triangulation) utilisés par `model.py`.
 - Besoins : Python 3, numpy, scipy, matplotlib, et la police Inter Display Bold (chemin dans `model.py`, ligne `FontProperties`).
 - Cotes de l'écran : Waveshare ESP32-P4-WIFI6-Touch-LCD-7B. Le boîtier définitif attend les photos et mesures de la carte.
@@ -9,23 +9,24 @@
 ## Avant d'imprimer : la pièce de test
 
 `python3 test_tolerances.py <dossier>` fabrique `The-Deck-0-test-tolerances.stl` (6 × 6 cm, quelques minutes d'impression), avec les mêmes cotes que le vrai boîtier :
-- un morceau de corps (paroi avec la rainure des clips, logement d'une patte avec son trou d'insert, 2 trous de pions) ;
-- un morceau de façade (rebord + 1 clip, poches de la languette et de la tête de vis) ;
-- une languette à 2 pions et une vraie patte.
+- un morceau de corps : paroi du haut avec son clip, paroi des côtés avec son gros clip, logement d'une oreille du cadre de maintien avec son trou d'insert, 2 trous de pions ;
+- un morceau de façade : les deux rebords avec leurs bourrelets, poche du cadre et de la tête de vis ;
+- une languette à 2 pions et un coin du cadre de maintien.
+Aussi en 4 fichiers séparés (`The-Deck-0a…0d-…stl`).
 
-À vérifier : la façade se clipse et se déclipse avec l'encoche (ni trop dur ni trop mou) ; l'insert M3 entre à chaud bien droit ; la patte entre dans son logement sans forcer et sa vis serre ; la tête de vis ne dépasse pas sous la façade ; les 2 pions entrent sans forcer et sans jeu. Noter ce qui est trop serré ou trop lâche pour corriger `model.py` (et ce fichier).
+À vérifier : la façade se clipse et se déclipse avec l'encoche (ni trop dur ni trop mou) ; l'insert M3 entre à chaud bien droit ; le coin du cadre entre dans son logement sans forcer et sa vis serre ; la tête de vis ne dépasse pas sous la façade ; les 2 pions entrent sans forcer et sans jeu. Noter ce qui est trop serré ou trop lâche pour corriger `model.py` (et ce fichier).
 
 ## À acheter
 
 | Pièce | Nombre | Référence retenue |
 |---|---|---|
 | Patins silicone adhésifs transparents, ronds 8 mm (épaisseur 2 mm conseillée) | 8 | Tenare, lot de 100 — https://www.amazon.fr/Amortisseurs-Adh%C3%A9sifs-Transparents-Amortissement-dArmoires/dp/B093SMVP38 (vérifier l'épaisseur : le logement fait Ø 8,4 × 1 mm) |
-| Inserts laiton à chaud M3 (longueur 4 à 6 mm) | 8 | ✅ déjà en stock — 4 pour les pattes de l'écran, 4 pour le pied |
-| Vis M3 cruciformes à tête plate (cylindrique), tête Ø 5,6 mm max × 2,2 mm max | 4 (pattes) + 4 (pied) | ✅ déjà en stock — pattes : M3 × 8 mm (la tête se loge dans une poche sous la façade) ; pied : M3 × 10 mm |
+| Inserts laiton à chaud M3 (longueur 4 à 6 mm) | 8 | ✅ déjà en stock — 4 pour le cadre de maintien, 4 pour le pied |
+| Vis M3 cruciformes à tête plate (cylindrique), tête Ø 5,6 mm max × 2,2 mm max | 4 (cadre de maintien) + 4 (pied) | ✅ déjà en stock — cadre de maintien : M3 × 8 mm (la tête se loge dans une poche sous la façade) ; pied : M3 × 10 mm |
 | Écran Waveshare ESP32-P4-WIFI6-Touch-LCD-7B (7 pouces, 1024 × 600) | 1 | retenu |
 | Câble USB-C magnétique orange **avec transfert de données** (480 Mbit/s mini), tête qui reste dans la prise | 1 | retenu : AUFU 240 W magnétique 16 broches, 1,8 m, données — https://www.amazon.fr/AUFU-Magn%C3%A9tique-Transfert-Donn%C3%A9es-Samsung/dp/B0D962HKSB (vérifier la couleur à la commande ; la tête aimantée reste dans la prise de la capsule, au dos) |
 | Adaptateur USB-A → USB-C | 0 ou 1 | seulement si le PC n'a pas de prise USB-C libre |
-| Filament : gris (coque, façade, pattes), orange (pied) | — | PETG conseillé pour la façade (clips plus souples) et les pattes |
+| Filament : gris (coque, façade, cadre de maintien, capsule), orange (pied) | — | PETG conseillé pour la façade (clips plus souples) ; en PLA, faire d'abord la pièce de test |
 
 ## Déport USB-C (validé le 28/10/2026)
 
