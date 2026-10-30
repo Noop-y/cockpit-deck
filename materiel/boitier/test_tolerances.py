@@ -108,6 +108,11 @@ allv = np.concatenate(solids)
 mn, mx = bb(solids)
 allv = allv - np.array([(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, 0])      # centré sur le plateau
 write_stl(os.path.join(OUT, 'The-Deck-0-test-tolerances.stl'), allv)
+# un fichier par pièce, chacune centrée et posée sur le plateau
+for nom, ts in (('0a-test-corps', A), ('0b-test-facade', B), ('0c-test-pions', C), ('0d-test-patte', P)):
+    v = np.concatenate(ts); q = v.reshape(-1, 3); lo, hi = q.min(0), q.max(0)
+    write_stl(os.path.join(OUT, f'The-Deck-{nom}.stl'), v - np.array([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2]]))
+    print(nom, 'taille', np.round(hi - lo, 1))
 print('test-tolerances : taille', np.round(mx - mn, 1))
 
 # ---- vue 3D : pièces montées (assembly.json, même format que model.py) ----
