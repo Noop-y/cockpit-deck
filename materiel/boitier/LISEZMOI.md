@@ -30,6 +30,8 @@ Aussi en 4 fichiers séparés (`The-Deck-0a…0d-…stl`).
 
 ## Déport USB-C (validé le 28/10/2026)
 
+Forme de la capsule validée le 02/11/2026 : 21 × 17 × 8 mm, avant en pavé aux angles légèrement arrondis (côté prise), arrière qui s'affine en courbe jusqu'à 2,2 mm, bout arrondi vu de dessus.
+
 Le câble se branche au dos, dans une petite capsule arrondie collée entre la 1re et la 2e nervure du pied. Le côté gauche est entièrement fermé : la fenêtre USB et celle du bouton marche/arrêt sont rebouchées (le bouton reste sur marche ; il reste dedans une niche pour la fiche coudée de la nappe). Pour rouvrir la fenêtre du bouton : `DECK_BOUTON_OUVERT=1`. Une nappe USB-C relie la prise de la carte à la prise femelle logée dans la capsule.
 
 - Goulotte du câble : une ouverture dans la plaque du pied et une encoche ronde dans la nervure n° 2 mènent le câble de la capsule jusqu'au milieu du pied (goulotte de 20 mm de large). Il sort tout droit de la prise (pas de pli serré), se pose dans la goulotte par l'arrière et redescend au milieu.
