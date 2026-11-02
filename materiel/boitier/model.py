@@ -56,11 +56,11 @@ SKIN_USB = 1.6                       # épaisseur de la paroi qui rebouche la fe
 CLOSE_BTN = os.environ.get('DECK_BOUTON_OUVERT') != '1'   # fenêtre du bouton marche/arrêt rebouchée (28/10/2026) ; DECK_BOUTON_OUVERT=1 pour la rouvrir
 POD_YC = 0.0                         # hauteur de la capsule sur le dos : au milieu
 POD_XF, POD_LEN = -40.0, 21.0        # face de la prise (x), longueur totale vers le bord
-POD_W, POD_H, POD_R = 17.0, 11.0, 5.5    # largeur, saillie, arrondi du dessus
-POD_FILLET = 2.5                     # raccord arrondi avec le dos
-PORT_Z = 7.0                         # hauteur de l'axe de la prise au-dessus du dos
+POD_W, POD_H, POD_R = 17.0, 8.0, 3.0     # largeur, saillie, arrondi du dessus (plus plate et moins arrondie le 02/11/2026 ; avant 11 et 5,5)
+POD_FILLET = 1.5                     # raccord arrondi avec le dos (avant 2,5)
+PORT_Z = 3.5                         # hauteur de l'axe de la prise au-dessus du dos (prise femelle de la nappe posée sur le dos)
 POD_FRONT, POD_BODY = 1.6, 10.0      # épaisseur de la paroi avant ; fin du corps creux
-POD_SLOT = (9.6, 9.0)                # creux intérieur (largeur, hauteur) et fente dans le fond de la coque
+POD_SLOT = (9.6, 6.5)                # creux intérieur (largeur, hauteur) et fente dans le fond de la coque
 # pions de centrage : 3 pions sous la capsule (en triangle : un seul sens possible), 3 trous dans le dos de la coque
 PIN_D, PIN_H, PIN_HOLE = 3.0, 1.3, 3.4  # diamètre et hauteur des pions, trou dans le dos (1,6 mm d'épaisseur)
 PINS = [(POD_XF - 5.0, POD_YC + 7.6), (POD_XF - 5.0, POD_YC - 7.6), (POD_XF - 14.0, POD_YC)]
@@ -271,7 +271,7 @@ if REAR_USB:
         capsule.append(tube(PIN_D / 2 - 0.3, 0, PIN_H - 0.31, PIN_H, x, y, 24))
     parts['capsule'] = capsule
     # ouverture dans la plaque du pied : la capsule et la fiche du câble passent à travers
-    POD_CUT = (POD_XF - POD_LEN - 2.0, POD_XF + 14.5, POD_YC - POD_W / 2 - POD_FILLET - 4.0, POD_YC + POD_W / 2 + POD_FILLET + 4.0)
+    POD_CUT = (POD_XF - POD_LEN - 2.0, POD_XF + 14.5, POD_YC - 15.0, POD_YC + 15.0)   # ouverture fixe : capsule + goulotte de 20 mm
 parts['coque'] = shell
 
 # ---------- CADRE AVANT (repère coque, z de SD à SD+FT) ----------
