@@ -254,35 +254,61 @@ if REAR_USB:
             tris.append(P[simp] if top else P[simp[:, [0, 2, 1]]])
         return np.concatenate(tris)
 
-    # capsule en pavé (02/11/2026) : rectangle aux angles légèrement arrondis (2 mm vus de dessus, 1,5 mm sur le dessus)
-    RC, RE = 2.0, 1.5
-    u0, u1, v0, v1 = c0, c0 + POD_LEN, POD_YC - POD_W / 2, POD_YC + POD_W / 2
+    # capsule (02/11/2026) : avant en pavé aux angles légèrement arrondis (prise USB-C), arrière qui s'affine en douceur
+    RC, RE = 2.0, 1.5                    # arrondis : coins de l'avant (vus de dessus), arêtes du dessus
+    u0, uB, u1 = c0, c0 + POD_BODY, c0 + POD_LEN      # avant, fin du pavé (fin du creux), bout de l'arrière
+    v0, v1 = POD_YC - POD_W / 2, POD_YC + POD_W / 2
     P_BOX = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]], float)   # (u = c, v = a, b) -> (x = -c, y = a, z = -b)
-    cav_u0, cav_u1, cav_w, pw = u0 + POD_FRONT, u0 + POD_BODY, POD_SLOT[0] / 2, 4.6
+    cav_u0, cav_w, pw = u0 + POD_FRONT, POD_SLOT[0] / 2, 4.6
     pz0, pz1 = PORT_Z - 1.8, PORT_Z + 1.8                 # ouverture de la prise USB-C femelle (9,2 × 3,6 mm)
 
-    def box_outline(notch):
-        """Contour vu de dessus ; avec notch : la prise traverse la face avant et rejoint le creux."""
+    def front_outline(ins=0.0, notch=False):
+        """Pavé vu de dessus, de l'avant à la fin du creux : coins avant arrondis, arrière droit (raccord avec la queue).
+        ins : retrait des côtés et de l'avant (arrondi des arêtes du dessus)."""
+        r = RC - ins if RC - ins > 0.3 else 0.3
         pts = []
         def arc(cx, cy, a0, a1):
             for t in np.radians(np.linspace(a0, a1, 9)):
-                pts.append((cx + RC * np.cos(t), cy + RC * np.sin(t)))
-        arc(u0 + RC, v0 + RC, 180, 270); arc(u1 - RC, v0 + RC, 270, 360)
-        arc(u1 - RC, v1 - RC, 0, 90); arc(u0 + RC, v1 - RC, 90, 180)
+                pts.append((cx + r * np.cos(t), cy + r * np.sin(t)))
+        arc(u0 + ins + r, v0 + ins + r, 180, 270)
+        pts += [(uB, v0 + ins), (uB, v1 - ins)]
+        arc(u0 + ins + r, v1 - ins - r, 90, 180)
         if notch:
-            pts += [(u0, POD_YC + pw), (cav_u0, POD_YC + pw), (cav_u0, POD_YC + cav_w), (cav_u1, POD_YC + cav_w),
-                    (cav_u1, POD_YC - cav_w), (cav_u0, POD_YC - cav_w), (cav_u0, POD_YC - pw), (u0, POD_YC - pw)]
+            pts += [(u0, POD_YC + pw), (cav_u0, POD_YC + pw), (cav_u0, POD_YC + cav_w), (uB - 0.6, POD_YC + cav_w),
+                    (uB - 0.6, POD_YC - cav_w), (cav_u0, POD_YC - cav_w), (cav_u0, POD_YC - pw), (u0, POD_YC - pw)]
         return poly(pts)
-    cavity = rect(cav_u1 - cav_u0, 2 * cav_w, (cav_u0 + cav_u1) / 2, POD_YC)
-    capsule = [xform(extrude(box_outline(False), [cavity], 0.0, pz0, maxlen=50), P_BOX),
-               xform(extrude(box_outline(True), [], pz0, pz1, maxlen=50), P_BOX),
-               xform(extrude(box_outline(False), [cavity], pz1, POD_SLOT[1], maxlen=50), P_BOX)]
-    assert POD_SLOT[1] <= POD_H - RE, 'creux plus haut que la capsule'
-    ts = np.linspace(0, np.pi / 2, 10)                    # dessus : arêtes arrondies de 1,5 mm
-    rings = [rrect(POD_LEN - 2 * RE * (1 - np.cos(t)), POD_W - 2 * RE * (1 - np.cos(t)), RC - RE * (1 - np.cos(t)), (u0 + u1) / 2, POD_YC, seg=8) for t in ts]
-    capsule.append(xform(loft(rings, [POD_H - RE + RE * np.sin(t) for t in ts]), P_BOX))
+    # creux ouvert dessous jusqu'au bout du pavé : il est fermé par la queue (pleine)
+    cavity = rect(uB - cav_u0 - 0.6, 2 * cav_w, (cav_u0 + uB - 0.6) / 2, POD_YC)
+    capsule = [xform(extrude(front_outline(), [cavity], 0.0, pz0, maxlen=50), P_BOX),
+               xform(extrude(front_outline(0.0, True), [], pz0, pz1, maxlen=50), P_BOX),
+               xform(extrude(front_outline(), [cavity], pz1, POD_SLOT[1], maxlen=50), P_BOX)]
     if POD_SLOT[1] < POD_H - RE:
-        capsule.append(xform(extrude(box_outline(False), [], POD_SLOT[1], POD_H - RE, maxlen=50), P_BOX))
+        capsule.append(xform(extrude(front_outline(), [], POD_SLOT[1], POD_H - RE, maxlen=50), P_BOX))
+    ts = np.linspace(0, np.pi / 2, 10)                    # dessus du pavé : arêtes arrondies de 1,5 mm (côtés et avant)
+    capsule.append(xform(loft([front_outline(RE * (1 - np.cos(t))) for t in ts], [POD_H - RE + RE * np.sin(t) for t in ts]), P_BOX))
+
+    def section(w, h, n=10):
+        """Section de la queue (v, b) : bas plat sur le dos, côtés droits, arêtes du dessus arrondies."""
+        r = min(RE, h * 0.45, w * 0.45)
+        pts = [(POD_YC - w / 2, 0.0)]
+        for t in np.linspace(np.pi, np.pi / 2, n):
+            pts.append((POD_YC - w / 2 + r + r * np.cos(t), h - r + r * np.sin(t)))
+        for t in np.linspace(np.pi / 2, 0, n):
+            pts.append((POD_YC + w / 2 - r + r * np.cos(t), h - r + r * np.sin(t)))
+        pts.append((POD_YC + w / 2, 0.0))
+        return np.array(pts)
+    # queue : la hauteur descend en douceur (courbe en S) de 8 à 2,2 mm ; vue de dessus, l'arrière s'arrondit (rayon 4 mm)
+    RR, H_END = 4.0, 2.2
+    us = np.concatenate([np.linspace(uB, u1 - RR, 30), u1 - RR + RR * np.sin(np.linspace(0, np.pi / 2, 16))[1:]])
+    secs = []
+    for u in us:
+        t = (u - uB) / (u1 - uB)
+        h = H_END + (POD_H - H_END) * (np.cos(np.pi * t) + 1) / 2
+        k = max(0.0, u - (u1 - RR))
+        w = POD_W - 2 * (RR - np.sqrt(max(RR ** 2 - k ** 2, 0.0)))
+        secs.append(section(max(w, 2.5), h))
+    P_TAIL = np.array([[0, 0, -1], [1, 0, 0], [0, -1, 0]], float)  # (a = v, b, c = u) -> (x = -c, y = a, z = -b)
+    capsule.append(xform(loft(secs, list(us)), P_TAIL))
     for x, y in PINS:                    # pions sous la base (ils entrent dans le dos de la coque), bout chanfreiné
         capsule.append(tube(PIN_D / 2, 0, -0.3, PIN_H - 0.3, x, y, 24))
         capsule.append(tube(PIN_D / 2 - 0.3, 0, PIN_H - 0.31, PIN_H, x, y, 24))
