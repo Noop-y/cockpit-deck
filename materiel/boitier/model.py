@@ -56,14 +56,14 @@ SKIN_USB = 1.6                       # épaisseur de la paroi qui rebouche la fe
 CLOSE_BTN = os.environ.get('DECK_BOUTON_OUVERT') != '1'   # fenêtre du bouton marche/arrêt rebouchée (28/10/2026) ; DECK_BOUTON_OUVERT=1 pour la rouvrir
 POD_YC = 0.0                         # hauteur de la capsule sur le dos : au milieu
 POD_XF, POD_LEN = -40.0, 21.0        # face de la prise (x), longueur totale vers le bord
-POD_W, POD_H, POD_R = 17.0, 8.0, 3.0     # largeur, saillie, arrondi du dessus (plus plate et moins arrondie le 02/11/2026 ; avant 11 et 5,5)
+POD_W, POD_H, POD_R = 17.0, 8.0, 3.0     # largeur, hauteur (pavé aux angles légèrement arrondis depuis le 02/11/2026)
 POD_FILLET = 1.5                     # raccord arrondi avec le dos (avant 2,5)
 PORT_Z = 3.5                         # hauteur de l'axe de la prise au-dessus du dos (prise femelle de la nappe posée sur le dos)
 POD_FRONT, POD_BODY = 1.6, 10.0      # épaisseur de la paroi avant ; fin du corps creux
 POD_SLOT = (9.6, 6.5)                # creux intérieur (largeur, hauteur) et fente dans le fond de la coque
 # pions de centrage : 3 pions sous la capsule (en triangle : un seul sens possible), 3 trous dans le dos de la coque
 PIN_D, PIN_H, PIN_HOLE = 3.0, 1.3, 3.4  # diamètre et hauteur des pions, trou dans le dos (1,6 mm d'épaisseur)
-PINS = [(POD_XF - 5.0, POD_YC + 7.6), (POD_XF - 5.0, POD_YC - 7.6), (POD_XF - 14.0, POD_YC)]
+PINS = [(POD_XF - 13.0, POD_YC + 5.5), (POD_XF - 13.0, POD_YC - 5.5), (POD_XF - 18.5, POD_YC + 3.0)]   # derrière le creux, triangle non symétrique
 
 parts = {}
 
@@ -254,18 +254,35 @@ if REAR_USB:
             tris.append(P[simp] if top else P[simp[:, [0, 2, 1]]])
         return np.concatenate(tris)
 
-    port = rrect(9.2, 3.6, 1.6, POD_YC, PORT_Z)           # ouverture de la prise USB-C femelle (8,9 × 3,3 mm)
-    full = pod_ring(1.0, 1.0)
-    # creux ouvert sur la base : logement de la prise et passage de la nappe vers l'intérieur de la coque
-    notch = np.vstack([full, [(POD_YC + POD_SLOT[0] / 2, 0.0), (POD_YC + POD_SLOT[0] / 2, POD_SLOT[1]),
-                              (POD_YC - POD_SLOT[0] / 2, POD_SLOT[1]), (POD_YC - POD_SLOT[0] / 2, 0.0)]])
-    capsule = [xform(extrude(poly(full), [port], c0, c0 + POD_FRONT, maxlen=50), P_POD),            # paroi avant percée
-               xform(extrude(poly(notch), [], c0 + POD_FRONT, c0 + POD_BODY, maxlen=50), P_POD)]    # corps creux
-    # queue : s'affine en dôme (quart d'ellipse), pente nulle au départ -> aucune marche visible
-    th = np.linspace(0, np.pi / 2, 61)
-    cs = c0 + POD_BODY + (POD_LEN - POD_BODY) * np.sin(th) ** 1.0
-    sc = np.maximum(np.cos(th), 0.04)
-    capsule.append(xform(loft([pod_ring(0.25 + 0.75 * s, s) for s in sc], cs), P_POD))
+    # capsule en pavé (02/11/2026) : rectangle aux angles légèrement arrondis (2 mm vus de dessus, 1,5 mm sur le dessus)
+    RC, RE = 2.0, 1.5
+    u0, u1, v0, v1 = c0, c0 + POD_LEN, POD_YC - POD_W / 2, POD_YC + POD_W / 2
+    P_BOX = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]], float)   # (u = c, v = a, b) -> (x = -c, y = a, z = -b)
+    cav_u0, cav_u1, cav_w, pw = u0 + POD_FRONT, u0 + POD_BODY, POD_SLOT[0] / 2, 4.6
+    pz0, pz1 = PORT_Z - 1.8, PORT_Z + 1.8                 # ouverture de la prise USB-C femelle (9,2 × 3,6 mm)
+
+    def box_outline(notch):
+        """Contour vu de dessus ; avec notch : la prise traverse la face avant et rejoint le creux."""
+        pts = []
+        def arc(cx, cy, a0, a1):
+            for t in np.radians(np.linspace(a0, a1, 9)):
+                pts.append((cx + RC * np.cos(t), cy + RC * np.sin(t)))
+        arc(u0 + RC, v0 + RC, 180, 270); arc(u1 - RC, v0 + RC, 270, 360)
+        arc(u1 - RC, v1 - RC, 0, 90); arc(u0 + RC, v1 - RC, 90, 180)
+        if notch:
+            pts += [(u0, POD_YC + pw), (cav_u0, POD_YC + pw), (cav_u0, POD_YC + cav_w), (cav_u1, POD_YC + cav_w),
+                    (cav_u1, POD_YC - cav_w), (cav_u0, POD_YC - cav_w), (cav_u0, POD_YC - pw), (u0, POD_YC - pw)]
+        return poly(pts)
+    cavity = rect(cav_u1 - cav_u0, 2 * cav_w, (cav_u0 + cav_u1) / 2, POD_YC)
+    capsule = [xform(extrude(box_outline(False), [cavity], 0.0, pz0, maxlen=50), P_BOX),
+               xform(extrude(box_outline(True), [], pz0, pz1, maxlen=50), P_BOX),
+               xform(extrude(box_outline(False), [cavity], pz1, POD_SLOT[1], maxlen=50), P_BOX)]
+    assert POD_SLOT[1] <= POD_H - RE, 'creux plus haut que la capsule'
+    ts = np.linspace(0, np.pi / 2, 10)                    # dessus : arêtes arrondies de 1,5 mm
+    rings = [rrect(POD_LEN - 2 * RE * (1 - np.cos(t)), POD_W - 2 * RE * (1 - np.cos(t)), RC - RE * (1 - np.cos(t)), (u0 + u1) / 2, POD_YC, seg=8) for t in ts]
+    capsule.append(xform(loft(rings, [POD_H - RE + RE * np.sin(t) for t in ts]), P_BOX))
+    if POD_SLOT[1] < POD_H - RE:
+        capsule.append(xform(extrude(box_outline(False), [], POD_SLOT[1], POD_H - RE, maxlen=50), P_BOX))
     for x, y in PINS:                    # pions sous la base (ils entrent dans le dos de la coque), bout chanfreiné
         capsule.append(tube(PIN_D / 2, 0, -0.3, PIN_H - 0.3, x, y, 24))
         capsule.append(tube(PIN_D / 2 - 0.3, 0, PIN_H - 0.31, PIN_H, x, y, 24))
