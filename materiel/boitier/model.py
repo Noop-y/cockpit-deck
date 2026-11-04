@@ -21,6 +21,7 @@ WTB = 4.0 if os.environ.get('DECK_FACADE_CLIPS', '1') == '1' else 3.0   # haut-b
 R = 5.0                         # rayon des angles
 FT = 3.0                        # épaisseur du cadre avant (3 mm : têtes de vis encastrées à fleur)
 FT_LIP = 1.6                    # épaisseur du cadre au bord de l'écran ; au-dessus, la fenêtre s'élargit (marche en biseau)
+SLOPE = 1.7 if os.environ.get('DECK_MARCHE') != '1' else 0.0   # bord de la fenêtre en pente à 45° (04/11/2026) ; DECK_MARCHE=1 : ancienne marche
 BEVEL = 1.0                     # élargissement de la fenêtre au-dessus de FT_LIP, de chaque côté
 CB_D, CB_H = 6.0, 2.2           # logement des têtes de vis plates cruciformes M3 (tête Ø 5,5 à 5,6 × 2 à 2,2 mm)
 ANGLE = float(sys.argv[2]) if len(sys.argv) > 2 else 55.0   # inclinaison écran / bureau
@@ -38,6 +39,8 @@ SCREWS = [(sx * (OW / 2 - SCREW_M), sy * (OH / 2 - SCREW_M)) for sx in (-1, 1) f
 # façade clipsée (validée le 28/10/2026) : plus aucune vis sur la façade. 4 pattes vissées dans les parois des côtés
 # tiennent l'écran ; la façade se clipse par-dessus (12 clips) et les cache. Ancienne façade vissée : DECK_FACADE_CLIPS=0.
 FACADE_CLIPS = os.environ.get('DECK_FACADE_CLIPS', '1') == '1'
+if not FACADE_CLIPS:
+    SLOPE = 0.0                    # la pente n'existe que sur la façade clipsée
 if FACADE_CLIPS:
     SCREWS = [(sx * (OW / 2 - 4.4), sy * (PH / 2 - 6.0)) for sx in (-1, 1) for sy in (-1, 1)]   # dans les parois des côtés (8 mm)
 _dx = max(0.0, abs(SCREWS[0][0]) - PW / 2); _dy = max(0.0, abs(SCREWS[0][1]) - PH / 2)
@@ -378,7 +381,7 @@ def logo_shapes(size, x0, yc):
     return [(poly(body), [poly(sl) for sl in slots]), (poly(P(cap_pts)), [])]
 
 
-TOP_Y = ((AH + 0.6 + 2 * BEVEL) / 2 + OH / 2) / 2   # milieu du bandeau du haut (au-dessus de la marche)
+TOP_Y = ((AH + 0.6 + 2 * (SLOPE or BEVEL)) / 2 + OH / 2) / 2   # milieu du bandeau du haut (au-dessus de la marche)
 LOGO = 6.8                                     # hauteur du logo (mm)
 CAP = 4.6                                      # hauteur des majuscules (mm)
 _, TW = text_shapes('THE DECK', CAP, 0, 0)
@@ -387,7 +390,32 @@ x_start = -(LOGO + GAP + TW) / 2
 ENG = logo_shapes(LOGO, x_start, TOP_Y) + text_shapes('THE DECK', CAP, x_start + LOGO + GAP, TOP_Y)[0]
 
 win_lo = rrect(AW + 0.6, AH + 0.6, 1.0)                       # fenêtre au ras de l'écran
-win_hi = rrect(AW + 0.6 + 2 * BEVEL, AH + 0.6 + 2 * BEVEL, 2.0)   # fenêtre élargie au-dessus : marche en biseau
+if SLOPE:   # pente à 45° du bord de la fenêtre jusqu'au dessus de la façade (04/11/2026, remplace la marche)
+    win_hi = rrect(AW + 0.6 + 2 * SLOPE, AH + 0.6 + 2 * SLOPE, 1.0 + SLOPE)
+
+
+    def slope_ring(z0, z1, n=6):
+        """Anneau dont le bord intérieur passe de win_lo (z0) à win_hi (z1) ; le bord extérieur chevauche les dalles de 0,05."""
+        g = lambda t: rrect(AW + 0.6 + 2 * t, AH + 0.6 + 2 * t, 1.0 + t)
+        zs = np.linspace(z0, z1, n + 1)
+        ins = [np.c_[g((z - z0) / (z1 - z0) * SLOPE), np.full(len(win_lo), z)] for z in zs]
+        o = g(SLOPE + 0.05)
+        out0, out1 = np.c_[o, np.full(len(o), z0)], np.c_[o, np.full(len(o), z1)]
+        tris = []
+
+        def strip(a, b):                 # quadrilatères entre deux boucles de même taille
+            a2, b2 = np.roll(a, -1, 0), np.roll(b, -1, 0)
+            tris.extend([np.stack([a, a2, b2], 1), np.stack([a, b2, b], 1)])
+        for a, b in zip(ins, ins[1:]):
+            strip(b, a)                      # paroi en pente (normale vers la fenêtre)
+        strip(out0, out1)                    # paroi extérieure (cachée dans les dalles)
+        strip(ins[0], out0)                  # dessous
+        strip(out1, ins[-1])                 # dessus
+        t = np.concatenate(tris)
+        vol = np.sum(np.einsum('ij,ij->i', t[:, 0], np.cross(t[:, 1], t[:, 2])))
+        return t if vol > 0 else t[:, [0, 2, 1]]
+else:
+    win_hi = rrect(AW + 0.6 + 2 * BEVEL, AH + 0.6 + 2 * BEVEL, 2.0)   # ancienne fenêtre élargie : marche
 if FACADE_CLIPS:
     # dessous de la façade : une poche pour le cadre de maintien et ses oreilles, et une pour chaque tête de vis
     heads = [circle(2.95, x, y) for x, y in SCREWS]
@@ -398,11 +426,13 @@ if FACADE_CLIPS:
     frame = [extrude(rrect(OW, OH, R), [ring_outline(0.3)], SD, Z_POCK), extrude(island, [win_lo], SD, Z_POCK)]
     zs_ = sorted({Z_POCK, SD + FT_LIP, Z_HEAD, SD + FT - ENGRAVE})
     for za, zb_ in zip(zs_, zs_[1:]):
-        hs = [win_lo if zb_ <= SD + FT_LIP + 1e-9 else win_hi]
+        hs = [win_hi if SLOPE else (win_lo if zb_ <= SD + FT_LIP + 1e-9 else win_hi)]
         if zb_ <= Z_HEAD + 1e-9:
             hs += heads
         frame.append(extrude(rrect(OW, OH, R), hs, za, zb_))
     cbores = []
+    if SLOPE:
+        frame.append(slope_ring(Z_POCK, SD + FT))
 else:
     screw_holes = [circle(SCREW_D / 2, x, y) for x, y in SCREWS]
     cbores = [circle(CB_D / 2, x, y) for x, y in SCREWS]           # têtes de vis encastrées à fleur
