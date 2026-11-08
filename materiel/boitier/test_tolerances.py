@@ -1,6 +1,5 @@
 """Pièce de test des tolérances du boîtier (à imprimer avant le corps et la façade).
 Version 3 (30/10/2026) : clips encore plus gros (parois haut/bas de 4 mm), cadre de maintien à la place des pattes.
-Version 4 (07/11/2026) : oreille du cadre plus haute et vis au milieu (la tête de vis ne coupe plus l'oreille du cadre).
   A · morceau de corps : paroi du haut (3 mm) avec son clip, paroi des côtés (8 mm) avec son gros clip,
       logement d'une oreille du cadre de maintien + trou d'insert, 2 trous de pions
   B · morceau de façade : les deux rebords avec leurs bourrelets, poche du cadre et de la tête de vis
@@ -30,8 +29,8 @@ INSERT_D, SCREW_D = 4.2, 3.4
 PAT_H, RING_T = 1.7, 1.2
 PIN_D, PIN_H, PIN_HOLE = 3.0, 1.3, 3.4
 # oreille du cadre de maintien : forme du coin haut-droit du vrai boîtier, décalée de (-36, -40)
-PB = (47.30, 53.34, 0.80, 12.385)           # 07/11/2026 : oreille plus haute (comme model.py)
-SCREW = (49.69, 6.585)                      # vis au milieu de l'oreille
+PB = (47.30, 53.34, 0.80, 8.785)
+SCREW = (50.14, 3.99)
 STRIP_X = (42.99, 45.84)                    # bout du cadre posé sur la vitre (le long du côté)
 
 
@@ -73,13 +72,13 @@ def grown(g):
     return poly([(STRIP_X[0] - g, -4.0 - g), (STRIP_X[1] + g, -4.0 - g), (STRIP_X[1] + g, PB[2] - g), (PB[1] + g, PB[2] - g), (PB[1] + g, PB[3] + g), (STRIP_X[0] - g, PB[3] + g)])
 
 
-A.append(extrude(rect(26.0, 22.0, 50.0, 4.0), [circle(INSERT_D / 2, *SCREW, 40)], TB - 0.2, SD - PAT_H))
-A.append(extrude(rect(26.0, 22.0, 50.0, 4.0), [rr(PB, 3.0, 0.2)], SD - PAT_H, SD))
+A.append(extrude(rect(26.0, 18.0, 50.0, 2.0), [circle(INSERT_D / 2, *SCREW, 40)], TB - 0.2, SD - PAT_H))
+A.append(extrude(rect(26.0, 18.0, 50.0, 2.0), [rr(PB, 3.0, 0.2)], SD - PAT_H, SD))
 # façade au-dessus du bloc : poche du cadre (+0,3 mm) et poche de la tête de vis
 heads = [circle(2.95, *SCREW, 40)]
-B.append(extrude(rect(26.0, 22.0, 50.0, 4.0), [grown(0.3)], SD, SD + RING_T + 0.1))
-B.append(extrude(rect(26.0, 22.0, 50.0, 4.0), heads, SD + RING_T + 0.1, SD + 2.4))
-B.append(extrude(rect(26.0, 22.0, 50.0, 4.0), [], SD + 2.4, SD + FT))
+B.append(extrude(rect(26.0, 18.0, 50.0, 2.0), [grown(0.3)], SD, SD + RING_T + 0.1))
+B.append(extrude(rect(26.0, 18.0, 50.0, 2.0), heads, SD + RING_T + 0.1, SD + 2.4))
+B.append(extrude(rect(26.0, 18.0, 50.0, 2.0), [], SD + 2.4, SD + FT))
 B_ASM = list(B)
 B = [xform(t, rot_y(180), [0, 0, SD + FT]) for t in B]
 

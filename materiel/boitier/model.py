@@ -42,8 +42,7 @@ FACADE_CLIPS = os.environ.get('DECK_FACADE_CLIPS', '1') == '1'
 if not FACADE_CLIPS:
     SLOPE = 0.0                    # la pente n'existe que sur la façade clipsée
 if FACADE_CLIPS:
-    # dans les parois des côtés (8 mm) ; 07/11/2026 : remontées au milieu de l’oreille agrandie (PH/2 - 3,4 au lieu de PH/2 - 6) et rentrées de 0,45 mm (OW/2 - 4,85) pour laisser de la matière autour de la tête
-    SCREWS = [(sx * (OW / 2 - 4.85), sy * (PH / 2 - 3.4)) for sx in (-1, 1) for sy in (-1, 1)]
+    SCREWS = [(sx * (OW / 2 - 4.4), sy * (PH / 2 - 6.0)) for sx in (-1, 1) for sy in (-1, 1)]   # dans les parois des côtés (8 mm)
 _dx = max(0.0, abs(SCREWS[0][0]) - PW / 2); _dy = max(0.0, abs(SCREWS[0][1]) - PH / 2)
 assert np.hypot(_dx, _dy) >= INSERT_D / 2 + 1.0, 'insert trop près du logement de l’écran'
 MX = 60.0                        # inserts du pied : rentrés sous l'écran (pied plus étroit que la coque)
@@ -177,9 +176,7 @@ if FACADE_CLIPS:
     RING_T = 1.2                         # épaisseur du cadre (au-dessus de la vitre, sous la façade)
     PX, PY = abs(SCREWS[0][0]), abs(SCREWS[0][1])
     WIN_HI_X, WIN_HI_Y = (AW + 0.6) / 2 + BEVEL, (AH + 0.6) / 2 + BEVEL
-    # oreille : x0, x1, y0, y1 (au-dessus des rebords des côtés). 07/11/2026 : montée dans le coin plein de la paroi du haut
-    # (y1 = OH/2 - 1,6 au lieu de b_ - 1,2) : le trou de la tête de vis prenait presque toute l'oreille et la reliait mal au cadre
-    PB = (a_ + 0.76, OW / 2 - 1.2, YB + 0.8, OH / 2 - 1.6)
+    PB = (a_ + 0.76, PX + 3.2, YB + 0.8, b_ - 1.2)              # oreille : x0, x1, y0, y1 (au-dessus des rebords des côtés)
     assert PX + 2.95 < PB[1] - 0.2 and PY - 2.95 > PB[2] + 0.2 and PY + 2.95 < PB[3], 'tête de vis hors de l’oreille'
     RIN = (WIN_HI_X + 0.4, WIN_HI_Y + 0.4)                      # bord intérieur du cadre : caché sous la façade
     ROUT = (GW / 2 - 0.3, GH / 2 - 0.3)                         # bord extérieur : sur la vitre, les rebords de la façade passent autour
@@ -187,9 +184,7 @@ if FACADE_CLIPS:
     def ring_outline(g=0.0):
         """Contour extérieur du cadre de maintien avec ses 4 oreilles (agrandi de g)."""
         rx, ry, px1, py0, py1 = ROUT[0] + g, ROUT[1] + g, PB[1] + g, PB[2] - g, PB[3] + g
-        rc = 3.0 + g                                               # coin extérieur de l'oreille arrondi (comme l'oreille)
-        arc = [(px1 - rc + rc * np.cos(t), py1 - rc + rc * np.sin(t)) for t in np.linspace(0, np.pi / 2, 9)]
-        q = [(rx, 0.0), (rx, py0), (px1, py0)] + arc + [(rx, py1), (rx, ry), (0.0, ry)]
+        q = [(rx, 0.0), (rx, py0), (px1, py0), (px1, py1), (rx, py1), (rx, ry), (0.0, ry)]
         pts = q + [(-x, y) for x, y in q[::-1][1:]]
         pts += [(x, -y) for x, y in pts[::-1][1:-1]]
         return poly(pts)
