@@ -32,6 +32,8 @@ Aussi en 4 fichiers séparés (`The-Deck-0a…0d-…stl`).
 
 Forme de la capsule validée le 02/11/2026 : 21 × 17 × 8 mm, avant en pavé aux angles légèrement arrondis (côté prise), arrière qui s'affine en courbe jusqu'à 2,2 mm, bout arrondi vu de dessus.
 
+Incrustation du logo (08/11/2026) : `incrustation.stl` (« The-Deck-2b-incrustation.stl ») remplit exactement la gravure du logo et de « THE DECK » (0,6 mm). On charge la façade et l'incrustation ensemble comme une seule pièce en plusieurs parties, et on donne une autre couleur à l'incrustation (imprimante multicolore, ex. Creality CFS). Sans incrustation : `DECK_INCRUSTATION=0`.
+
 Boîtier centré sur l'image (08/11/2026) : sur la vraie vitre, l'image n'est pas au milieu (bordures noires de 3,06 mm à gauche, 6,65 à droite, 4,02 en haut, 8,73 en bas, dessin Waveshare). Le boîtier et la fenêtre de la façade suivent maintenant l'image : fenêtre à 0,1 mm du bord de l'image (`WIN_M`), même bordure de façade à gauche et à droite (15 mm), en haut et en bas (13,1 mm). Les parois les plus fines gardent 8 mm (côté droit) et 4 mm (bas) : le boîtier passe à 184,7 × 112,7 mm. Le pied ne change pas. Ancien boîtier centré sur la vitre : `DECK_CENTRE_VITRE=1`.
 
 Le bord de la fenêtre de la façade descend en pente à 45° (1,7 mm) vers l'écran, au lieu de la petite marche d'avant (04/11/2026). Pour revenir à la marche : `DECK_MARCHE=1`.

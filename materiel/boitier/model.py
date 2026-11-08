@@ -482,6 +482,10 @@ for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI)):   # bourrelets des côtés
     for yc, ln in ys:
         frame.append(xform(extrude(bead_profile(x_out - sx * 0.02, sx, BEAD_S, Z_G0 + 0.1, Z_G1 - 0.1), [], yc - ln / 2, yc + ln / 2, maxlen=1e3), P_Y))
 parts['cadre'] = frame
+# incrustation (08/11/2026) : le logo et « THE DECK » en pièce à part, qui remplit exactement la gravure de la façade.
+# À charger avec la façade comme une seule pièce en plusieurs parties (même position) et à imprimer d'une autre couleur.
+if os.environ.get('DECK_INCRUSTATION', '1') == '1':
+    parts['incrustation'] = [extrude(o, isl, SD + FT - ENGRAVE, SD + FT, maxlen=2.0) for o, isl in ENG]
 if FACADE_CLIPS:
     # cadre de maintien : le cadre (sur la vitre) + 4 oreilles dans les logements des parois, trous Ø 6,2 pour les têtes de vis
     maintien = [extrude(ring_outline(0.0), [rrect(2 * RIN[0], 2 * RIN[1], 1.0, *RIN_C)] + [circle(2.95, x, y, 32) for x, y in SCREWS], SD - 0.02, SD + RING_T)]
@@ -775,6 +779,7 @@ for name, solids in parts.items():
 to_print = {
     'coque': lambda tr: tr,
     'cadre': lambda tr: xform(tr, rot_y(180), [0, 0, SD + FT]),
+    'incrustation': lambda tr: xform(tr, rot_y(180), [0, 0, SD + FT]),   # même mouvement que la façade
     'pied': lambda tr: tr,
     # debout sur sa face avant (celle de la prise) : pions couchés, dôme vers le haut, rien en porte-à-faux
     'capsule': lambda tr: (lambda r: r - [0, 0, r.reshape(-1, 3)[:, 2].min()])(xform(tr, rot_y(90))),
@@ -810,6 +815,8 @@ scene = {
     'carte': (world_shell(np.concatenate(pcb)), 'pcb', 0.3),
     'pied': (xform(np.concatenate(parts['pied']), M, O), 'stand', -0.6),
 }
+if 'incrustation' in parts:
+    scene['incrustation'] = (world_shell(np.concatenate(parts['incrustation'])), 'stand', 1.0)
 if 'capsule' in parts:
     scene['capsule'] = (world_shell(np.concatenate(parts['capsule'])), 'shell', -0.25)
 
