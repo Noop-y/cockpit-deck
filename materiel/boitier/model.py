@@ -336,7 +336,9 @@ parts['coque'] = shell
 from matplotlib.textpath import TextPath
 from matplotlib.font_manager import FontProperties
 from matplotlib.path import Path as MPath
-ENGRAVE = 0.6                                # profondeur de gravure (mm)
+INCRUST = os.environ.get('DECK_INCRUSTATION', '1') == '1'   # logo et nom incrustés (pièces à part, collées) — 08/11/2026
+ENGRAVE = 1.0 if INCRUST else 0.6           # profondeur de gravure (mm) : 1 mm pour bien tenir les pièces collées
+INC_JEU = 0.1                                # jeu des pièces incrustées, de chaque côté (mm)
 
 
 def _nest(polys):
@@ -482,10 +484,33 @@ for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI)):   # bourrelets des côtés
     for yc, ln in ys:
         frame.append(xform(extrude(bead_profile(x_out - sx * 0.02, sx, BEAD_S, Z_G0 + 0.1, Z_G1 - 0.1), [], yc - ln / 2, yc + ln / 2, maxlen=1e3), P_Y))
 parts['cadre'] = frame
-# incrustation (08/11/2026) : le logo et « THE DECK » en pièce à part, qui remplit exactement la gravure de la façade.
-# À charger avec la façade comme une seule pièce en plusieurs parties (même position) et à imprimer d'une autre couleur.
-if os.environ.get('DECK_INCRUSTATION', '1') == '1':
-    parts['incrustation'] = [extrude(o, isl, SD + FT - ENGRAVE, SD + FT, maxlen=2.0) for o, isl in ENG]
+
+
+def offset_in(pts, d):
+    """Déplace le bord d'un contour de d vers l'intérieur (d < 0 : vers l'extérieur), coins en onglet limités."""
+    p = np.asarray(pts, float)
+    area = np.sum(p[:, 0] * np.roll(p[:, 1], -1) - np.roll(p[:, 0], -1) * p[:, 1]) / 2
+    sg = 1.0 if area > 0 else -1.0                    # sens inverse des aiguilles d'une montre : l'intérieur est à gauche
+    e = np.roll(p, -1, 0) - p
+    e /= np.maximum(np.linalg.norm(e, axis=1, keepdims=True), 1e-9)
+    nl = sg * np.c_[-e[:, 1], e[:, 0]]                 # normale vers l'intérieur de chaque côté
+    n1, n2 = np.roll(nl, 1, 0), nl                     # côtés avant et après chaque sommet
+    m = n1 + n2
+    k = 1 + np.sum(n1 * n2, axis=1)
+    v = d * m / np.maximum(k, 2 / 9)[:, None]          # onglet limité à 3 × d
+    return p + v
+
+
+# incrustation (08/11/2026) : le logo et « THE DECK » en petites pièces à part (imprimante une couleur), à coller dans la
+# gravure de 1 mm. Chaque pièce a INC_JEU de jeu tout autour. Imprimées face visible sur le plateau, dans l'ordre du mot,
+# avec un 2e jeu de rechange en dessous.
+if INCRUST:
+    inc = [extrude(poly(offset_in(o, INC_JEU)), [poly(offset_in(h, -INC_JEU)) for h in isl], SD + FT - ENGRAVE, SD + FT, maxlen=2.0)
+           for o, isl in ENG]
+    parts['incrustation_place'] = inc                  # en place (vue 3D seulement)
+    flat = [xform(t, rot_y(180), [0, 0, SD + FT]) for t in inc]
+    _v = np.concatenate(flat).reshape(-1, 3); _h = _v[:, 1].max() - _v[:, 1].min()
+    parts['incrustation'] = flat + [t - [0, _h + 6.0, 0] for t in flat]
 if FACADE_CLIPS:
     # cadre de maintien : le cadre (sur la vitre) + 4 oreilles dans les logements des parois, trous Ø 6,2 pour les têtes de vis
     maintien = [extrude(ring_outline(0.0), [rrect(2 * RIN[0], 2 * RIN[1], 1.0, *RIN_C)] + [circle(2.95, x, y, 32) for x, y in SCREWS], SD - 0.02, SD + RING_T)]
@@ -779,7 +804,8 @@ for name, solids in parts.items():
 to_print = {
     'coque': lambda tr: tr,
     'cadre': lambda tr: xform(tr, rot_y(180), [0, 0, SD + FT]),
-    'incrustation': lambda tr: xform(tr, rot_y(180), [0, 0, SD + FT]),   # même mouvement que la façade
+    'incrustation': lambda tr: tr,                     # déjà à plat, face visible sur le plateau
+    'incrustation_place': lambda tr: tr,
     'pied': lambda tr: tr,
     # debout sur sa face avant (celle de la prise) : pions couchés, dôme vers le haut, rien en porte-à-faux
     'capsule': lambda tr: (lambda r: r - [0, 0, r.reshape(-1, 3)[:, 2].min()])(xform(tr, rot_y(90))),
@@ -816,7 +842,7 @@ scene = {
     'pied': (xform(np.concatenate(parts['pied']), M, O), 'stand', -0.6),
 }
 if 'incrustation' in parts:
-    scene['incrustation'] = (world_shell(np.concatenate(parts['incrustation'])), 'stand', 1.0)
+    scene['incrustation'] = (world_shell(np.concatenate(parts['incrustation_place'])), 'stand', 1.0)
 if 'capsule' in parts:
     scene['capsule'] = (world_shell(np.concatenate(parts['capsule'])), 'shell', -0.25)
 
