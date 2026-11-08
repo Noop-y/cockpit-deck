@@ -12,6 +12,13 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else '.'
 # ---- carte (Waveshare, doc officielle) ----
 GW, GH = 164.28, 99.17          # vitre / contour module
 AW, AH = 154.58, 86.42          # zone affichée
+# bordures noires de la vitre (dessin Waveshare, vu de face) : gauche 3,06, droite 6,65, haut 4,02, bas 8,73.
+# L'image n'est donc pas au milieu de la vitre : son centre est décalé de (AXC, AYC) par rapport au centre de la vitre.
+AXC, AYC = (3.06 - 6.65) / 2, (8.73 - 4.02) / 2
+WIN_M = 0.1                     # marge de la fenêtre de la façade autour de l'image (0 = pile au bord de l'image)
+# 08/11/2026 : boîtier centré sur l'image (et plus sur la vitre). DECK_CENTRE_VITRE=1 : ancien boîtier centré sur la vitre
+CENTRE_IMAGE = os.environ.get('DECK_CENTRE_VITRE') != '1'
+BXC, BYC = (AXC, AYC) if CENTRE_IMAGE else (0.0, 0.0)   # centre du boîtier (repère : centre de la vitre)
 GT = 5.0                        # SUPPOSE : épaisseur du module écran (vitre + dalle)
 BACK = 5.0                      # demandé : 5 mm entre le fond et l'écran (carte à vérifier !)
 # ---- boîtier ----
@@ -30,7 +37,7 @@ INSERT_D, SCREW_D = 4.2, 3.4    # inserts laiton M3 / passage vis M3
 INSERT_DEPTH = 8.0              # trous borgnes des vis du cadre : insert (4 à 6 mm) + 2 mm pour le bout de la vis
 
 PW, PH = GW + 2 * CLR, GH + 2 * CLR
-OW, OH = PW + 2 * WS, PH + 2 * WTB
+OW, OH = PW + 2 * WS + 2 * abs(BXC), PH + 2 * WTB + 2 * abs(BYC)   # les parois les plus fines gardent WS / WTB
 SD = TB + BACK + GT              # profondeur coque
 SX = PW / 2 + WS / 2             # x des vis du cadre
 SCREW_M = 4.8                    # vis du cadre dans les coins : même distance (4,8 mm) du bord du côté et du bord du haut/bas
@@ -42,7 +49,7 @@ FACADE_CLIPS = os.environ.get('DECK_FACADE_CLIPS', '1') == '1'
 if not FACADE_CLIPS:
     SLOPE = 0.0                    # la pente n'existe que sur la façade clipsée
 if FACADE_CLIPS:
-    SCREWS = [(sx * (OW / 2 - 4.4), sy * (PH / 2 - 6.0)) for sx in (-1, 1) for sy in (-1, 1)]   # dans les parois des côtés (8 mm)
+    SCREWS = [(sx * (PW / 2 + WS - 4.4), sy * (PH / 2 - 6.0)) for sx in (-1, 1) for sy in (-1, 1)]   # dans les parois des côtés (8 mm)
 _dx = max(0.0, abs(SCREWS[0][0]) - PW / 2); _dy = max(0.0, abs(SCREWS[0][1]) - PH / 2)
 assert np.hypot(_dx, _dy) >= INSERT_D / 2 + 1.0, 'insert trop près du logement de l’écran'
 MX = 60.0                        # inserts du pied : rentrés sous l'écran (pied plus étroit que la coque)
@@ -82,19 +89,19 @@ for y in (28.0, 34.0, 40.0):
     holes += [rrect(30.0, 3.0, 1.4, -20.0, y), rrect(30.0, 3.0, 1.4, 20.0, y)]
 for y in (-38.0, -44.0):
     holes.append(rrect(50.0, 3.0, 1.4, 0.0, y))
-shell = [extrude(rrect(OW, OH, R), holes, 0.0, TB)]
+shell = [extrude(rrect(OW, OH, R, BXC, BYC), holes, 0.0, TB)]
 CUT_TOP = SD - 1.5                       # fenêtres jusqu'à 1,5 mm de la face avant (pont sous le cadre)
 ins = [circle(INSERT_D / 2, x, y) for x, y in SCREWS]
-outer = rrect(OW, OH, R)
+outer = rrect(OW, OH, R, BXC, BYC)
 SEG = 10
 k = 2 * SEG + 1                          # fin de l'arrondi haut-gauche : début du bord gauche
 (ub, uw), (bb, bw) = USB_CUT, BTN_CUT
 hi1, lo1 = bb + bw / 2, bb - bw / 2      # fenêtre bouton
 hi2, lo2 = ub + uw / 2, ub - uw / 2      # fenêtre USB
-xo, xi = -OW / 2, -PW / 2
+xo, xi = BXC - OW / 2, -PW / 2
 bridge = [(xo, hi1), (xi, hi1), (xi, PH / 2), (-xi, PH / 2), (-xi, -PH / 2), (xi, -PH / 2), (xi, lo2), (xo, lo2)]
 lower = poly(np.vstack([outer[:k + 1], bridge, outer[k + 1:]]))
-island = rect(OW / 2 - PW / 2, lo1 - hi2, (xo + xi) / 2, (lo1 + hi2) / 2)
+island = rect(xi - xo, lo1 - hi2, (xo + xi) / 2, (lo1 + hi2) / 2)
 # ---- fixation du cadre : rebord INTÉRIEUR qui descend entre le bord de l'écran et la paroi, et s'y clipse ----
 # Rien ne se voit de l'extérieur. Le rebord court le long des 4 côtés (pas dans les coins, où sont les vis) et
 # cache le joint par l'intérieur. En haut et en bas, des bourrelets s'enclenchent dans une rainure de la paroi.
@@ -118,8 +125,8 @@ Z_R = SD - LIP_H - 0.1                   # fond du creux pour le rebord
 Z_G0, Z_G1 = (SD - 3.95, SD - 1.6) if FACADE_CLIPS else (SD - 2.6, SD - 2.0)   # rainure des bourrelets
 PRY_W, PRY_D = 10.0, 0.8                 # encoche d'ouverture : petit chanfrein au milieu du bord du bas, sur le joint
 a_, b_ = PW / 2, PH / 2
-assert OH / 2 - (b_ + REC + G_D) >= 1.5, 'paroi trop fine derrière la rainure'
-assert OW / 2 - (a_ + REC_S + G_D_S) >= 3.0, 'paroi des côtés trop fine derrière la rainure'
+assert PH / 2 + WTB - (b_ + REC + G_D) >= 1.5, 'paroi trop fine derrière la rainure'
+assert PW / 2 + WS - (a_ + REC_S + G_D_S) >= 3.0, 'paroi des côtés trop fine derrière la rainure'
 
 
 def inner_path(groove):
@@ -178,7 +185,11 @@ if FACADE_CLIPS:
     WIN_HI_X, WIN_HI_Y = (AW + 0.6) / 2 + BEVEL, (AH + 0.6) / 2 + BEVEL
     PB = (a_ + 0.76, PX + 3.2, YB + 0.8, b_ - 1.2)              # oreille : x0, x1, y0, y1 (au-dessus des rebords des côtés)
     assert PX + 2.95 < PB[1] - 0.2 and PY - 2.95 > PB[2] + 0.2 and PY + 2.95 < PB[3], 'tête de vis hors de l’oreille'
-    RIN = (WIN_HI_X + 0.4, WIN_HI_Y + 0.4)                      # bord intérieur du cadre : caché sous la façade
+    # bord intérieur du cadre : 1,1 mm autour de la fenêtre de la façade (qui suit l'image), caché sous la façade
+    RIN_C = (AXC, AYC)
+    RIN = (AW / 2 + WIN_M + 1.1, AH / 2 + WIN_M + 1.1)          # demi-largeur / demi-hauteur du trou du cadre
+    _rw = min(GW / 2 - 0.3 - (RIN[0] + abs(AXC)), GH / 2 - 0.3 - (RIN[1] + abs(AYC)))
+    assert _rw >= 1.2, f'cadre de maintien trop étroit ({_rw:.2f} mm)'
     ROUT = (GW / 2 - 0.3, GH / 2 - 0.3)                         # bord extérieur : sur la vitre, les rebords de la façade passent autour
 
     def ring_outline(g=0.0):
@@ -203,9 +214,9 @@ shell.append(extrude(lower_with(inner_path(False)), ins, Z_R, Z_G0))
 shell.append(extrude(lower_with(inner_path(True)), ins, Z_G0, Z_G1))
 shell.append(extrude(lower_with(inner_path(False)), ins, Z_G1, CUT_TOP))
 shell.append(extrude(island, [], TB - 0.4, Z_R))
-shell.append(extrude(rect(OW / 2 - a_ - REC_S, lo1 - hi2, (xo - a_ - REC_S) / 2, (lo1 + hi2) / 2), [], Z_R, CUT_TOP))
+shell.append(extrude(rect(-a_ - REC_S - xo, lo1 - hi2, (xo - a_ - REC_S) / 2, (lo1 + hi2) / 2), [], Z_R, CUT_TOP))
 shell.append(extrude(outer, [cav] + top_holes, CUT_TOP - 0.2, SD - PRY_D))
-shell.append(extrude(bottom_notch(outer, OH / 2, PRY_D, -PRY_W / 2, PRY_W / 2), [cav] + top_holes, SD - PRY_D, SD))
+shell.append(extrude(bottom_notch(outer, OH / 2 - BYC, PRY_D, BXC - PRY_W / 2, BXC + PRY_W / 2), [cav] + top_holes, SD - PRY_D, SD))
 if REAR_USB:                             # fenêtre USB du côté rebouchée : peau extérieure, niche dedans pour la fiche de la nappe
     shell.append(box(xo, xo + SKIN_USB, lo2, hi2, TB - 0.4, CUT_TOP))
 if CLOSE_BTN:                            # fenêtre du bouton rebouchée aussi (bouton laissé sur marche), niche gardée dedans
@@ -381,22 +392,23 @@ def logo_shapes(size, x0, yc):
     return [(poly(body), [poly(sl) for sl in slots]), (poly(P(cap_pts)), [])]
 
 
-TOP_Y = ((AH + 0.6 + 2 * (SLOPE or BEVEL)) / 2 + OH / 2) / 2   # milieu du bandeau du haut (au-dessus de la marche)
+TOP_Y = (AYC + AH / 2 + WIN_M + (SLOPE or BEVEL) + BYC + OH / 2) / 2   # milieu du bandeau du haut (au-dessus de la fenêtre)
 LOGO = 6.8                                     # hauteur du logo (mm)
 CAP = 4.6                                      # hauteur des majuscules (mm)
 _, TW = text_shapes('THE DECK', CAP, 0, 0)
 GAP = 2.4
-x_start = -(LOGO + GAP + TW) / 2
+x_start = BXC - (LOGO + GAP + TW) / 2
 ENG = logo_shapes(LOGO, x_start, TOP_Y) + text_shapes('THE DECK', CAP, x_start + LOGO + GAP, TOP_Y)[0]
 
-win_lo = rrect(AW + 0.6, AH + 0.6, 1.0)                       # fenêtre au ras de l'écran
+WA, HA = AW + 2 * WIN_M, AH + 2 * WIN_M
+win_lo = rrect(WA, HA, 1.0, AXC, AYC)                         # fenêtre au ras de l'image
 if SLOPE:   # pente à 45° du bord de la fenêtre jusqu'au dessus de la façade (04/11/2026, remplace la marche)
-    win_hi = rrect(AW + 0.6 + 2 * SLOPE, AH + 0.6 + 2 * SLOPE, 1.0 + SLOPE)
+    win_hi = rrect(WA + 2 * SLOPE, HA + 2 * SLOPE, 1.0 + SLOPE, AXC, AYC)
 
 
     def slope_ring(z0, z1, n=6):
         """Anneau dont le bord intérieur passe de win_lo (z0) à win_hi (z1) ; le bord extérieur chevauche les dalles de 0,05."""
-        g = lambda t: rrect(AW + 0.6 + 2 * t, AH + 0.6 + 2 * t, 1.0 + t)
+        g = lambda t: rrect(WA + 2 * t, HA + 2 * t, 1.0 + t, AXC, AYC)
         zs = np.linspace(z0, z1, n + 1)
         ins = [np.c_[g((z - z0) / (z1 - z0) * SLOPE), np.full(len(win_lo), z)] for z in zs]
         o = g(SLOPE + 0.05)
@@ -415,21 +427,21 @@ if SLOPE:   # pente à 45° du bord de la fenêtre jusqu'au dessus de la façade
         vol = np.sum(np.einsum('ij,ij->i', t[:, 0], np.cross(t[:, 1], t[:, 2])))
         return t if vol > 0 else t[:, [0, 2, 1]]
 else:
-    win_hi = rrect(AW + 0.6 + 2 * BEVEL, AH + 0.6 + 2 * BEVEL, 2.0)   # ancienne fenêtre élargie : marche
+    win_hi = rrect(WA + 2 * BEVEL, HA + 2 * BEVEL, 2.0, AXC, AYC)   # ancienne fenêtre élargie : marche
 if FACADE_CLIPS:
     # dessous de la façade : une poche pour le cadre de maintien et ses oreilles, et une pour chaque tête de vis
     heads = [circle(2.95, x, y) for x, y in SCREWS]
     Z_HEAD = SD + 2.4                        # tête Ø 5,5 × 2,2 posée sur l'oreille (à z = SD) + 0,2 de jeu
     Z_POCK = SD + RING_T + 0.1
     assert Z_HEAD <= SD + FT - 0.6 and Z_POCK < SD + FT_LIP
-    island = rrect(2 * (RIN[0] - 0.3), 2 * (RIN[1] - 0.3), 1.0)     # partie de la façade à l'intérieur du cadre
-    frame = [extrude(rrect(OW, OH, R), [ring_outline(0.3)], SD, Z_POCK), extrude(island, [win_lo], SD, Z_POCK)]
+    island = rrect(2 * (RIN[0] - 0.3), 2 * (RIN[1] - 0.3), 1.0, *RIN_C)     # partie de la façade à l'intérieur du cadre
+    frame = [extrude(rrect(OW, OH, R, BXC, BYC), [ring_outline(0.3)], SD, Z_POCK), extrude(island, [win_lo], SD, Z_POCK)]
     zs_ = sorted({Z_POCK, SD + FT_LIP, Z_HEAD, SD + FT - ENGRAVE})
     for za, zb_ in zip(zs_, zs_[1:]):
         hs = [win_hi if SLOPE else (win_lo if zb_ <= SD + FT_LIP + 1e-9 else win_hi)]
         if zb_ <= Z_HEAD + 1e-9:
             hs += heads
-        frame.append(extrude(rrect(OW, OH, R), hs, za, zb_))
+        frame.append(extrude(rrect(OW, OH, R, BXC, BYC), hs, za, zb_))
     cbores = []
     if SLOPE:
         frame.append(slope_ring(Z_POCK, SD + FT))
@@ -441,8 +453,8 @@ else:
     zs_ = sorted({SD, Z_CB, SD + FT_LIP, SD + FT - ENGRAVE})
     frame = []
     for za, zb_ in zip(zs_, zs_[1:]):
-        frame.append(extrude(rrect(OW, OH, R), [win_lo if zb_ <= SD + FT_LIP + 1e-9 else win_hi] + (screw_holes if zb_ <= Z_CB + 1e-9 else cbores), za, zb_))
-frame.append(extrude(rrect(OW, OH, R), [win_hi] + cbores + [o for o, _ in ENG], SD + FT - ENGRAVE, SD + FT, maxlen=2.0))
+        frame.append(extrude(rrect(OW, OH, R, BXC, BYC), [win_lo if zb_ <= SD + FT_LIP + 1e-9 else win_hi] + (screw_holes if zb_ <= Z_CB + 1e-9 else cbores), za, zb_))
+frame.append(extrude(rrect(OW, OH, R, BXC, BYC), [win_hi] + cbores + [o for o, _ in ENG], SD + FT - ENGRAVE, SD + FT, maxlen=2.0))
 for _, isl in ENG:                             # intérieurs des lettres (D…) et lamelles du logo : restent en relief
     for h in isl:
         frame.append(extrude(h, [], SD + FT - ENGRAVE, SD + FT, maxlen=1.0))
@@ -472,7 +484,7 @@ for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI)):   # bourrelets des côtés
 parts['cadre'] = frame
 if FACADE_CLIPS:
     # cadre de maintien : le cadre (sur la vitre) + 4 oreilles dans les logements des parois, trous Ø 6,2 pour les têtes de vis
-    maintien = [extrude(ring_outline(0.0), [rrect(2 * RIN[0], 2 * RIN[1], 1.0)] + [circle(2.95, x, y, 32) for x, y in SCREWS], SD - 0.02, SD + RING_T)]
+    maintien = [extrude(ring_outline(0.0), [rrect(2 * RIN[0], 2 * RIN[1], 1.0, *RIN_C)] + [circle(2.95, x, y, 32) for x, y in SCREWS], SD - 0.02, SD + RING_T)]
     for sx in (-1, 1):
         for sy in (-1, 1):
             maintien.append(extrude(corner_rr(PB, 3.0, 0.0, sx, sy), [circle(SCREW_D / 2, sx * PX, sy * PY)], SD - PAT_H, SD))
@@ -489,7 +501,7 @@ n = np.array([0.0, -s, c])
 ex = np.array([1.0, 0.0, 0.0])
 M = np.column_stack([ex, t, -n])         # repère plaque -> monde
 INSET = 19.5                             # le pied est 19,5 mm plus étroit que la coque de chaque côté
-L_ST, W_ST, PT = 92.0, OW - 2 * INSET, 4.0
+L_ST, W_ST, PT = 92.0, PW + 2 * WS - 2 * INSET, 4.0   # largeur du pied inchangée (08/11/2026)
 
 RIB_W = 5.0
 _xe = W_ST / 2 - 2.0 - RIB_W / 2                                # centre des nervures du bord
@@ -787,7 +799,7 @@ def world_shell(tr):
 
 
 display = [box(-GW / 2, GW / 2, -GH / 2, GH / 2, SD - GT, SD - 0.05)]
-active = [box(-AW / 2, AW / 2, -AH / 2, AH / 2, SD - 0.05, SD)]
+active = [box(AXC - AW / 2, AXC + AW / 2, AYC - AH / 2, AYC + AH / 2, SD - 0.05, SD)]
 pcb = [box(-55, 55, -38, 38, SD - GT - 3.6, SD - GT - 2.0)]
 scene = {
     'coque': (world_shell(np.concatenate(parts['coque'])), 'shell', 0.0),
@@ -854,7 +866,7 @@ report['flancs'] = dict(variante=VARIANT, ouvertures=len(rib_holes), surplombs=O
 report['semelles'] = dict(nombre=len(RIBS_X) * 2, y=[round(v, 1) for v in PADS_Y], patin='silicone adhésif 8 × 2 mm', logement=[BUMP_D, BUMP_DEPTH])
 report['fixation_cadre'] = dict(rebord_interieur=[LIP_T, LIP_H], creux_paroi=round(REC, 2), bourrelets=len(BEADS_X) * 2, saillie=BEAD, logement_tete=[CB_D, CB_H], cadre_ep=FT)
 report['cotes'] = dict(coque_ext=[round(OW, 2), round(OH, 2), round(SD, 2)], pied_larg=round(W_ST, 1), cadre_ep=FT, angle=ANGLE,
-                       fenetre_cadre=[AW + 0.6, AH + 0.6], hauteur_max=round(float(max(
+                       fenetre_cadre=[WA, HA], hauteur_max=round(float(max(
                            (xform(np.concatenate(parts['pied']), M, O)).reshape(-1, 3)[:, 2].max(),
                            world_shell(np.concatenate(parts['cadre'])).reshape(-1, 3)[:, 2].max())), 1))
 print(json.dumps(report, indent=1))
