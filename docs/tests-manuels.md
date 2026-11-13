@@ -77,8 +77,17 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [x] « Réinstaller par le câble USB » : la barre avance jusqu'à 100 %, l'écran affiche « Mise a jour du programme : N % », redémarre, et le logiciel se relie tout seul (programme 0.3.0).
 - [ ] Avec une version plus récente du logiciel : le bouton devient « Mettre à jour l'écran par le câble USB » (0.3.0 → nouvelle version) et l'écran redémarre sur la nouvelle version.
 
+## Pages en images (0.4.0)
+- [ ] Page Appareil, écran relié : « Mettre à jour l'écran par le câble USB » (0.3.0 → 0.4.0) ; l'écran redémarre, toujours sur l'écran de test.
+- [ ] « Envoyer sur l'écran » : l'écran affiche « Reception des pages : N % », la barre avance dans la page Appareil, puis l'écran montre l'accueil, identique à l'Aperçu de l'écran ; message « Envoyé sur l'écran », sauvegarde créée.
+- [ ] Les couleurs sont justes (ambre reste ambre, pas bleu).
+- [ ] Toucher une carte de l'accueil ouvre l'espace ; les onglets changent de page ; le bouton Accueil revient à l'accueil. Un contour ambre apparaît sous le doigt.
+- [ ] Case « Bouton de manette » : visible dans joy.cpl tant qu'on appuie. Case « Maintenir » : la barre se remplit, puis l'action part. Case « Bascule » : le contour reste allumé, puis s'éteint au deuxième appui.
+- [ ] Case clavier (ex. Ctrl+C dans le Bloc-notes) et touche multimédia (volume) : marchent.
+- [ ] Case appli / OBS / Discord : le PC fait l'action (touche réservée).
+- [ ] Débrancher puis rebrancher l'écran : les pages reviennent sans renvoi.
+
 ## Écran (étapes suivantes du programme de l'ESP32-P4)
-- [ ] Envoi sur l'écran : réponse OK, sauvegarde créée.
 - [ ] Les messages `media`, `clips` arrivent ; les appuis envoient `sound`, `clip`.
 
 - Note 13/11/2026 : « Touche F13 » sur l'écran a déclenché une case du logiciel réglée sur F13 (message « le programme ne s'est pas ouvert à temps ») : la touche réservée arrive bien au PC.

@@ -18,6 +18,7 @@ const api = window.deck || (() => {
     createBackup: async () => null,
     fwInfo: async () => null,
     fwRead: async () => null,
+    deckRender: async () => null,
     listBackups: async () => [],
     readBackup: async () => null,
     openBackupsFolder: async () => null,
@@ -870,7 +871,8 @@ function viewAppareil() {
       <div style="line-height:1.6">${ui.deckLinked ? `<span style="color:var(--cyan)">Écran relié en USB${ui.deckFw ? ` · programme de l\u2019écran <b class="mono">${esc(ui.deckFw)}</b>` : ''}.</span>` : 'Écran pas relié (prise « USB » de la carte).'}</div>
       ${ui.deckLinked ? '' : '<div class="row"><button class="btn" data-act="deck-link">Relier l\u2019écran</button></div>'}
       <div style="line-height:1.6">${ui.deckOk ? '<span style="color:var(--cyan)">Le dernier envoi a réussi.</span>' : 'Aucun envoi réussi pendant cette session.'}</div>
-      <div class="small muted">Le programme de l\u2019écran en est à l\u2019étape 2 (USB : clavier, manette, liaison) : il ne reçoit pas encore les pages. En attendant, l\u2019envoi s\u2019arrête avec « l\u2019écran n\u2019a pas répondu » ; tout se prépare et se teste avec <b>Aperçu de l\u2019écran</b>.</div></div>
+      ${ui.pg && ui.pg.state !== 'idle' ? `<div style="line-height:1.6;${ui.pg.state === 'err' ? 'color:var(--red)' : ''}">${esc(ui.pg.msg)}</div>${ui.pg.state === 'send' ? `<div style="height:10px;border-radius:5px;background:#1A222B;overflow:hidden"><div style="height:100%;width:${ui.pg.pct}%;background:var(--amber)"></div></div><div class="small mono">${ui.pg.pct} %</div>` : ''}` : ''}
+      <div class="small muted">« Envoyer sur l\u2019écran » dessine chaque page comme dans <b>Aperçu de l\u2019écran</b> et l\u2019envoie en image ; l\u2019écran la garde même débranché. Pas encore sur l\u2019écran : glisser le doigt, luminosité, mise en veille, et ce qui bouge (jaquette, chrono des clips, sorties de la soundboard).</div></div>
     ${typeof flasherPanel === 'function' ? flasherPanel() : ''}</div>`;
 }
 
@@ -1212,18 +1214,13 @@ async function sendToDeck() {
     catch (e) { toast('Écran non détecté. Branchez-le au PC avec le câble USB-C et allumez-le.', 'err', 6000); return; }
     if (!(await deckOpen(port))) { toast('Problème de connexion USB : le port est peut-être utilisé par un autre programme.', 'err', 6000); return; }
   }
-  toast('Envoi en cours…');
-  const reply = deckWaitReply(6000);
-  if (!(await deckWrite({ t: 'config', data: deviceConfig() }))) { toast('Problème de connexion USB.', 'err', 6000); return; }
-  const ok = await reply;
-  if (ok) {
+  // pages dessinées en images, envoyées par morceaux (deckpack.js)
+  if (await deckSendPages()) {
     ui.deckOk = true;
     await api.createBackup(cfg);
     toast('Envoyé sur l’écran.', 'ok');
     deckSendMedia(true);
     render();
-  } else {
-    toast('L’écran n’a pas répondu. Le programme de l’écran n’est peut-être pas encore installé.', 'err', 7000);
   }
 }
 

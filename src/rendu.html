@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; img-src data: blob:; script-src 'self' 'unsafe-inline'; font-src 'self' data:">
+<title>The Deck — dessin des pages</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Une page de l'écran, à la taille exacte de l'écran (1024 × 600), sans le cadre noir de l'aperçu */
+  html, body { margin: 0; width: 1024px; height: 600px; overflow: hidden; background: #000; }
+  #page .deck { width: 1024px; height: 600px; border: 0; border-radius: 0; aspect-ratio: auto; }
+  #page * { animation: none !important; transition: none !important; }
+</style>
+</head>
+<body>
+<div id="page"></div>
+<script>
+// Fenêtre invisible du logiciel : on y pose une page (HTML de l'aperçu), on attend que les images soient prêtes,
+// puis on renvoie la place de chaque zone à toucher. Le logiciel prend ensuite la photo de la fenêtre.
+const ZONES = '[data-simcell],[data-sim],[data-simbtn],[data-simclip]';
+async function deckRender(html) {
+  const root = document.getElementById('page');
+  root.innerHTML = html;
+  const imgs = [];
+  root.querySelectorAll('*').forEach(el => {
+    const bg = getComputedStyle(el).backgroundImage;
+    const m = bg && bg.match(/url\("?(.*?)"?\)/);
+    if (m) imgs.push(m[1]);
+  });
+  await Promise.all(imgs.map(src => new Promise(ok => { const i = new Image(); i.onload = i.onerror = ok; i.src = src; })));
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  await new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)));
+  const deck = root.querySelector('.deck');
+  const base = deck ? deck.getBoundingClientRect() : { left: 0, top: 0 };
+  return Array.from(root.querySelectorAll(ZONES)).map(el => {
+    const r = el.getBoundingClientRect();
+    return {
+      x: Math.round(r.left - base.left), y: Math.round(r.top - base.top), w: Math.round(r.width), h: Math.round(r.height),
+      radius: Math.round(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0),
+      data: Object.assign({}, el.dataset)
+    };
+  }).filter(z => z.w > 0 && z.h > 0);
+}
+</script>
+</body>
+</html>

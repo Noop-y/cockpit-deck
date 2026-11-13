@@ -4,7 +4,7 @@
 
 ## Le projet
 
-The Deck est un écran tactile fait maison (Waveshare ESP32-P4-WIFI6-Touch-LCD-7B, 1024×600, branché en USB-C) façon Stream Deck, pensé pour Star Citizen. Ce dépôt contient le **logiciel Windows** (Electron) qui prépare les pages et les cases, les envoie à l'écran, et fait ce que l'écran ne peut pas faire seul : ouvrir une appli sur le bon écran, piloter OBS et Discord, lire la musique en cours, jouer les sons de la soundboard, enregistrer des clips. Le programme de l'écran (firmware ESP32-P4) n'est pas encore écrit.
+The Deck est un écran tactile fait maison (Waveshare ESP32-P4-WIFI6-Touch-LCD-7B, 1024×600, branché en USB-C) façon Stream Deck, pensé pour Star Citizen. Ce dépôt contient le **logiciel Windows** (Electron) qui prépare les pages et les cases, les envoie à l'écran, et fait ce que l'écran ne peut pas faire seul : ouvrir une appli sur le bon écran, piloter OBS et Discord, lire la musique en cours, jouer les sons de la soundboard, enregistrer des clips. Le programme de l'écran (firmware ESP32-P4, dossier `firmware/`) affiche les pages que le logiciel lui envoie en images (ADR 0005).
 
 ## Commandes
 
@@ -29,6 +29,7 @@ Fabrication officielle : chaque `git push` lance GitHub Actions (`.github/workfl
   - `data.js` pictogrammes, couleurs, catégories, modèles d'espaces ;
   - `obs.js` OBS (obs-websocket) ; `sound.js` moteur de la soundboard ; `cliprec.js` son des clips (AudioWorklet) ;
   - `app.js` le cœur : configuration `cfg`, état `ui`, rendu (`render()` reconstruit la page en HTML), écran du Deck (`deckPage`, `deckCell`…), simulateur, liaison USB, actions (`ACTIONS`, `data-act`), champs (`onField`, `data-field`), migration des anciennes configurations (`migrate`) ;
+  - `flasher.js` installation et mise à jour du programme de l'écran ; `deckpack.js` pages dessinées en images (avec `rendu.html`, fenêtre invisible) et envoyées à l'écran ;
   - `clipsui.js` tout ce qui touche aux clips dans l'interface (chargé après `app.js`, il ajoute ses actions à `ACTIONS`) ;
   - `styles.css` ; sur l'écran du Deck, les tailles sont en `cqw` (1 cqw = 1 % de la largeur de l'écran).
 - `build/` — icônes de l'application. `vendor/` — FFmpeg, téléchargé à la fabrication (pas dans git).

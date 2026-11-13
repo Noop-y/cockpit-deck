@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('deck', {
   openLink: (url) => ipcRenderer.invoke('link:open', url),
   fwInfo: () => ipcRenderer.invoke('fw:info'),
   fwRead: (name) => ipcRenderer.invoke('fw:read', name),
+  deckRender: (list) => ipcRenderer.invoke('deck:render', list),
   clipsConfig: (c) => ipcRenderer.invoke('clips:config', c),
   clipsState: () => ipcRenderer.invoke('clips:state'),
   clipsAction: (op) => ipcRenderer.invoke('clips:action', op),

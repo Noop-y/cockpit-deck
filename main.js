@@ -506,6 +506,46 @@ ipcMain.handle('fw:read', (e, name) => {
   if (!/^(ecran|app)-rev[13]\.bin$/.test(String(name))) return null;   // seulement les fichiers du programme de l'écran
   try { return fs.readFileSync(path.join(fwDir(), name)); } catch (err) { return null; }
 });
+// ---------- pages de l'écran dessinées en images (étape 3) ----------
+// Fenêtre invisible de 1024 × 600 : on y pose chaque page (HTML de l'aperçu), puis on en prend la photo en JPEG.
+let renderWin = null;
+let renderBusy = Promise.resolve();
+async function renderWindow() {
+  if (renderWin && !renderWin.isDestroyed()) return renderWin;
+  renderWin = new BrowserWindow({
+    width: 1024, height: 600, useContentSize: true, show: false, frame: false, resizable: false,
+    webPreferences: { offscreen: true, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false }
+  });
+  renderWin.webContents.setFrameRate(30);
+  renderWin.webContents.on('will-navigate', (e) => e.preventDefault());
+  renderWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  renderWin.webContents.on('paint', (e, dirty, image) => { renderWin.lastPaint = image; renderWin.paints = (renderWin.paints || 0) + 1; });
+  await renderWin.loadFile(path.join(__dirname, 'src', 'rendu.html'));
+  return renderWin;
+}
+async function renderOne(w, html) {
+  const zones = await w.webContents.executeJavaScript(`deckRender(${JSON.stringify(String(html))})`);
+  // attendre que la fenêtre ait repeint la nouvelle page
+  const n0 = w.paints || 0;
+  w.webContents.invalidate();
+  for (let i = 0; i < 40 && (w.paints || 0) < n0 + 2; i++) await new Promise(r => setTimeout(r, 25));
+  let img = await w.webContents.capturePage();
+  if (img.isEmpty() && w.lastPaint) img = w.lastPaint;
+  const sz = img.getSize();
+  if (sz.width !== 1024 || sz.height !== 600) img = img.resize({ width: 1024, height: 600, quality: 'best' });
+  return { jpeg: img.toJPEG(88), zones };
+}
+ipcMain.handle('deck:render', (e, list) => {
+  const job = renderBusy.then(async () => {
+    if (!Array.isArray(list) || list.length > 200) return null;
+    const w = await renderWindow();
+    const out = [];
+    for (const html of list) out.push(await renderOne(w, html));
+    return out;
+  });
+  renderBusy = job.catch(() => {});
+  return job;
+});
 ipcMain.handle('link:open', (e, url) => { if (/^https:\/\/(vb-audio\.com|discord\.com)\//.test(String(url))) shell.openExternal(url); });
 
 // ---------- clips ----------

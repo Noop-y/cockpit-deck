@@ -4,7 +4,7 @@ Liaison série USB (CDC) de la carte ESP32-P4, 921 600 bauds. Un message = une l
 
 ## Bonjour (dans les deux sens)
 
-Dès que l'écran est relié, puis toutes les 3 s, le logiciel envoie `{"t":"hello","app":"1.1.1"}`. L'écran répond `{"t":"hello","fw":"0.3.0","rev":302,"etape":2}` (version de son programme, version de la puce : 302 = v3.2). Sans bonjour depuis 6 s, l'écran affiche « logiciel pas relié ».
+Dès que l'écran est relié, puis toutes les 3 s, le logiciel envoie `{"t":"hello","app":"1.1.1"}`. L'écran répond `{"t":"hello","fw":"0.4.0","rev":302,"etape":3,"pages":12}` (version de son programme, version de la puce : 302 = v3.2). Sans bonjour depuis 6 s, l'écran affiche « logiciel pas relié ».
 
 Depuis le programme de l'écran 0.2.0, la liaison passe par la prise « USB » de la carte (USB pleine vitesse de l'ESP32-P4, VID 0x303A, PID 0x81D3), avec sur le même câble un clavier (F13–F24, lettres), des touches multimédia et une manette de 32 boutons. Le débit (921 600) n'a plus d'importance sur cette liaison.
 
@@ -17,6 +17,30 @@ Le logiciel lit `app-rev3.bin` ou `app-rev1.bin` (selon `rev` donné dans le bon
 3. `{"t":"fw-end"}` → l'écran vérifie le programme, le choisit pour le prochain démarrage, répond `{"t":"fw-done"}` et redémarre.
 
 En cas de problème : `{"t":"fw-err","msg":"…"}` ; l'écran garde son programme actuel.
+
+## Pages en images (programme de l'écran 0.4.0 ou plus)
+
+Bouton « Envoyer sur l'écran » : le logiciel dessine chaque page à 1024 × 600 (comme « Aperçu de l'écran »), et envoie un seul paquet binaire :
+
+1. `{"t":"pg-begin","size":<octets>,"crc":<CRC-32 du paquet>}` → `{"t":"pg-ack","off":0}`.
+2. `{"t":"pg-data","off":<position>,"b64":"<8 Ko en base64>"}` → `{"t":"pg-ack","off":<nouvelle position>}` (comme `fw-data`).
+3. `{"t":"pg-end"}` → l'écran vérifie la somme de contrôle, garde les pages et affiche la première : `{"t":"pg-done","count":<pages>}`.
+
+En cas de problème : `{"t":"pg-err","msg":"…"}`. Le bonjour de l'écran donne `"pages":<nombre>` (0 = aucune).
+
+Paquet (nombres en petit-boutiste) :
+
+| Partie | Taille | Contenu |
+|---|---|---|
+| En-tête | 24 | `DECK`, version (1), nombre de pages, début des textes, taille des textes, taille totale, 0 |
+| Pages | 20 × pages | début du JPEG, taille du JPEG, première zone, nombre de zones, 0, couleur d'appui `0xRRGGBB` |
+| Zones | 28 × zones | x, y, largeur, hauteur (16 bits) ; sorte, comportement, arrondi, 0 (8 bits) ; maintien en ms, v1, v2, 0 (16 bits) ; message à l'appui, message au relâchement (32 bits, position dans les textes, `0xFFFFFFFF` = aucun) |
+| Textes | | messages JSON terminés par un 0 |
+| Images | | JPEG 1024 × 600 (début aligné sur 4 octets) |
+
+Sortes de zones : 0 rien, 1 touche clavier (v1 = Ctrl 1 / Maj 2 / Alt 4 / Windows 8, v2 = code USB de la touche), 2 bouton de manette (v1 = 1 à 32), 3 touche multimédia (v1 = code USB), 4 aller à la page n° v1 du paquet (0 = accueil), 5 message au logiciel (par exemple `{"t":"sound",…}` ou `{"t":"clip","op":"rec"}`). Comportements : 0 appui (enfoncé tant que le doigt est posé), 1 maintenir (déclenche après le temps de maintien), 2 bascule (contour allumé ou éteint à chaque appui).
+
+L'ancien message `config` (ci-dessous) est remplacé par ces pages ; l'écran y répond `ERR`.
 
 ## Du logiciel vers l'écran
 
