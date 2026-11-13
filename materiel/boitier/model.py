@@ -11,14 +11,19 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else '.'
 
 # ---- carte (Waveshare, doc officielle) ----
 GW, GH = 164.28, 99.17          # vitre / contour module
-AW, AH = 154.58, 86.42          # zone affichée
-# bordures noires de la vitre (dessin Waveshare, vu de face) : gauche 3,06, droite 6,65, haut 4,02, bas 8,73.
+# bordures noires de la vitre (vu de face) : gauche, droite, haut, bas.
+# Dessin Waveshare : 3,06 / 6,65 / 4,02 / 8,73 ; mesurées sur l'écran reçu (13/11/2026) : 3 / 7 / 4 / 9.
+# 13/11/2026 : on prend la moyenne des deux (DECK_BORDURES=waveshare : seulement le dessin).
+B_WS, B_MES = (3.06, 6.65, 4.02, 8.73), (3.0, 7.0, 4.0, 9.0)
+BORD = B_WS if os.environ.get('DECK_BORDURES') == 'waveshare' else tuple((a + b) / 2 for a, b in zip(B_WS, B_MES))
+AW, AH = GW - BORD[0] - BORD[1], GH - BORD[2] - BORD[3]   # zone affichée (dessin : 154,58 × 86,42)
 # L'image n'est donc pas au milieu de la vitre : son centre est décalé de (AXC, AYC) par rapport au centre de la vitre.
-AXC, AYC = (3.06 - 6.65) / 2, (8.73 - 4.02) / 2
+AXC, AYC = (BORD[0] - BORD[1]) / 2, (BORD[3] - BORD[2]) / 2
 WIN_M = 0.1                     # marge de la fenêtre de la façade autour de l'image (0 = pile au bord de l'image)
-# 08/11/2026 : boîtier centré sur l'image (et plus sur la vitre). DECK_CENTRE_VITRE=1 : ancien boîtier centré sur la vitre
+# 08/11/2026 : boîtier centré sur l'image (et plus sur la vitre). DECK_CENTRE_VITRE=1 : ancien boîtier centré sur la vitre.
+# Le centre du boîtier reste celui du dessin Waveshare (corps déjà validé par la pièce de test ; 0,1 mm d'écart, invisible).
 CENTRE_IMAGE = os.environ.get('DECK_CENTRE_VITRE') != '1'
-BXC, BYC = (AXC, AYC) if CENTRE_IMAGE else (0.0, 0.0)   # centre du boîtier (repère : centre de la vitre)
+BXC, BYC = ((3.06 - 6.65) / 2, (8.73 - 4.02) / 2) if CENTRE_IMAGE else (0.0, 0.0)   # centre du boîtier (repère : centre de la vitre)
 # mesures de l'écran reçu (13/11/2026, depuis la face avant de la vitre) : vitre + dalle 6,7 ; dos de la carte 8,3 ;
 # milieu des prises USB-C 10 ; composant le plus haut (prise USB-A) 15,3 ; entretoises des coins 14,9
 GT = 8.3                        # module écran : vitre + dalle + carte (mesuré)
