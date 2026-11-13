@@ -19,8 +19,13 @@ WIN_M = 0.1                     # marge de la fenêtre de la façade autour de l
 # 08/11/2026 : boîtier centré sur l'image (et plus sur la vitre). DECK_CENTRE_VITRE=1 : ancien boîtier centré sur la vitre
 CENTRE_IMAGE = os.environ.get('DECK_CENTRE_VITRE') != '1'
 BXC, BYC = (AXC, AYC) if CENTRE_IMAGE else (0.0, 0.0)   # centre du boîtier (repère : centre de la vitre)
-GT = 5.0                        # SUPPOSE : épaisseur du module écran (vitre + dalle)
-BACK = 5.0                      # demandé : 5 mm entre le fond et l'écran (carte à vérifier !)
+# mesures de l'écran reçu (13/11/2026, depuis la face avant de la vitre) : vitre + dalle 6,7 ; dos de la carte 8,3 ;
+# milieu des prises USB-C 10 ; composant le plus haut (prise USB-A) 15,3 ; entretoises des coins 14,9
+GT = 8.3                        # module écran : vitre + dalle + carte (mesuré)
+H_MAX = 15.3                    # du devant de la vitre au composant le plus haut (mesuré)
+H_ENTR = 14.9                   # du devant de la vitre au bout des entretoises des coins (mesuré)
+Z_PORTS = 10.0                  # du devant de la vitre au milieu des prises USB-C (mesuré)
+BACK = H_MAX - GT + 0.6         # place derrière la carte : composants + 0,6 mm de jeu
 # ---- boîtier ----
 CLR = 0.4                       # jeu par côté
 WS, TB = 8.0, 1.6               # parois latérales / fond
@@ -53,10 +58,17 @@ if FACADE_CLIPS:
 _dx = max(0.0, abs(SCREWS[0][0]) - PW / 2); _dy = max(0.0, abs(SCREWS[0][1]) - PH / 2)
 assert np.hypot(_dx, _dy) >= INSERT_D / 2 + 1.0, 'insert trop près du logement de l’écran'
 MX = 60.0                        # inserts du pied : rentrés sous l'écran (pied plus étroit que la coque)
-MOUNT = [(sx * MX, y) for sx in (-1, 1) for y in (-42.0, 37.0)]     # inserts au dos, dans des bossages
+MOUNT = [(sx * MX, y) for sx in (-1, 1) for y in (-42.0, 22.0)]     # inserts au dos ; 13/11 : y = 22 au lieu de 37 (support de pile RTC)
+BOSS_TOP = 6.2                   # haut des bossages (depuis l'arrière) : 3 mm sous le dos de la carte
+# entretoises des 4 coins de la carte (dessin Waveshare : 156 × 89 mm) : la carte s'y appuie et s'y visse par l'arrière
+ENTR = [(sx * 78.0, sy * 44.5) for sx in (-1, 1) for sy in (-1, 1)]
+ENTR_SCREW_D, ENTR_HEAD_D = 3.2, 5.4    # vis M2,5 ou M3 par l'arrière dans les entretoises
 # ouvertures côté gauche (vu de face) : (centre y, largeur) — d'après les photos Waveshare, à confirmer
-USB_CUT = (0.0, 16.0)            # port USB-C, environ au milieu ; 16 mm de large pour la tête aimantée du câble AUFU 16 broches (à ajuster après mesure)
-BTN_CUT = (19.0, 10.0)           # SUPPOSE : bouton marche/arrêt, au-dessus du port
+# 13/11/2026, d'après le dessin Waveshare (carte de 97 mm centrée) : USB-C « USB » à y = -19,65, USB-A à -0,75 (dépasse un peu),
+# USB-C « USB TO UART » à -34,9, interrupteur ON/OFF vers y = 34. Une seule niche pour la fiche de la nappe et la prise USB-A.
+USB_Y = -19.65                   # prise USB-C « USB », branchée à la nappe
+USB_CUT = (-10.1, 35.1)          # niche : de 8 mm sous la prise USB-C jusqu'au-dessus de la prise USB-A
+BTN_CUT = (34.0, 9.0)            # interrupteur ON/OFF (niche gardée, fenêtre rebouchée)
 CABLE = None                     # fenêtre câbles dans le fond : supprimée (l'USB-C sort par le côté). Ancienne valeur : (60.0, 16.0, 0.0, -5.0)
 
 # déport USB-C (validé le 28/10/2026) : prise USB-C au dos, dans une capsule collée ; la fenêtre USB du côté est rebouchée
@@ -64,7 +76,7 @@ CABLE = None                     # fenêtre câbles dans le fond : supprimée (l
 REAR_USB = os.environ.get('DECK_USB_ARRIERE', '1') == '1'
 SKIN_USB = 1.6                       # épaisseur de la paroi qui rebouche la fenêtre USB (vue de l'extérieur)
 CLOSE_BTN = os.environ.get('DECK_BOUTON_OUVERT') != '1'   # fenêtre du bouton marche/arrêt rebouchée (28/10/2026) ; DECK_BOUTON_OUVERT=1 pour la rouvrir
-POD_YC = 0.0                         # hauteur de la capsule sur le dos : au milieu
+POD_YC = USB_Y                       # hauteur de la capsule sur le dos : en face de la prise USB-C (13/11/2026)
 POD_XF, POD_LEN = -40.0, 21.0        # face de la prise (x), longueur totale vers le bord
 POD_W, POD_H, POD_R = 17.0, 8.0, 3.0     # largeur, hauteur (pavé aux angles légèrement arrondis depuis le 02/11/2026)
 POD_FILLET = 1.5                     # raccord arrondi avec le dos (avant 2,5)
@@ -78,7 +90,8 @@ PINS = [(POD_XF - 13.0, POD_YC + 5.5), (POD_XF - 13.0, POD_YC - 5.5), (POD_XF - 
 parts = {}
 
 # ---------- COQUE (repère coque : fond sur z=0, face avant z=SD) ----------
-holes = [circle(INSERT_D / 2, x, y) for x, y in MOUNT]   # seuls les trous du pied traversent le fond
+holes = [circle(INSERT_D / 2, x, y) for x, y in MOUNT]   # trous du pied
+holes += [circle(ENTR_HEAD_D / 2, x, y) for x, y in ENTR]  # têtes des vis des entretoises (logées dans le fond)
 if REAR_USB:                             # trous des pions de centrage de la capsule
     holes += [circle(PIN_HOLE / 2, x, y, 24) for x, y in PINS]
 if REAR_USB:                             # fente pour la nappe, sous la capsule
@@ -118,7 +131,9 @@ BEAD_S = 1.3 if FACADE_CLIPS else BEAD   # saillie des bourrelets des côtés (e
 BEADS_X = (-55.0, -20.0, 20.0, 55.0)     # 4 bourrelets de 14 mm, en haut et en bas
 BEAD_L = 24.0 if FACADE_CLIPS else 14.0
 SIDE_R = ((-22.0, 24.0), (22.0, 24.0)) if FACADE_CLIPS else ()          # côté droit : (centre, longueur)
-SIDE_LO, SIDE_HI = (((-24.5, 24.0),), ((32.4, 14.0),)) if FACADE_CLIPS else ((), ())   # côté gauche : sous l'USB / au-dessus du bouton
+# côté gauche (13/11/2026) : un clip sous la niche USB, un entre la niche USB et l'interrupteur (plus rien au-dessus)
+SIDE_LO, SIDE_HI = (((-34.25, 8.0),), ()) if FACADE_CLIPS else ((), ())
+SIDE_MID = ((((USB_CUT[0] + USB_CUT[1] / 2) + (BTN_CUT[0] - BTN_CUT[1] / 2)) / 2, 16.0),) if FACADE_CLIPS else ()
 G_D = BEAD + 0.15                        # profondeur de la rainure au-delà du creux
 G_D_S = BEAD_S + 0.15
 Z_R = SD - LIP_H - 0.1                   # fond du creux pour le rebord
@@ -214,19 +229,21 @@ shell.append(extrude(lower_with(inner_path(False)), ins, Z_R, Z_G0))
 shell.append(extrude(lower_with(inner_path(True)), ins, Z_G0, Z_G1))
 shell.append(extrude(lower_with(inner_path(False)), ins, Z_G1, CUT_TOP))
 shell.append(extrude(island, [], TB - 0.4, Z_R))
-shell.append(extrude(rect(-a_ - REC_S - xo, lo1 - hi2, (xo - a_ - REC_S) / 2, (lo1 + hi2) / 2), [], Z_R, CUT_TOP))
+_isl = lambda d: rect(-a_ - REC_S - d - xo, lo1 - hi2, (xo - a_ - REC_S - d) / 2, (lo1 + hi2) / 2)
+shell.append(extrude(_isl(0.0), [], Z_R, Z_G0))
+shell.append(extrude(_isl(G_D_S if SIDE_MID else 0.0), [], Z_G0, Z_G1))   # rainure du clip du milieu
+shell.append(extrude(_isl(0.0), [], Z_G1, CUT_TOP))
 shell.append(extrude(outer, [cav] + top_holes, CUT_TOP - 0.2, SD - PRY_D))
 shell.append(extrude(bottom_notch(outer, OH / 2 - BYC, PRY_D, BXC - PRY_W / 2, BXC + PRY_W / 2), [cav] + top_holes, SD - PRY_D, SD))
 if REAR_USB:                             # fenêtre USB du côté rebouchée : peau extérieure, niche dedans pour la fiche de la nappe
     shell.append(box(xo, xo + SKIN_USB, lo2, hi2, TB - 0.4, CUT_TOP))
 if CLOSE_BTN:                            # fenêtre du bouton rebouchée aussi (bouton laissé sur marche), niche gardée dedans
     shell.append(box(xo, xo + SKIN_USB, lo1, hi1, TB - 0.4, CUT_TOP))
-for sx in (-1, 1):                       # appuis de l'écran (4 patins)
-    for sy in (-1, 1):
-        x0, x1 = sorted([sx * (PW / 2 - 2.5), sx * (PW / 2 + 0.5)])
-        shell.append(box(x0, x1, sy * 35 - 7.5, sy * 35 + 7.5, TB - 0.2, SD - GT))
-for x, y in MOUNT:                        # bossages des inserts du pied (sous l'écran, à côté de la carte)
-    shell.append(tube(4.0, INSERT_D / 2, TB - 0.2, SD - GT - 0.4, x, y))
+for x, y in ENTR:                         # appuis sous les entretoises de la carte (13/11/2026, remplacent les 4 patins)
+    shell.append(tube(3.6, ENTR_SCREW_D / 2, TB - 0.2, SD - H_ENTR, x, y))
+for x, y in MOUNT:                        # bossages des inserts du pied (sous la carte, 3 mm sous son dos)
+    shell.append(tube(4.0, INSERT_D / 2, TB - 0.2, BOSS_TOP, x, y))
+assert SD - GT - BOSS_TOP >= 2.5, 'bossages trop près du dos de la carte'
 # ---- déport USB-C : prise USB-C dans une capsule collée au dos ----
 # Activer avec DECK_USB_ARRIERE=1. Une rallonge nappe USB-C relie la carte à une prise femelle logée dans la capsule.
 # La capsule est une pièce à part (capsule.stl) : imprimée à plat sur sa base, sa forme arrondie sort lisse, sans support.
@@ -476,10 +493,10 @@ for sg in (1, -1):
         frame.append(xform(extrude(bead_profile(y_out - sg * 0.02, sg, BEAD, Z_G0 + 0.1, Z_G1 - 0.1), [], xc - BEAD_L / 2, xc + BEAD_L / 2, maxlen=1e3), P_X))
 for sx in (-1, 1):                             # rebords des côtés (à gauche, pas derrière la prise USB ni le bouton)
     xa_, xb_ = sorted([sx * (GW / 2 + LIP_GAP), sx * (GW / 2 + LIP_GAP + LIP_T_S)])
-    spans = [(-YB + CL, YB - CL)] if sx > 0 else [(-YB + CL, lo2 - 1.0), (hi1 + 1.0, YB - CL)]
-    for y0_, y1_ in spans:
+    spans = [(-YB + CL, YB - CL)] if sx > 0 else [(-YB + CL, lo2 - 1.0), (hi2 + 1.0, lo1 - 1.0), (hi1 + 1.0, YB - CL)]
+    for y0_, y1_ in [sp for sp in spans if sp[1] - sp[0] >= 3.0]:
         frame.append(box(xa_, xb_, y0_, y1_, SD - LIP_H, SD))
-for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI)):   # bourrelets des côtés, plus gros
+for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI + SIDE_MID)):   # bourrelets des côtés, plus gros
     x_out = sx * (GW / 2 + LIP_GAP + LIP_T_S)
     for yc, ln in ys:
         frame.append(xform(extrude(bead_profile(x_out - sx * 0.02, sx, BEAD_S, Z_G0 + 0.1, Z_G1 - 0.1), [], yc - ln / 2, yc + ln / 2, maxlen=1e3), P_Y))
@@ -829,9 +846,9 @@ def world_shell(tr):
     return xform(tr, SHELL_R, SHELL_T)
 
 
-display = [box(-GW / 2, GW / 2, -GH / 2, GH / 2, SD - GT, SD - 0.05)]
+display = [box(-GW / 2, GW / 2, -GH / 2, GH / 2, SD - 6.7, SD - 0.05)]
 active = [box(AXC - AW / 2, AXC + AW / 2, AYC - AH / 2, AYC + AH / 2, SD - 0.05, SD)]
-pcb = [box(-55, 55, -38, 38, SD - GT - 3.6, SD - GT - 2.0)]
+pcb = [box(-82, 82, -48.5, 48.5, SD - GT, SD - 6.7)]
 scene = {
     'coque': (world_shell(np.concatenate(parts['coque'])), 'shell', 0.0),
     'cadre': (world_shell(np.concatenate(parts['cadre'])), 'frame', 1.0),
