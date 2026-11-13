@@ -52,11 +52,11 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Un espace exporté (`.deck`) ne contient aucun de ces codes.
 
 ## Programme de l'écran — étape 1 « Bonjour »
-- [ ] Page Appareil : « Version fournie avec ce logiciel : 0.1.0 » s'affiche (version fabriquée par GitHub).
-- [ ] Écran branché sur sa prise **« USB TO UART »** : « Installer le programme de l'écran » trouve l'écran sans fenêtre de choix, la barre avance jusqu'à 100 %, message « Programme version 0.1.0 installé (puce v…) ». Noter la version de puce affichée : ……
+- [x] Page Appareil : « Version fournie avec ce logiciel : 0.1.0 » s'affiche (version fabriquée par GitHub).
+- [x] Écran branché sur sa prise **« USB TO UART »** : « Installer le programme de l'écran » trouve l'écran sans fenêtre de choix, la barre avance jusqu'à 100 %, message « Programme version 0.1.0 installé (puce v…) ». Noter la version de puce affichée : v3.2 (13/11/2026). Il a fallu BOOT + RESET à la main ; à 921 600 bauds la liaison coupait (réglé à 115 200).
 - [ ] Si Windows ne reconnaît pas la prise (rien ne se passe) : installer le pilote WCH CH343 et réessayer.
-- [ ] L'écran redémarre et affiche « THE DECK » en ambre, « Programme de l'ecran - version 0.1.0 », le bouton « Touche-moi ».
-- [ ] Toucher le bouton : il devient ambre pendant l'appui, le compteur augmente de 1 à chaque appui.
+- [x] L'écran redémarre et affiche « THE DECK » en ambre, « Programme de l'ecran - version 0.1.0 », le bouton « Touche-moi ».
+- [x] Toucher le bouton : il devient ambre pendant l'appui, le compteur augmente de 1 à chaque appui.
 - [ ] Poser le doigt en haut à gauche, puis en bas à droite : le point ambre apparaît **sous le doigt** (et pas à l'opposé). Coordonnées affichées proches de x 0 y 0, puis x 1023 y 599.
 - [ ] Débrancher / rebrancher : l'écran redémarre tout seul sur le même écran.
 

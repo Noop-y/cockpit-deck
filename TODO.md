@@ -21,7 +21,7 @@ Relu au début de chaque session, mis à jour à la fin.
 
 ## En cours
 
-- Programme de l'écran (ESP32-P4), choix « l'écran affiche des images préparées par le logiciel » (ADR 0005). Étape 1 « Bonjour » (affichage + tactile) et installation depuis la page Appareil : à tester sur le vrai écran. Ensuite : étape 2 USB (clavier F13–F24 + manette + port de liaison, sur la prise « USB »), étape 3 pages en images, étape 4 direct (glisser, musique, soundboard, clips), puis mise à jour par le câble habituel (la prise « USB TO UART » est cachée dans le boîtier).
+- Programme de l'écran (ESP32-P4), choix « l'écran affiche des images préparées par le logiciel » (ADR 0005). Étape 1 « Bonjour » validée sur le vrai écran le 13/11/2026 (puce ESP32-P4 v3.2, installation depuis la page Appareil à 115 200 bauds, mode BOOT + RESET à la main). Ensuite : étape 2 USB (clavier F13–F24 + manette + port de liaison, sur la prise « USB »), étape 3 pages en images, étape 4 direct (glisser, musique, soundboard, clips), puis mise à jour par le câble habituel (la prise « USB TO UART » est cachée dans le boîtier).
 
 - Passage à Claude Code sur le PC (étapes 2 et 3 du prompt : installation, git). Recommandé : Claude Code directement sous Windows. À confirmer : choix Windows ou WSL, et l'abonnement.
 - Activer la double vérification sur le compte GitHub (seule clé pour modifier le code) ; choisir dépôt public ou privé.
