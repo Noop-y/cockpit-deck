@@ -6,7 +6,7 @@ Liaison série USB (CDC) de la carte ESP32-P4, 921 600 bauds. Un message = une l
 
 Dès que l'écran est relié, puis toutes les 3 s, le logiciel envoie `{"t":"hello","app":"1.1.1"}`. L'écran répond `{"t":"hello","fw":"0.2.0","etape":2}` (version de son programme). Sans bonjour depuis 6 s, l'écran affiche « logiciel pas relié ».
 
-Depuis le programme de l'écran 0.2.0, la liaison passe par la prise « USB » de la carte (USB natif de l'ESP32-P4, VID 0x303A, PID 0x81D3), avec sur le même câble un clavier (F13–F24, lettres), des touches multimédia et une manette de 32 boutons. Le débit (921 600) n'a plus d'importance sur cette liaison.
+Depuis le programme de l'écran 0.2.0, la liaison passe par la prise « USB » de la carte (USB pleine vitesse de l'ESP32-P4, VID 0x303A, PID 0x81D3), avec sur le même câble un clavier (F13–F24, lettres), des touches multimédia et une manette de 32 boutons. Le débit (921 600) n'a plus d'importance sur cette liaison.
 
 ## Du logiciel vers l'écran
 

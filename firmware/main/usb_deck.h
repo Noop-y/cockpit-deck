@@ -1,5 +1,5 @@
 /*
- * The Deck — USB de l'écran (prise « USB », port haute vitesse de l'ESP32-P4)
+ * The Deck — USB de l'écran (prise Type-C « USB », port USB pleine vitesse de l'ESP32-P4)
  *
  * Un seul câble, trois fonctions vues par Windows sans pilote :
  *  - clavier (touches réservées F13–F24, lettres) et touches multimédia (lecture, volume…) ;

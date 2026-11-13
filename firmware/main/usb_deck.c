@@ -1,6 +1,6 @@
 /*
  * The Deck — USB de l'écran : clavier + touches multimédia + manette (HID) et liaison série (CDC).
- * esp_tinyusb 3 (TinyUSB), port haute vitesse de l'ESP32-P4 = prise « USB » de la carte.
+ * esp_tinyusb 3 (TinyUSB), port USB pleine vitesse de l'ESP32-P4 = prise Type-C « USB » de la carte.
  */
 #include <string.h>
 #include <stdio.h>
@@ -17,6 +17,9 @@
 #include "usb_deck.h"
 
 static const char *TAG = "usb";
+
+// 0 = prise Type-C « USB » (pleine vitesse) ; 1 = port haute vitesse (prise Type-A « USB-OTG »)
+#define DECK_USB_HAUTE_VITESSE 0
 
 // ---------- descripteurs USB ----------
 #define DECK_VID 0x303A   // Espressif (le logiciel reconnaît l'écran à ce numéro)
@@ -64,6 +67,7 @@ static const tusb_desc_device_t s_device = {
     .bNumConfigurations = 1,
 };
 
+#if DECK_USB_HAUTE_VITESSE
 static const tusb_desc_device_qualifier_t s_qualifier = {
     .bLength = sizeof(tusb_desc_device_qualifier_t),
     .bDescriptorType = TUSB_DESC_DEVICE_QUALIFIER,
@@ -75,6 +79,7 @@ static const tusb_desc_device_qualifier_t s_qualifier = {
     .bNumConfigurations = 1,
     .bReserved = 0,
 };
+#endif
 
 // pleine vitesse (12 Mbit/s) : paquets de 64 octets, interrogation toutes les 1 ms
 static const uint8_t s_cfg_fs[] = {
@@ -82,12 +87,14 @@ static const uint8_t s_cfg_fs[] = {
     TUD_CDC_DESCRIPTOR(ITF_CDC, 4, EP_CDC_NOTIF, 8, EP_CDC_OUT, EP_CDC_IN, 64),
     TUD_HID_DESCRIPTOR(ITF_HID, 5, HID_ITF_PROTOCOL_NONE, sizeof(s_hid_report), EP_HID_IN, 16, 1),
 };
+#if DECK_USB_HAUTE_VITESSE
 // haute vitesse (480 Mbit/s) : paquets de 512 octets, interrogation toutes les 8 micro-trames = 1 ms
 static const uint8_t s_cfg_hs[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_TOTAL, 0, CFG_LEN, 0, 500),
     TUD_CDC_DESCRIPTOR(ITF_CDC, 4, EP_CDC_NOTIF, 8, EP_CDC_OUT, EP_CDC_IN, 512),
     TUD_HID_DESCRIPTOR(ITF_HID, 5, HID_ITF_PROTOCOL_NONE, sizeof(s_hid_report), EP_HID_IN, 16, 4),
 };
+#endif
 
 // ---------- rappels demandés par TinyUSB ----------
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
@@ -266,13 +273,19 @@ void usb_deck_start(void)
     s_queue = xQueueCreate(64, sizeof(deck_ev_t));
     xTaskCreate(hid_task, "deck_hid", 4096, NULL, 6, NULL);
 
-    tinyusb_config_t cfg = TINYUSB_DEFAULT_CONFIG();
-    cfg.descriptor.device = &s_device;
+    // La prise Type-C « USB » de la carte 7B est reliée au port USB pleine vitesse (12 Mbit/s) de l'ESP32-P4.
+    // (Le port haute vitesse va à la prise Type-A « USB-OTG », faite pour brancher une clé ou un clavier.)
+#if DECK_USB_HAUTE_VITESSE
+    tinyusb_config_t cfg = TINYUSB_CONFIG_HIGH_SPEED(NULL, NULL);
     cfg.descriptor.qualifier = &s_qualifier;
+    cfg.descriptor.high_speed_config = s_cfg_hs;
+#else
+    tinyusb_config_t cfg = TINYUSB_CONFIG_FULL_SPEED(NULL, NULL);
+#endif
+    cfg.descriptor.device = &s_device;
     cfg.descriptor.string = s_strings;
     cfg.descriptor.string_count = sizeof(s_strings) / sizeof(s_strings[0]);
     cfg.descriptor.full_speed_config = s_cfg_fs;
-    cfg.descriptor.high_speed_config = s_cfg_hs;
     ESP_ERROR_CHECK(tinyusb_driver_install(&cfg));
 
     tinyusb_config_cdcacm_t acm = {
