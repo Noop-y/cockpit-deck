@@ -503,7 +503,7 @@ ipcMain.handle('sound:open-folder', () => { fs.mkdirSync(soundsDir(), { recursiv
 const fwDir = () => path.join(__dirname, 'src', 'firmware');
 ipcMain.handle('fw:info', () => { try { return JSON.parse(fs.readFileSync(path.join(fwDir(), 'ecran.json'), 'utf8').replace(/^\uFEFF/, '')); } catch (err) { return null; } });
 ipcMain.handle('fw:read', (e, name) => {
-  if (!/^ecran-rev[13]\.bin$/.test(String(name))) return null;   // seulement les fichiers du programme de l'écran
+  if (!/^(ecran|app)-rev[13]\.bin$/.test(String(name))) return null;   // seulement les fichiers du programme de l'écran
   try { return fs.readFileSync(path.join(fwDir(), name)); } catch (err) { return null; }
 });
 ipcMain.handle('link:open', (e, url) => { if (/^https:\/\/(vb-audio\.com|discord\.com)\//.test(String(url))) shell.openExternal(url); });

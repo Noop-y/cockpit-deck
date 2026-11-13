@@ -30,13 +30,16 @@ jobs:
         run: |
           mkdir -p out
           sudo cp firmware/build-${{ matrix.rev }}/ecran-${{ matrix.rev }}.bin out/
+          sudo cp firmware/build-${{ matrix.rev }}/the-deck-ecran.bin out/app-${{ matrix.rev }}.bin
           ls -la out
 
       - name: Mettre le programme de l'écran à télécharger
         uses: actions/upload-artifact@v4
         with:
           name: ecran-${{ matrix.rev }}
-          path: out/ecran-${{ matrix.rev }}.bin
+          path: |
+            out/ecran-${{ matrix.rev }}.bin
+            out/app-${{ matrix.rev }}.bin
           if-no-files-found: error
 
   windows:
@@ -82,7 +85,7 @@ jobs:
         run: |
           $v = (Get-Content firmware/version.txt -TotalCount 1).Trim()
           $files = @{}
-          foreach ($r in 'rev3', 'rev1') { $f = Get-Item "src/firmware/ecran-$r.bin"; $files[$r] = @{ file = $f.Name; size = $f.Length } }
+          foreach ($r in 'rev3', 'rev1') { $f = Get-Item "src/firmware/ecran-$r.bin"; $a = Get-Item "src/firmware/app-$r.bin"; $files[$r] = @{ file = $f.Name; size = $f.Length; app = $a.Name; appSize = $a.Length } }
           @{ version = $v; build = $env:GITHUB_SHA.Substring(0, 7); files = $files } | ConvertTo-Json -Depth 4 | Out-File -Encoding utf8 src/firmware/ecran.json
           Get-Content src/firmware/ecran.json
           npm install --no-save esptool-js@latest esbuild@0.25.0

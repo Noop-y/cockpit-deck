@@ -16,6 +16,11 @@
 #include "class/hid/hid_device.h"
 #include "driver/gpio.h"
 #include "hal/usb_wrap_ll.h"
+#include "hal/efuse_hal.h"
+#include "esp_ota_ops.h"
+#include "esp_system.h"
+#include "mbedtls/base64.h"
+#include <stdlib.h>
 #include "usb_deck.h"
 
 static const char *TAG = "usb";
@@ -202,8 +207,13 @@ void usb_deck_type(const char *s)
 bool usb_deck_mounted(void) { return tud_mounted(); }
 
 // ---------- liaison série avec le logiciel (une ligne JSON par message) ----------
-static char s_line[1024];
+// Les lignes reçues sont recopiées dans une file et traitées par une tâche à part : la mise à jour du
+// programme écrit en mémoire flash, ce qui ne doit pas bloquer la tâche de l'USB.
+#define LINE_MAX 16384                 // assez pour un morceau de programme de 8 Ko en base64
+static char *s_line;
 static size_t s_len;
+static bool s_skip;                    // ligne trop longue : on attend la fin de ligne
+static QueueHandle_t s_lines;
 static int64_t s_hello_us;            // dernier bonjour du logiciel
 static char s_app_version[24];
 
@@ -215,7 +225,7 @@ void usb_deck_send_line(const char *line)
     if (!tud_mounted()) return;
     tinyusb_cdcacm_write_queue(TINYUSB_CDC_ACM_0, (const uint8_t *)line, strlen(line));
     tinyusb_cdcacm_write_queue_char(TINYUSB_CDC_ACM_0, '\n');
-    tinyusb_cdcacm_write_flush(TINYUSB_CDC_ACM_0, 0);
+    tinyusb_cdcacm_write_flush(TINYUSB_CDC_ACM_0, pdMS_TO_TICKS(50));
 }
 
 // lit la valeur texte "clé":"valeur" dans une ligne JSON simple
@@ -232,15 +242,103 @@ static bool json_str(const char *line, const char *key, char *out, size_t n)
     return true;
 }
 
+// lit la valeur nombre "clé":123
+static bool json_num(const char *line, const char *key, long *out)
+{
+    char pat[32];
+    snprintf(pat, sizeof pat, "\"%s\":", key);
+    const char *p = strstr(line, pat);
+    if (!p) return false;
+    *out = strtol(p + strlen(pat), NULL, 10);
+    return true;
+}
+
+// ---------- mise à jour du programme par le câble (OTA) ----------
+// Le logiciel envoie : fw-begin (taille), puis des fw-data (morceaux en base64, chacun attend fw-ack),
+// puis fw-end. L'écran écrit dans l'emplacement de programme libre (ota_0 / ota_1), vérifie, et redémarre dessus.
+static esp_ota_handle_t s_ota;
+static const esp_partition_t *s_ota_part;
+static size_t s_ota_size, s_ota_done;
+static int s_ota_pct = -1;
+static uint8_t *s_ota_buf;
+
+int usb_deck_update_pct(void) { return s_ota_pct; }
+
+static void ota_fail(const char *why)
+{
+    char rep[160];
+    snprintf(rep, sizeof rep, "{\"t\":\"fw-err\",\"msg\":\"%s\"}", why);
+    usb_deck_send_line(rep);
+    if (s_ota_part) esp_ota_abort(s_ota);
+    s_ota_part = NULL;
+    s_ota_pct = -1;
+    ESP_LOGW(TAG, "mise a jour : %s", why);
+}
+
+static void ota_line(const char *t, const char *line)
+{
+    char rep[96];
+    if (strcmp(t, "fw-begin") == 0) {
+        long size = 0;
+        json_num(line, "size", &size);
+        if (s_ota_part) esp_ota_abort(s_ota);
+        s_ota_part = esp_ota_get_next_update_partition(NULL);
+        if (!s_ota_part || size <= 0 || (size_t)size > s_ota_part->size) { s_ota_part = NULL; ota_fail("taille du programme incorrecte"); return; }
+        if (esp_ota_begin(s_ota_part, OTA_WITH_SEQUENTIAL_WRITES, &s_ota) != ESP_OK) { s_ota_part = NULL; ota_fail("impossible de preparer la memoire"); return; }
+        s_ota_size = (size_t)size;
+        s_ota_done = 0;
+        s_ota_pct = 0;
+        if (!s_ota_buf) s_ota_buf = malloc(LINE_MAX);
+        ESP_LOGI(TAG, "mise a jour : %u octets vers %s", (unsigned)s_ota_size, s_ota_part->label);
+        usb_deck_send_line("{\"t\":\"fw-ack\",\"off\":0}");
+    } else if (strcmp(t, "fw-data") == 0) {
+        if (!s_ota_part) { ota_fail("pas de mise a jour en cours"); return; }
+        long off = -1;
+        json_num(line, "off", &off);
+        if (off != (long)s_ota_done) {   // morceau déjà reçu ou perdu : on redit où on en est
+            snprintf(rep, sizeof rep, "{\"t\":\"fw-ack\",\"off\":%u}", (unsigned)s_ota_done);
+            usb_deck_send_line(rep);
+            return;
+        }
+        const char *p = strstr(line, "\"b64\":\"");
+        if (!p) { ota_fail("morceau illisible"); return; }
+        p += 7;
+        const char *q = strchr(p, '"');
+        if (!q) { ota_fail("morceau illisible"); return; }
+        size_t n = 0;
+        if (mbedtls_base64_decode(s_ota_buf, LINE_MAX, &n, (const unsigned char *)p, (size_t)(q - p)) != 0 || n == 0) { ota_fail("morceau abime"); return; }
+        if (s_ota_done + n > s_ota_size) { ota_fail("programme trop long"); return; }
+        if (esp_ota_write(s_ota, s_ota_buf, n) != ESP_OK) { ota_fail("ecriture en memoire impossible"); return; }
+        s_ota_done += n;
+        s_ota_pct = (int)(s_ota_done * 100 / s_ota_size);
+        snprintf(rep, sizeof rep, "{\"t\":\"fw-ack\",\"off\":%u}", (unsigned)s_ota_done);
+        usb_deck_send_line(rep);
+    } else if (strcmp(t, "fw-end") == 0) {
+        if (!s_ota_part || s_ota_done != s_ota_size) { ota_fail("programme incomplet"); return; }
+        esp_err_t err = esp_ota_end(s_ota);
+        if (err != ESP_OK) { s_ota_part = NULL; ota_fail("programme refuse (verification ratee)"); return; }
+        if (esp_ota_set_boot_partition(s_ota_part) != ESP_OK) { s_ota_part = NULL; ota_fail("impossible de choisir le nouveau programme"); return; }
+        ESP_LOGI(TAG, "mise a jour terminee, redemarrage");
+        usb_deck_send_line("{\"t\":\"fw-done\"}");
+        s_ota_pct = 100;
+        vTaskDelay(pdMS_TO_TICKS(600));
+        esp_restart();
+    }
+}
+
 static void on_line(const char *line)
 {
     char t[16] = "";
     json_str(line, "t", t, sizeof t);
-    if (strcmp(t, "hello") == 0) {
+    if (strncmp(t, "fw-", 3) == 0) {
+        ota_line(t, line);
+    } else if (strcmp(t, "hello") == 0) {
         s_hello_us = esp_timer_get_time();
         json_str(line, "app", s_app_version, sizeof s_app_version);
-        char rep[96];
-        snprintf(rep, sizeof rep, "{\"t\":\"hello\",\"fw\":\"%s\",\"etape\":2}", esp_app_get_description()->version);
+        char rep[128];
+        // rev : version de la puce (300 = v3.0) ; le logiciel choisit le bon fichier pour la mise à jour
+        snprintf(rep, sizeof rep, "{\"t\":\"hello\",\"fw\":\"%s\",\"rev\":%u,\"etape\":2}",
+                 esp_app_get_description()->version, (unsigned)efuse_hal_chip_revision());
         usb_deck_send_line(rep);
     } else if (strcmp(t, "config") == 0) {
         // étape 3 : les pages arriveront en images
@@ -249,21 +347,39 @@ static void on_line(const char *line)
     // media, clips : ignorés pour l'instant
 }
 
+static void lines_task(void *arg)
+{
+    char *line;
+    for (;;) {
+        if (xQueueReceive(s_lines, &line, portMAX_DELAY) == pdTRUE) {
+            on_line(line);
+            free(line);
+        }
+    }
+}
+
 static void cdc_rx(int itf, cdcacm_event_t *event)
 {
     (void)event;
-    uint8_t buf[256];
+    uint8_t buf[512];
     size_t n = 0;
     while (tinyusb_cdcacm_read(itf, buf, sizeof buf, &n) == ESP_OK && n > 0) {
         for (size_t i = 0; i < n; i++) {
             char c = (char)buf[i];
             if (c == '\n') {
-                s_line[s_len] = 0;
-                if (s_len) on_line(s_line);
+                if (!s_skip && s_len) {
+                    char *copy = malloc(s_len + 1);
+                    if (copy) {
+                        memcpy(copy, s_line, s_len);
+                        copy[s_len] = 0;
+                        if (xQueueSend(s_lines, &copy, pdMS_TO_TICKS(200)) != pdTRUE) free(copy);
+                    }
+                }
                 s_len = 0;
-            } else if (c != '\r') {
-                if (s_len + 1 < sizeof s_line) s_line[s_len++] = c;
-                else s_len = 0;   // ligne trop longue (image…) : ignorée pour l'instant
+                s_skip = false;
+            } else if (c != '\r' && !s_skip) {
+                if (s_len + 1 < LINE_MAX) s_line[s_len++] = c;
+                else { s_len = 0; s_skip = true; }   // ligne trop longue : ignorée jusqu'au prochain \n
             }
         }
     }
@@ -274,6 +390,9 @@ void usb_deck_start(void)
 {
     s_queue = xQueueCreate(64, sizeof(deck_ev_t));
     xTaskCreate(hid_task, "deck_hid", 4096, NULL, 6, NULL);
+    s_line = malloc(LINE_MAX);
+    s_lines = xQueueCreate(8, sizeof(char *));
+    xTaskCreate(lines_task, "deck_lignes", 8192, NULL, 5, NULL);
 
     // La prise Type-C « USB » de la carte 7B est reliée au port USB pleine vitesse (12 Mbit/s) de l'ESP32-P4.
     // (Le port haute vitesse va à la prise Type-A « USB-OTG », faite pour brancher une clé ou un clavier.)

@@ -2,7 +2,7 @@
  * The Deck — programme de l'écran (ESP32-P4-WIFI6-Touch-LCD-7B, 1024 × 600)
  *
  * Étape 2 « USB » : branché sur sa prise « USB », l'écran est reconnu par Windows comme clavier,
- * touches multimédia, manette et liaison série avec le logiciel. Écran de test : état de l'USB et du
+ * touches multimédia, manette et liaison série avec le logiciel, qui peut aussi y envoyer les mises à jour du programme. Écran de test : état de l'USB et du
  * logiciel, quatre boutons d'essai, et un point qui suit le doigt.
  *
  * Les textes sont sans accents pour l'instant : la police intégrée à LVGL ne les a pas.
@@ -94,6 +94,14 @@ static lv_obj_t *texte(lv_obj_t *parent, const char *txt, const lv_font_t *font,
 static void etat_timer(lv_timer_t *t)
 {
     (void)t;
+    int pct = usb_deck_update_pct();
+    if (pct >= 0) {   // mise à jour du programme par le câble en cours
+        lv_label_set_text_fmt(s_usb, "Mise a jour du programme : %d %%", pct);
+        lv_obj_set_style_text_color(s_usb, lv_color_hex(COL_AMBRE), 0);
+        lv_label_set_text(s_app, pct >= 100 ? "Redemarrage..." : "Ne pas debrancher");
+        lv_obj_set_style_text_color(s_app, lv_color_hex(COL_AMBRE), 0);
+        return;
+    }
     bool usb = usb_deck_mounted();
     lv_label_set_text(s_usb, usb ? "USB : reconnu par le PC (clavier + manette)" : "USB : pas relie (prise USB du milieu)");
     lv_obj_set_style_text_color(s_usb, lv_color_hex(usb ? COL_VERT : COL_GRIS), 0);

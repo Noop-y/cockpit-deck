@@ -27,3 +27,6 @@ void usb_deck_type(const char *ascii);                    // tape un petit texte
 
 // Envoie une ligne au logiciel (le \n est ajouté)
 void usb_deck_send_line(const char *line);
+
+// Mise à jour du programme par le câble : pourcentage reçu (0 à 100), ou -1 s'il n'y en a pas en cours
+int usb_deck_update_pct(void);
