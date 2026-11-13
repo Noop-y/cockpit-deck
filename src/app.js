@@ -1113,7 +1113,7 @@ async function deckClose() {
 // Ce que l'écran envoie au logiciel (voir PROTOCOLE.md)
 function onDeckMessage(m) {
   if (!m || !m.t) return;
-  if (m.t === 'hello') { const v = String(m.fw || ''); if (v !== ui.deckFw) { ui.deckFw = v; render(); } return; }
+  if (m.t === 'hello') { const v = String(m.fw || ''); if (typeof m.rev === 'number') ui.deckRev = m.rev; if (v !== ui.deckFw) { ui.deckFw = v; render(); } return; }
   if (m.t === 'sound') {
     const s = spaceById(m.space); if (!s) return;
     const c = s.pages[m.page] && s.pages[m.page].cells[m.cell];

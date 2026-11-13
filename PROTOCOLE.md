@@ -4,9 +4,19 @@ Liaison série USB (CDC) de la carte ESP32-P4, 921 600 bauds. Un message = une l
 
 ## Bonjour (dans les deux sens)
 
-Dès que l'écran est relié, puis toutes les 3 s, le logiciel envoie `{"t":"hello","app":"1.1.1"}`. L'écran répond `{"t":"hello","fw":"0.2.0","etape":2}` (version de son programme). Sans bonjour depuis 6 s, l'écran affiche « logiciel pas relié ».
+Dès que l'écran est relié, puis toutes les 3 s, le logiciel envoie `{"t":"hello","app":"1.1.1"}`. L'écran répond `{"t":"hello","fw":"0.3.0","rev":302,"etape":2}` (version de son programme, version de la puce : 302 = v3.2). Sans bonjour depuis 6 s, l'écran affiche « logiciel pas relié ».
 
 Depuis le programme de l'écran 0.2.0, la liaison passe par la prise « USB » de la carte (USB pleine vitesse de l'ESP32-P4, VID 0x303A, PID 0x81D3), avec sur le même câble un clavier (F13–F24, lettres), des touches multimédia et une manette de 32 boutons. Le débit (921 600) n'a plus d'importance sur cette liaison.
+
+## Mise à jour du programme de l'écran par le câble (programme 0.3.0 ou plus)
+
+Le logiciel lit `app-rev3.bin` ou `app-rev1.bin` (selon `rev` donné dans le bonjour : 300 et plus = puce v3) et l'envoie :
+
+1. `{"t":"fw-begin","size":<octets>,"version":"0.3.1"}` → l'écran prépare l'emplacement libre (`ota_0` / `ota_1`) et répond `{"t":"fw-ack","off":0}`.
+2. `{"t":"fw-data","off":<position>,"b64":"<8 Ko en base64>"}` → `{"t":"fw-ack","off":<nouvelle position>}`. Un morceau n'est envoyé qu'après l'accusé du précédent ; si `off` ne correspond pas, l'écran redit où il en est.
+3. `{"t":"fw-end"}` → l'écran vérifie le programme, le choisit pour le prochain démarrage, répond `{"t":"fw-done"}` et redémarre.
+
+En cas de problème : `{"t":"fw-err","msg":"…"}` ; l'écran garde son programme actuel.
 
 ## Du logiciel vers l'écran
 

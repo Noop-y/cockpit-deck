@@ -12,12 +12,12 @@ const ROOT = path.join(__dirname, '..');
 // charge src/flasher.js comme dans le logiciel, avec le strict nécessaire autour
 function loadFlasher() {
   const ctx = {
-    ui: { view: 'appareil' }, ACTIONS: {}, console, window: {},
+    ui: { view: 'appareil' }, ACTIONS: {}, console, window: {}, btoa: (x) => Buffer.from(x, 'binary').toString('base64'),
     esc: (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
     render() {}, toast() {}, api: { fwInfo: async () => null, fwRead: async () => null }, deckLink: { port: null }, deckClose: async () => {}
   };
   vm.createContext(ctx);
-  vm.runInContext(fs.readFileSync(path.join(ROOT, 'src', 'flasher.js'), 'utf8') + '\nthis.fwFileFor = fwFileFor; this.flasherPanel = flasherPanel;', ctx);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'src', 'flasher.js'), 'utf8') + '\nthis.fwFileFor = fwFileFor; this.flasherPanel = flasherPanel; this.fwOlder = fwOlder; this.fwB64 = fwB64;', ctx);
   return ctx;
 }
 
@@ -72,4 +72,25 @@ test('programme de l’écran : table des partitions dans 32 Mo, sans trou ni ch
 test('programme de l’écran : numéro de version lisible', () => {
   const v = fs.readFileSync(path.join(ROOT, 'firmware', 'version.txt'), 'utf8').trim();
   assert.match(v, /^\d+\.\d+\.\d+$/);
+});
+
+test('mise à jour par le câble : versions, base64 et bouton', () => {
+  const c = loadFlasher();
+  assert.ok(c.fwOlder('0.2.2', '0.3.0'));
+  assert.ok(!c.fwOlder('0.3.0', '0.3.0'));
+  assert.ok(!c.fwOlder('1.0.0', '0.3.0'));
+  assert.ok(c.fwOlder('0.9.9', '0.10.0'), 'comparaison nombre par nombre');
+  const u8 = new Uint8Array(70000).map((_, i) => i * 7 % 256);
+  assert.strictEqual(c.fwB64(u8), Buffer.from(u8).toString('base64'));
+  assert.ok(c.ACTIONS['fw-cable'], 'action fw-cable');
+  c.ui.fw.info = { version: '0.3.1', files: {} };
+  c.ui.deckLinked = true; c.ui.deckFw = '0.3.0';
+  let h = c.flasherPanel();
+  assert.match(h, /data-act="fw-cable"/); assert.match(h, /nouvelle version/);
+  c.ui.deckFw = '0.3.1';
+  h = c.flasherPanel();
+  assert.match(h, /Réinstaller par le câble/);
+  c.ui.deckFw = '0.2.2';
+  h = c.flasherPanel();
+  assert.ok(!/data-act="fw-cable"/.test(h)); assert.match(h, /trop ancien/);
 });
