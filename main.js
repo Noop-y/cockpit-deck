@@ -550,7 +550,10 @@ ipcMain.handle('discord:run', async (e, op, arg) => {
 // Une seule copie à la fois. Si une copie plus ancienne tourne déjà (cachée près de l'horloge),
 // elle se ferme et la nouvelle version prend sa place.
 const newer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
-const gotLock = app.requestSingleInstanceLock({ version: app.getVersion() });
+// numéro de fabrication GitHub (dans src/firmware/ecran.json) : deux .exe de même version mais fabriqués à des moments
+// différents se remplacent aussi (sinon l'ancien, resté ouvert près de l'horloge, garderait la place)
+const buildId = (() => { try { return String(JSON.parse(fs.readFileSync(path.join(__dirname, 'src', 'firmware', 'ecran.json'), 'utf8').replace(/^\uFEFF/, '')).build || ''); } catch (e) { return ''; } })();
+const gotLock = app.requestSingleInstanceLock({ version: app.getVersion(), build: buildId });
 if (!gotLock) {
   if (process.argv.includes('--relance')) {
     app.exit(0);
@@ -563,7 +566,8 @@ if (!gotLock) {
   }
 } else {
   app.on('second-instance', (event, argv, cwd, data) => {
-    if (data && data.version && newer(data.version, app.getVersion())) { quitting = true; app.quit(); return; }
+    const otherBuild = data && data.version === app.getVersion() && data.build && data.build !== buildId;
+    if (data && data.version && (newer(data.version, app.getVersion()) || otherBuild)) { quitting = true; app.quit(); return; }
     if (win) { win.show(); win.focus(); }
   });
   app.whenReady().then(() => {
