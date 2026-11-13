@@ -58,6 +58,7 @@ Fabrication officielle : chaque `git push` lance GitHub Actions (`.github/workfl
 - Proposer un plan avant de modifier plusieurs fichiers. Petits changements, un commit par fonctionnalité.
 - **Ne jamais supprimer de fichier ni toucher au `package.json` sans demander.**
 - Après chaque modification, dire à l'utilisateur quoi tester à la main (et le noter dans `docs/tests-manuels.md`).
+- Dès qu'il y a quelque chose à télécharger (nouvelle version du logiciel, fichiers…), envoyer le lien d'office, sans attendre qu'il le demande (pour le `.exe` : la page de la fabrication GitHub, artefact The-Deck-Windows).
 - Vérifier avant de livrer : `node --check` sur les fichiers JS modifiés, `node --test`, et ouvrir l'interface en mode aperçu (Playwright) pour voir qu'il n'y a pas d'erreur.
 - Pour économiser : lire `CLAUDE.md` et `TODO.md`, puis seulement les parties de fichiers utiles (`app.js` est long : chercher la fonction avec Grep).
 
