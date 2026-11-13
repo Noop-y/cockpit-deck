@@ -7,6 +7,8 @@ ui.fw = { state: 'idle', pct: 0, msg: '', info: null };   // idle | port | conne
 
 // Prises série des cartes : pont USB-série de la prise « USB TO UART » (WCH CH34x, Silicon Labs, FTDI), puis Espressif
 const FW_VIDS = [0x1A86, 0x10C4, 0x0403, 0x303A];
+// vitesse de la liaison pendant l'installation (921 600 donnait « Serial data stream stopped » sur la carte 7B)
+const FW_BAUD = 115200;
 
 async function fwInfo() {
   if (ui.fw.info !== null) return ui.fw.info;
@@ -60,7 +62,8 @@ async function fwInstall() {
     for (const mode of modes) {
       fwSet('connect', 'Connexion à l\u2019écran…');
       transport = new T.Transport(port, false);
-      loader = new T.ESPLoader({ transport, baudrate: 921600, romBaudrate: 115200, terminal: term });
+      // 115 200 bauds du début à la fin : plus lent (environ 1 min) mais fiable avec tous les ponts USB-série
+      loader = new T.ESPLoader({ transport, baudrate: FW_BAUD, romBaudrate: FW_BAUD, terminal: term });
       try { chip = await loader.main(mode); break; } catch (e) {
         console.warn('connexion (' + mode + ') :', e);
         try { await transport.disconnect(); } catch (x) { /* déjà fermé */ }
