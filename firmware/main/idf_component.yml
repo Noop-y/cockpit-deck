@@ -7,3 +7,6 @@ dependencies:
   lvgl/lvgl:
     version: "==9.5.0"
     public: true
+  # USB : clavier, manette et liaison série avec le logiciel (TinyUSB)
+  espressif/esp_tinyusb:
+    version: "^3.0.0"
