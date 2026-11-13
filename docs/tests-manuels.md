@@ -57,6 +57,7 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Si Windows ne reconnaît pas la prise (rien ne se passe) : installer le pilote WCH CH343 et réessayer.
 - [x] L'écran redémarre et affiche « THE DECK » en ambre, « Programme de l'ecran - version 0.1.0 », le bouton « Touche-moi ».
 - [x] Toucher le bouton : il devient ambre pendant l'appui, le compteur augmente de 1 à chaque appui.
+- [ ] Version 0.1.1 : l'image est à l'endroit quand les prises de la carte sont à **gauche** (comme dans le boîtier).
 - [ ] Poser le doigt en haut à gauche, puis en bas à droite : le point ambre apparaît **sous le doigt** (et pas à l'opposé). Coordonnées affichées proches de x 0 y 0, puis x 1023 y 599.
 - [ ] Débrancher / rebrancher : l'écran redémarre tout seul sur le même écran.
 

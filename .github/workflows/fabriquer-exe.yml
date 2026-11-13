@@ -83,7 +83,7 @@ jobs:
           $v = (Get-Content firmware/version.txt -TotalCount 1).Trim()
           $files = @{}
           foreach ($r in 'rev3', 'rev1') { $f = Get-Item "src/firmware/ecran-$r.bin"; $files[$r] = @{ file = $f.Name; size = $f.Length } }
-          @{ version = $v; files = $files } | ConvertTo-Json -Depth 4 | Out-File -Encoding utf8 src/firmware/ecran.json
+          @{ version = $v; build = $env:GITHUB_SHA.Substring(0, 7); files = $files } | ConvertTo-Json -Depth 4 | Out-File -Encoding utf8 src/firmware/ecran.json
           Get-Content src/firmware/ecran.json
           npm install --no-save esptool-js@latest esbuild@0.25.0
           New-Item -ItemType Directory -Force src/vendor | Out-Null

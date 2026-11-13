@@ -115,7 +115,7 @@ function flasherPanel() {
         <span class="small">Vérifiez aussi que le câble est sur la prise <b>« USB TO UART »</b> (la plus en bas) et qu\u2019il transporte les données. Prise utilisée : <span class="mono">${esc(f.portId || '?')}</span></span></div>`
     : f.msg ? `<div class="${f.state === 'err' ? 'warn' : f.state === 'done' ? 'note' : 'small muted'}">${esc(f.msg)}</div>` : '';
   return `<div class="panel" style="flex:1 1 360px;min-width:0"><h2 class="disp">Programme de l’écran</h2>
-    <div style="line-height:1.6">${info ? `Version fournie avec ce logiciel : <b class="mono">${esc(info.version)}</b>` : info === false ? 'Pas de programme de l’écran dans cette version du logiciel (seulement dans celle fabriquée par GitHub).' : '…'}</div>
+    <div style="line-height:1.6">${info ? `Version fournie avec ce logiciel : <b class="mono">${esc(info.version)}</b>${info.build ? ` <span class="small muted mono">· fabrication ${esc(info.build)}</span>` : ''}` : info === false ? 'Pas de programme de l’écran dans cette version du logiciel (seulement dans celle fabriquée par GitHub).' : '…'}</div>
     <div class="small muted">1. Branchez l’écran sur sa prise <b>« USB TO UART »</b> (en bas du côté gauche).<br>2. Cliquez sur « Installer ». Ne débranchez pas pendant l’installation (environ 1 minute).</div>
     ${bar}${msg}
     <div class="row"><button class="btn pri" data-act="fw-install" ${busy || !info ? 'disabled' : ''}>${busy ? 'Installation en cours…' : 'Installer le programme de l’écran'}</button></div></div>`;

@@ -134,15 +134,16 @@ void app_main(void)
 {
     ESP_LOGI(TAG, "The Deck, programme de l'ecran %s", esp_app_get_description()->version);
 
-    // affichage + tactile, réglages de l'exemple Waveshare (le tactile est monté en miroir)
+    // affichage + tactile. Image retournée (180°) : dans le boîtier, les prises de la carte sont à gauche vu de face.
+    // Le tactile suit (réglages Espressif pour un écran MIPI-DSI : 0° = miroir x et y, 180° = sans miroir).
     bsp_display_cfg_t cfg = {
         .lv_adapter_cfg = ESP_LV_ADAPTER_DEFAULT_CONFIG(),
-        .rotation = ESP_LV_ADAPTER_ROTATE_0,
+        .rotation = ESP_LV_ADAPTER_ROTATE_180,
         .tear_avoid_mode = ESP_LV_ADAPTER_TEAR_AVOID_MODE_TRIPLE_PARTIAL,
         .touch_flags = {
             .swap_xy = 0,
-            .mirror_x = 1,
-            .mirror_y = 1,
+            .mirror_x = 0,
+            .mirror_y = 0,
         },
     };
     lv_display_t *display = bsp_display_start_with_config(&cfg);

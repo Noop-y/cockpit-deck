@@ -70,7 +70,7 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 - **Code** : fin de `main.js` (`requestSingleInstanceLock`, `newer`).
 
 ## Programme de l'écran (étape 1 « Bonjour »)
-- **Ce que ça fait** : l'écran s'allume, affiche « THE DECK », la version du programme, un bouton « Touche-moi » qui compte les appuis et un point qui suit le doigt (pour vérifier le tactile).
+- **Ce que ça fait** : l'écran s'allume (image retournée de 180° : les prises de la carte sont à gauche vu de face, comme dans le boîtier), affiche « THE DECK », la version du programme, un bouton « Touche-moi » qui compte les appuis et un point qui suit le doigt (pour vérifier le tactile).
 - **Comment** : ESP-IDF 5.5 + LVGL 9 avec la bibliothèque Waveshare de la carte 7B (écran EK79007 1024 × 600, tactile GT911). GitHub Actions le fabrique en deux versions (puces ESP32-P4 v3 et v1.x, `sdkconfig.defaults.rev3` / `.rev1`) et le range dans le `.exe` (`src/firmware/ecran-rev3.bin`, `ecran-rev1.bin`, `ecran.json`). Choix « l'écran affiche des images préparées par le logiciel » : `docs/adr/0005-ecran-affiche-des-images.md`.
 - **Code** : `firmware/` (`main/main.c`, `partitions.csv` : deux emplacements de programme + espace `pages`, `version.txt`), `.github/workflows/fabriquer-exe.yml` (tâche `ecran`).
 
