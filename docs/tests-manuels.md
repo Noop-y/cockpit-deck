@@ -73,8 +73,8 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 
 ## Mise à jour par le câble (0.3.0)
 - [ ] Installer une dernière fois par « USB TO UART » le programme 0.3.0.
-- [ ] Câble sur la prise « USB », « Relier l'écran » : page Appareil, « Écran relié : programme 0.3.0 (déjà à jour) » et le bouton « Réinstaller par le câble USB ».
-- [ ] « Réinstaller par le câble USB » : la barre avance jusqu'à 100 %, l'écran affiche « Mise a jour du programme : N % », redémarre, et le logiciel se relie tout seul (programme 0.3.0).
+- [x] Câble sur la prise « USB », « Relier l'écran » : page Appareil, « Écran relié : programme 0.3.0 (déjà à jour) » et le bouton « Réinstaller par le câble USB ».
+- [x] « Réinstaller par le câble USB » : la barre avance jusqu'à 100 %, l'écran affiche « Mise a jour du programme : N % », redémarre, et le logiciel se relie tout seul (programme 0.3.0).
 - [ ] Avec une version plus récente du logiciel : le bouton devient « Mettre à jour l'écran par le câble USB » (0.3.0 → nouvelle version) et l'écran redémarre sur la nouvelle version.
 
 ## Écran (étapes suivantes du programme de l'ESP32-P4)
