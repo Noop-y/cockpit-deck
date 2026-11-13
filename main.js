@@ -7,6 +7,7 @@ const { DiscordRPC } = require('./discord-rpc');
 const { ClipRecorder } = require('./clips');
 
 const ESPRESSIF_VID = 12346; // 0x303A, fabricant de l'ESP32-P4
+const SERIAL_BRIDGE_VIDS = [0x1A86, 0x10C4, 0x0403];   // WCH CH34x, Silicon Labs, FTDI (prise « USB TO UART »)
 
 let win = null;
 let tray = null;
@@ -53,7 +54,10 @@ function createWindow() {
   const ses = win.webContents.session;
   ses.on('select-serial-port', (event, portList, webContents, callback) => {
     event.preventDefault();
-    const esp = portList.find(p => parseInt(p.vendorId, 10) === ESPRESSIF_VID);
+    // La liste ne contient que les prises demandées : pour la liaison, celles d'Espressif ; pour installer le
+    // programme de l'écran, on prend d'abord la prise « USB TO UART » (pont USB-série), sinon celle d'Espressif.
+    const vid = (p) => parseInt(p.vendorId, 10);
+    const esp = portList.find(p => SERIAL_BRIDGE_VIDS.includes(vid(p))) || portList.find(p => vid(p) === ESPRESSIF_VID);
     callback(esp ? esp.portId : '');
   });
   // USB (écran), presse-papiers, micro et choix de la sortie audio (soundboard)
@@ -495,6 +499,13 @@ ipcMain.handle('sound:read', (e, f) => {
   try { return fs.readFileSync(f); } catch (err) { return null; }
 });
 ipcMain.handle('sound:open-folder', () => { fs.mkdirSync(soundsDir(), { recursive: true }); shell.openPath(soundsDir()); });
+// Programme de l'écran rangé dans le logiciel (src/firmware/, ajouté par GitHub à la fabrication)
+const fwDir = () => path.join(__dirname, 'src', 'firmware');
+ipcMain.handle('fw:info', () => { try { return JSON.parse(fs.readFileSync(path.join(fwDir(), 'ecran.json'), 'utf8').replace(/^\uFEFF/, '')); } catch (err) { return null; } });
+ipcMain.handle('fw:read', (e, name) => {
+  if (!/^ecran-rev[13]\.bin$/.test(String(name))) return null;   // seulement les fichiers du programme de l'écran
+  try { return fs.readFileSync(path.join(fwDir(), name)); } catch (err) { return null; }
+});
 ipcMain.handle('link:open', (e, url) => { if (/^https:\/\/(vb-audio\.com|discord\.com)\//.test(String(url))) shell.openExternal(url); });
 
 // ---------- clips ----------

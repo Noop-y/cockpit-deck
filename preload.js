@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('deck', {
   soundRead: (f) => ipcRenderer.invoke('sound:read', f),
   soundOpenFolder: () => ipcRenderer.invoke('sound:open-folder'),
   openLink: (url) => ipcRenderer.invoke('link:open', url),
+  fwInfo: () => ipcRenderer.invoke('fw:info'),
+  fwRead: (name) => ipcRenderer.invoke('fw:read', name),
   clipsConfig: (c) => ipcRenderer.invoke('clips:config', c),
   clipsState: () => ipcRenderer.invoke('clips:state'),
   clipsAction: (op) => ipcRenderer.invoke('clips:action', op),

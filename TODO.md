@@ -21,14 +21,16 @@ Relu au début de chaque session, mis à jour à la fin.
 
 ## En cours
 
+- Programme de l'écran (ESP32-P4), choix « l'écran affiche des images préparées par le logiciel » (ADR 0005). Étape 1 « Bonjour » (affichage + tactile) et installation depuis la page Appareil : à tester sur le vrai écran. Ensuite : étape 2 USB (clavier F13–F24 + manette + port de liaison, sur la prise « USB »), étape 3 pages en images, étape 4 direct (glisser, musique, soundboard, clips), puis mise à jour par le câble habituel (la prise « USB TO UART » est cachée dans le boîtier).
+
 - Passage à Claude Code sur le PC (étapes 2 et 3 du prompt : installation, git). Recommandé : Claude Code directement sous Windows. À confirmer : choix Windows ou WSL, et l'abonnement.
 - Activer la double vérification sur le compte GitHub (seule clé pour modifier le code) ; choisir dépôt public ou privé.
 - Tester la version 1.1.1 sur le vrai PC (voir `docs/tests-manuels.md`) : clips (4K, 144 images/s), Favoris, déplacement des cases.
 
 ## À faire
 
-- Programme de l'écran (firmware ESP32-P4) : affichage, manette + clavier USB, protocole de `PROTOCOLE.md` (config, media, clips, soundboard).
+- Programme de l'écran : étapes 2 à 4 (voir En cours) et nouveau message `config` en images dans `PROTOCOLE.md`.
 - Twitch : marqueurs, clips, pub, titre du live.
-- Boîtier définitif : il faut les photos et les mesures de la carte.
+- Boîtier : cotes validées sur l'écran reçu (pièce de test 0f) ; reste à imprimer et monter, vérifier la longueur de la nappe et la façade allumée.
 - Idées en attente (à choisir) : curseurs SteelSeries Sonar, mélangeur de volume Windows, macros, surveillance du PC, retour d'état OBS sur les cases.
 - Découper `src/app.js` en plusieurs fichiers (plus facile à lire et moins coûteux).

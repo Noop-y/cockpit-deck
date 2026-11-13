@@ -16,6 +16,8 @@ const api = window.deck || (() => {
     loadConfig: async () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } },
     saveConfig: async (c) => { try { localStorage.setItem(KEY, JSON.stringify(c)); } catch (e) { /* trop gros ou bloqué */ } return true; },
     createBackup: async () => null,
+    fwInfo: async () => null,
+    fwRead: async () => null,
     listBackups: async () => [],
     readBackup: async () => null,
     openBackupsFolder: async () => null,
@@ -866,7 +868,8 @@ function viewAppareil() {
       <div class="small muted">Ces réglages partent sur l\u2019écran au prochain envoi.</div></div>
     <div class="panel" style="flex:1 1 360px;min-width:0"><h2 class="disp">État</h2>
       <div style="line-height:1.6">${ui.deckOk ? '<span style="color:var(--cyan)">Le dernier envoi a réussi.</span>' : 'Aucun envoi réussi pendant cette session.'}</div>
-      <div class="warn">Le programme de l\u2019écran (micrologiciel de la carte ESP32-P4) n\u2019est pas encore installé. Tant qu\u2019il ne l\u2019est pas, l\u2019envoi s\u2019arrête avec « l\u2019écran n\u2019a pas répondu ». Vous pouvez déjà tout préparer et tester avec <b>Aperçu de l\u2019écran</b>.</div></div></div>`;
+      <div class="small muted">Le programme de l\u2019écran en est à l\u2019étape 1 (affichage et tactile) : il ne reçoit pas encore les pages. En attendant, l\u2019envoi s\u2019arrête avec « l\u2019écran n\u2019a pas répondu » ; tout se prépare et se teste avec <b>Aperçu de l\u2019écran</b>.</div></div>
+    ${typeof flasherPanel === 'function' ? flasherPanel() : ''}</div>`;
 }
 
 function viewParametres() {

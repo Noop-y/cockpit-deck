@@ -51,6 +51,15 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Dans `%APPDATA%\The Deck\config.json`, le mot de passe OBS et le Client Secret commencent par `dpapi:` (jamais en clair).
 - [ ] Un espace exporté (`.deck`) ne contient aucun de ces codes.
 
-## Écran (quand le programme de l'ESP32-P4 existera)
+## Programme de l'écran — étape 1 « Bonjour »
+- [ ] Page Appareil : « Version fournie avec ce logiciel : 0.1.0 » s'affiche (version fabriquée par GitHub).
+- [ ] Écran branché sur sa prise **« USB TO UART »** : « Installer le programme de l'écran » trouve l'écran sans fenêtre de choix, la barre avance jusqu'à 100 %, message « Programme version 0.1.0 installé (puce v…) ». Noter la version de puce affichée : ……
+- [ ] Si Windows ne reconnaît pas la prise (rien ne se passe) : installer le pilote WCH CH343 et réessayer.
+- [ ] L'écran redémarre et affiche « THE DECK » en ambre, « Programme de l'ecran - version 0.1.0 », le bouton « Touche-moi ».
+- [ ] Toucher le bouton : il devient ambre pendant l'appui, le compteur augmente de 1 à chaque appui.
+- [ ] Poser le doigt en haut à gauche, puis en bas à droite : le point ambre apparaît **sous le doigt** (et pas à l'opposé). Coordonnées affichées proches de x 0 y 0, puis x 1023 y 599.
+- [ ] Débrancher / rebrancher : l'écran redémarre tout seul sur le même écran.
+
+## Écran (étapes suivantes du programme de l'ESP32-P4)
 - [ ] Envoi sur l'écran : réponse OK, sauvegarde créée.
 - [ ] Les messages `media`, `clips` arrivent ; les appuis envoient `sound`, `clip`.
