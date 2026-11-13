@@ -209,7 +209,6 @@ static void show_page(int i)
     int b = s_cur_buf ^ 1;
     if (!decode_page(i, s_out[b])) return;
     s_cur_buf = b;
-    lv_image_cache_drop(&s_dsc[b]);
     lv_image_set_src(s_img, &s_dsc[b]);
     lv_obj_invalidate(s_img);
     press_reset();
