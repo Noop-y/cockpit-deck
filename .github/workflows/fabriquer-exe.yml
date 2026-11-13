@@ -5,7 +5,42 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Programme de l'écran (ESP32-P4) : deux versions, pour les puces v3 (récentes) et v1.x (premières cartes)
+  ecran:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rev: [rev3, rev1]
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Fabriquer le programme de l'écran (${{ matrix.rev }})
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.5
+          target: esp32p4
+          path: firmware
+          command: |
+            export SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.${{ matrix.rev }}"
+            idf.py -B build-${{ matrix.rev }} -D SDKCONFIG=build-${{ matrix.rev }}/sdkconfig set-target esp32p4 build
+            idf.py -B build-${{ matrix.rev }} -D SDKCONFIG=build-${{ matrix.rev }}/sdkconfig merge-bin -o ecran-${{ matrix.rev }}.bin
+
+      - name: Ranger le fichier
+        run: |
+          mkdir -p out
+          sudo cp firmware/build-${{ matrix.rev }}/ecran-${{ matrix.rev }}.bin out/
+          ls -la out
+
+      - name: Mettre le programme de l'écran à télécharger
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecran-${{ matrix.rev }}
+          path: out/ecran-${{ matrix.rev }}.bin
+          if-no-files-found: error
+
   windows:
+    needs: ecran
     runs-on: windows-latest
     steps:
       - name: Récupérer le code
@@ -34,6 +69,26 @@ jobs:
           $e = (& vendor/ffmpeg.exe -hide_banner -encoders 2>&1) -join "`n"
           $has = @('gfxcapture','ddagrab','h264_nvenc','h264_amf','h264_qsv') | ForEach-Object { "$_=" + ([bool](($f + $e) -match "\b$_\b")) }
           Write-Output "::notice title=FFmpeg::$($has -join ' ')"
+
+      - name: Ajouter le programme de l'écran au logiciel
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ecran-*
+          path: src/firmware
+          merge-multiple: true
+
+      - name: Fiche du programme de l'écran et outil d'installation (esptool-js)
+        shell: pwsh
+        run: |
+          $v = (Get-Content firmware/version.txt -TotalCount 1).Trim()
+          $files = @{}
+          foreach ($r in 'rev3', 'rev1') { $f = Get-Item "src/firmware/ecran-$r.bin"; $files[$r] = @{ file = $f.Name; size = $f.Length } }
+          @{ version = $v; files = $files } | ConvertTo-Json -Depth 4 | Out-File -Encoding utf8 src/firmware/ecran.json
+          Get-Content src/firmware/ecran.json
+          npm install --no-save esptool-js@latest esbuild@0.25.0
+          New-Item -ItemType Directory -Force src/vendor | Out-Null
+          npx esbuild node_modules/esptool-js/lib/index.js --bundle --format=iife --global-name=esptooljs --platform=browser --minify --outfile=src/vendor/esptool.js
+          Get-Item src/vendor/esptool.js
 
       - name: Fabriquer les fichiers .exe
         run: npm run dist

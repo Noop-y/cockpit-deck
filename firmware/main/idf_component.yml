@@ -1,0 +1,9 @@
+## Bibliothèques de l'écran (téléchargées automatiquement à la fabrication)
+dependencies:
+  idf: ">=5.5"
+  # carte Waveshare 7B : écran MIPI-DSI 1024 × 600 (EK79007), tactile GT911, LVGL
+  waveshare/esp32_p4_wifi6_touch_lcd_7b:
+    version: "==3.0.1"
+  lvgl/lvgl:
+    version: "==9.5.0"
+    public: true

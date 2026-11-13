@@ -4,3 +4,5 @@ vendor/
 tools/notice/*.pdf
 __pycache__/
 *.stl
+src/firmware/
+src/vendor/
