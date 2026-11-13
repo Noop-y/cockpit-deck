@@ -14,6 +14,8 @@
 #include "tinyusb_default_config.h"
 #include "tinyusb_cdc_acm.h"
 #include "class/hid/hid_device.h"
+#include "driver/gpio.h"
+#include "hal/usb_wrap_ll.h"
 #include "usb_deck.h"
 
 static const char *TAG = "usb";
@@ -280,6 +282,12 @@ void usb_deck_start(void)
     cfg.descriptor.qualifier = &s_qualifier;
     cfg.descriptor.high_speed_config = s_cfg_hs;
 #else
+    // L'ESP32-P4 a deux petits « PHY » USB pleine vitesse : le n° 0 sur GPIO 24/25, câblé à la prise Type-C « USB »
+    // (au départ pour USB-Serial-JTAG), et le n° 1 sur GPIO 26/27 (pas câblé sur la carte 7B), donné par défaut à
+    // l'USB OTG. On échange : l'USB OTG (TinyUSB) prend le n° 0, donc la prise « USB ».
+    usb_wrap_ll_phy_select(&USB_WRAP, 0);
+    gpio_set_drive_capability(GPIO_NUM_24, GPIO_DRIVE_CAP_3);
+    gpio_set_drive_capability(GPIO_NUM_25, GPIO_DRIVE_CAP_3);
     tinyusb_config_t cfg = TINYUSB_CONFIG_FULL_SPEED(NULL, NULL);
 #endif
     cfg.descriptor.device = &s_device;
