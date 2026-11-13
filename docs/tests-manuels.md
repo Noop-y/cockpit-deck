@@ -67,7 +67,7 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Gestionnaire de périphériques : un port COM « The Deck - liaison » (ou « Périphérique série USB »), un clavier et un contrôleur de jeu HID.
 - [x] Bloc-notes ouvert, bouton « Ecrire deck » : le mot `deck` s'écrit.
 - [x] Bouton « Volume + » : le volume de Windows monte (bandeau du volume).
-- [ ] `Win + R` › `joy.cpl` › The Deck › Propriétés : le bouton 1 s'allume tant qu'on appuie sur « Manette : bouton 1 ».
+- [x] `Win + R` › `joy.cpl` › The Deck › Propriétés : le bouton 1 s'allume tant qu'on appuie sur « Manette : bouton 1 ».
 - [x] Logiciel, page Appareil › « Relier l'écran » : l'écran est choisi tout seul ; « Écran relié en USB · programme de l'écran 0.2.0 ». Sur l'écran : « Logiciel The Deck : relié (version 1.1.1) » en vert.
 - [ ] Débrancher : l'écran (alimenté par l'autre prise) repasse à « pas relié » ; le logiciel aussi.
 
