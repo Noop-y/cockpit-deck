@@ -50,11 +50,28 @@ async function fwInstall() {
     }
     if (deckLink.port === port) await deckClose();
     const T = await fwLoadTool();
-    fwSet('connect', 'Connexion à l’écran…');
-    transport = new T.Transport(port, false);
+    const pi = port.getInfo ? port.getInfo() : {};
+    const hex = (n) => (n == null ? '?' : n.toString(16).toUpperCase().padStart(4, '0'));
+    ui.fw.portId = hex(pi.usbVendorId) + ':' + hex(pi.usbProductId);
     const term = { clean() {}, writeLine(l) { console.log('[écran]', l); }, write(t) { /* rien */ } };
-    const loader = new T.ESPLoader({ transport, baudrate: 921600, romBaudrate: 115200, terminal: term });
-    const chip = await loader.main();
+    // 1er essai : l'outil met lui-même l'écran en mode installation ; sinon l'écran y a été mis à la main (BOOT + RESET)
+    let loader = null, chip = null;
+    const modes = ui.fw.manual ? ['no_reset', 'default_reset'] : ['default_reset', 'no_reset'];
+    for (const mode of modes) {
+      fwSet('connect', 'Connexion à l\u2019écran…');
+      transport = new T.Transport(port, false);
+      loader = new T.ESPLoader({ transport, baudrate: 921600, romBaudrate: 115200, terminal: term });
+      try { chip = await loader.main(mode); break; } catch (e) {
+        console.warn('connexion (' + mode + ') :', e);
+        try { await transport.disconnect(); } catch (x) { /* déjà fermé */ }
+        transport = null;
+      }
+    }
+    if (!chip) {
+      ui.fw.manual = true;
+      fwSet('err', 'MANUEL');
+      return;
+    }
     if (!/P4/i.test(chip)) throw new Error('Cette carte n’est pas un écran The Deck (' + chip + ').');
     const rev = await loader.chip.getChipRevision(loader);
     const f = fwFileFor(info, rev);
@@ -72,10 +89,11 @@ async function fwInstall() {
       }
     });
     await loader.after('hard_reset');
+    ui.fw.manual = false;
     fwSet('done', `Programme version ${info.version} installé (puce v${Math.floor(rev / 100)}.${rev % 100}). L’écran redémarre.`, 100);
   } catch (e) {
     console.error(e);
-    fwSet('err', 'L’installation n’a pas abouti : ' + (e && e.message ? e.message : e) + '. Débranchez et rebranchez l’écran, puis réessayez.');
+    fwSet('err', 'L’installation n’a pas abouti : ' + (e && e.message ? e.message : e) + '. Débranchez et rebranchez l’écran, puis réessayez. (Prise : ' + (ui.fw.portId || '?') + ')');
   } finally {
     if (transport) { try { await transport.disconnect(); } catch (e) { /* déjà fermé */ } }
   }
@@ -87,7 +105,12 @@ function flasherPanel() {
   const busy = ['port', 'connect', 'write'].includes(f.state);
   const bar = f.state === 'write' || f.state === 'done'
     ? `<div style="height:10px;border-radius:5px;background:#1A222B;overflow:hidden"><div style="height:100%;width:${f.pct}%;background:var(--amber)"></div></div><div class="small mono">${f.pct} %</div>` : '';
-  const msg = f.msg ? `<div class="${f.state === 'err' ? 'warn' : f.state === 'done' ? 'note' : 'small muted'}">${esc(f.msg)}</div>` : '';
+  const msg = f.msg === 'MANUEL'
+    ? `<div class="warn"><b>L\u2019écran ne répond pas tout seul : mettez-le en mode installation à la main.</b><br>
+        Au dos de la carte, en haut à gauche, il y a deux petits boutons <b>BOOT</b> et <b>RESET</b> :<br>
+        1. Gardez le doigt appuyé sur <b>BOOT</b>.<br>2. Appuyez une fois sur <b>RESET</b> et relâchez-le.<br>3. Relâchez <b>BOOT</b> (l\u2019écran reste noir, c\u2019est normal).<br>4. Cliquez à nouveau sur « Installer ».<br>
+        <span class="small">Vérifiez aussi que le câble est sur la prise <b>« USB TO UART »</b> (la plus en bas) et qu\u2019il transporte les données. Prise utilisée : <span class="mono">${esc(f.portId || '?')}</span></span></div>`
+    : f.msg ? `<div class="${f.state === 'err' ? 'warn' : f.state === 'done' ? 'note' : 'small muted'}">${esc(f.msg)}</div>` : '';
   return `<div class="panel" style="flex:1 1 360px;min-width:0"><h2 class="disp">Programme de l’écran</h2>
     <div style="line-height:1.6">${info ? `Version fournie avec ce logiciel : <b class="mono">${esc(info.version)}</b>` : info === false ? 'Pas de programme de l’écran dans cette version du logiciel (seulement dans celle fabriquée par GitHub).' : '…'}</div>
     <div class="small muted">1. Branchez l’écran sur sa prise <b>« USB TO UART »</b> (en bas du côté gauche).<br>2. Cliquez sur « Installer ». Ne débranchez pas pendant l’installation (environ 1 minute).</div>

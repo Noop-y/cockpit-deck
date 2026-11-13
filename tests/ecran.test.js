@@ -43,6 +43,9 @@ test('installation : panneau de la page Appareil', () => {
   assert.match(h, /0\.1\.0/);
   assert.match(h, /width:42%/);
   assert.match(h, /Installation en cours/);
+  c.ui.fw.state = 'err'; c.ui.fw.msg = 'MANUEL'; c.ui.fw.portId = '1A86:55D3';
+  h = c.flasherPanel();
+  assert.match(h, /BOOT/); assert.match(h, /RESET/); assert.match(h, /1A86:55D3/);
   c.ui.fw.state = 'err'; c.ui.fw.msg = '<b>x</b>';
   h = c.flasherPanel();
   assert.ok(!h.includes('<b>x</b>'), 'message échappé');
