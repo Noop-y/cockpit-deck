@@ -60,9 +60,10 @@ assert np.hypot(_dx, _dy) >= INSERT_D / 2 + 1.0, 'insert trop près du logement 
 MX = 60.0                        # inserts du pied : rentrés sous l'écran (pied plus étroit que la coque)
 MOUNT = [(sx * MX, y) for sx in (-1, 1) for y in (-42.0, 22.0)]     # inserts au dos ; 13/11 : y = 22 au lieu de 37 (support de pile RTC)
 BOSS_TOP = 6.2                   # haut des bossages (depuis l'arrière) : 3 mm sous le dos de la carte
-# entretoises des 4 coins de la carte (dessin Waveshare : 156 × 89 mm) : la carte s'y appuie et s'y visse par l'arrière
+# entretoises des 4 coins de la carte (dessin Waveshare : 156 × 89 mm) : leurs bouts entrent dans 4 godets du fond (sans vis) ;
+# l'écran est ensuite bloqué par le cadre de maintien, devant
 ENTR = [(sx * 78.0, sy * 44.5) for sx in (-1, 1) for sy in (-1, 1)]
-ENTR_SCREW_D, ENTR_HEAD_D = 3.2, 5.4    # vis M2,5 ou M3 par l'arrière dans les entretoises
+GODET_D, GODET_H = 6.0, 3.0     # godets des entretoises : diamètre intérieur (entretoise ≈ 5 mm), hauteur des bords
 # ouvertures côté gauche (vu de face) : (centre y, largeur) — d'après les photos Waveshare, à confirmer
 # 13/11/2026, d'après le dessin Waveshare (carte de 97 mm centrée) : USB-C « USB » à y = -19,65, USB-A à -0,75 (dépasse un peu),
 # USB-C « USB TO UART » à -34,9, interrupteur ON/OFF vers y = 34. Une seule niche pour la fiche de la nappe et la prise USB-A.
@@ -91,7 +92,6 @@ parts = {}
 
 # ---------- COQUE (repère coque : fond sur z=0, face avant z=SD) ----------
 holes = [circle(INSERT_D / 2, x, y) for x, y in MOUNT]   # trous du pied
-holes += [circle(ENTR_HEAD_D / 2, x, y) for x, y in ENTR]  # têtes des vis des entretoises (logées dans le fond)
 if REAR_USB:                             # trous des pions de centrage de la capsule
     holes += [circle(PIN_HOLE / 2, x, y, 24) for x, y in PINS]
 if REAR_USB:                             # fente pour la nappe, sous la capsule
@@ -239,8 +239,10 @@ if REAR_USB:                             # fenêtre USB du côté rebouchée : p
     shell.append(box(xo, xo + SKIN_USB, lo2, hi2, TB - 0.4, CUT_TOP))
 if CLOSE_BTN:                            # fenêtre du bouton rebouchée aussi (bouton laissé sur marche), niche gardée dedans
     shell.append(box(xo, xo + SKIN_USB, lo1, hi1, TB - 0.4, CUT_TOP))
-for x, y in ENTR:                         # appuis sous les entretoises de la carte (13/11/2026, remplacent les 4 patins)
-    shell.append(tube(3.6, ENTR_SCREW_D / 2, TB - 0.2, SD - H_ENTR, x, y))
+for x, y in ENTR:                         # godets des entretoises de la carte (13/11/2026, remplacent les 4 patins)
+    shell.append(extrude(circle(GODET_D / 2 + 1.6, x, y, 48), [], TB - 0.2, SD - H_ENTR))          # fond : le bout de l'entretoise s'y pose
+    shell.append(tube(GODET_D / 2 + 1.6, GODET_D / 2, SD - H_ENTR, SD - H_ENTR + GODET_H, x, y))  # bord : la tient en place
+assert SD - GT - (SD - H_ENTR + GODET_H) >= 2.0, 'godets trop près du dos de la carte'
 for x, y in MOUNT:                        # bossages des inserts du pied (sous la carte, 3 mm sous son dos)
     shell.append(tube(4.0, INSERT_D / 2, TB - 0.2, BOSS_TOP, x, y))
 assert SD - GT - BOSS_TOP >= 2.5, 'bossages trop près du dos de la carte'
