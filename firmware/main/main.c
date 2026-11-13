@@ -1,6 +1,9 @@
 /*
  * The Deck — programme de l'écran (ESP32-P4-WIFI6-Touch-LCD-7B, 1024 × 600)
  *
+ * Étape 3 « pages » : les pages envoyées par le logiciel s'affichent (pages.c) ; tant qu'il n'y en a pas,
+ * l'écran de test ci-dessous reste affiché.
+ *
  * Étape 2 « USB » : branché sur sa prise « USB », l'écran est reconnu par Windows comme clavier,
  * touches multimédia, manette et liaison série avec le logiciel, qui peut aussi y envoyer les mises à jour du programme. Écran de test : état de l'USB et du
  * logiciel, quatre boutons d'essai, et un point qui suit le doigt.
@@ -19,6 +22,7 @@
 #include "bsp/display.h"
 #include "class/hid/hid.h"
 #include "usb_deck.h"
+#include "pages.h"
 
 static const char *TAG = "the-deck";
 
@@ -206,5 +210,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(bsp_display_lock(-1) ? ESP_OK : ESP_ERR_TIMEOUT);
     ecran_test();
+    // les pages envoyées par le logiciel, si l'écran en a déjà reçu (sinon l'écran de test reste affiché)
+    pages_start();
     bsp_display_unlock();
 }

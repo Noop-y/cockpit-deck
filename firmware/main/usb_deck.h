@@ -9,6 +9,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 // Démarre l'USB (à appeler une fois au démarrage)
 void usb_deck_start(void);
@@ -21,6 +22,7 @@ const char *usb_deck_app_version(void);
 
 // Touches (à appuyer puis relâcher : down = true puis false)
 void usb_deck_key(uint8_t hid_keycode, bool down);        // clavier (HID_KEY_…)
+void usb_deck_combo(uint8_t mods, uint8_t hid_keycode, bool down); // clavier avec Ctrl (1), Maj (2), Alt (4), Windows (8)
 void usb_deck_media(uint16_t consumer_usage, bool down);  // touche multimédia (HID_USAGE_CONSUMER_…)
 void usb_deck_pad(uint8_t button, bool down);             // bouton de manette, de 1 à 32
 void usb_deck_type(const char *ascii);                    // tape un petit texte (lettres minuscules, chiffres, espace)
@@ -30,3 +32,7 @@ void usb_deck_send_line(const char *line);
 
 // Mise à jour du programme par le câble : pourcentage reçu (0 à 100), ou -1 s'il n'y en a pas en cours
 int usb_deck_update_pct(void);
+
+// Petits outils pour lire une ligne JSON simple
+bool json_str(const char *line, const char *key, char *out, size_t n);
+bool json_num(const char *line, const char *key, long *out);

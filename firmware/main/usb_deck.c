@@ -22,6 +22,7 @@
 #include "mbedtls/base64.h"
 #include <stdlib.h>
 #include "usb_deck.h"
+#include "pages.h"
 
 static const char *TAG = "usb";
 
@@ -123,11 +124,12 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 
 // ---------- envoi des touches : une file, une tâche qui attend que l'USB soit prêt ----------
 typedef enum { EV_KEY, EV_MEDIA, EV_PAD } ev_kind_t;
-typedef struct { ev_kind_t kind; uint16_t code; bool down; } deck_ev_t;
+typedef struct { ev_kind_t kind; uint16_t code; uint8_t mods; bool down; } deck_ev_t;
 
 static QueueHandle_t s_queue;
 static uint8_t s_keys[6];          // touches clavier enfoncées
 static uint32_t s_buttons;         // boutons de manette enfoncés
+static uint8_t s_mods;             // Ctrl, Maj, Alt, Windows enfoncés
 
 static void key_set(uint8_t code, bool down)
 {
@@ -155,8 +157,9 @@ static void hid_task(void *arg)
         wait_ready();
         switch (ev.kind) {
         case EV_KEY:
-            key_set((uint8_t)ev.code, ev.down);
-            tud_hid_keyboard_report(RID_KEYBOARD, 0, s_keys);
+            if (ev.down) s_mods |= ev.mods; else s_mods &= ~ev.mods;
+            if (ev.code) key_set((uint8_t)ev.code, ev.down);
+            tud_hid_keyboard_report(RID_KEYBOARD, s_mods, s_keys);
             break;
         case EV_MEDIA: {
             uint16_t u = ev.down ? ev.code : 0;
@@ -179,15 +182,16 @@ static void hid_task(void *arg)
     }
 }
 
-static void push(ev_kind_t k, uint16_t code, bool down)
+static void push(ev_kind_t k, uint16_t code, uint8_t mods, bool down)
 {
-    deck_ev_t ev = { .kind = k, .code = code, .down = down };
+    deck_ev_t ev = { .kind = k, .code = code, .mods = mods, .down = down };
     if (s_queue) xQueueSend(s_queue, &ev, pdMS_TO_TICKS(20));
 }
 
-void usb_deck_key(uint8_t hid_keycode, bool down) { push(EV_KEY, hid_keycode, down); }
-void usb_deck_media(uint16_t consumer_usage, bool down) { push(EV_MEDIA, consumer_usage, down); }
-void usb_deck_pad(uint8_t button, bool down) { push(EV_PAD, button, down); }
+void usb_deck_key(uint8_t hid_keycode, bool down) { push(EV_KEY, hid_keycode, 0, down); }
+void usb_deck_combo(uint8_t mods, uint8_t hid_keycode, bool down) { push(EV_KEY, hid_keycode, mods, down); }
+void usb_deck_media(uint16_t consumer_usage, bool down) { push(EV_MEDIA, consumer_usage, 0, down); }
+void usb_deck_pad(uint8_t button, bool down) { push(EV_PAD, button, 0, down); }
 
 void usb_deck_type(const char *s)
 {
@@ -229,7 +233,7 @@ void usb_deck_send_line(const char *line)
 }
 
 // lit la valeur texte "clé":"valeur" dans une ligne JSON simple
-static bool json_str(const char *line, const char *key, char *out, size_t n)
+bool json_str(const char *line, const char *key, char *out, size_t n)
 {
     char pat[32];
     snprintf(pat, sizeof pat, "\"%s\":\"", key);
@@ -243,7 +247,7 @@ static bool json_str(const char *line, const char *key, char *out, size_t n)
 }
 
 // lit la valeur nombre "clé":123
-static bool json_num(const char *line, const char *key, long *out)
+bool json_num(const char *line, const char *key, long *out)
 {
     char pat[32];
     snprintf(pat, sizeof pat, "\"%s\":", key);
@@ -332,17 +336,20 @@ static void on_line(const char *line)
     json_str(line, "t", t, sizeof t);
     if (strncmp(t, "fw-", 3) == 0) {
         ota_line(t, line);
+    } else if (strncmp(t, "pg-", 3) == 0) {
+        pages_line(t, line);
     } else if (strcmp(t, "hello") == 0) {
         s_hello_us = esp_timer_get_time();
         json_str(line, "app", s_app_version, sizeof s_app_version);
         char rep[128];
         // rev : version de la puce (300 = v3.0) ; le logiciel choisit le bon fichier pour la mise à jour
-        snprintf(rep, sizeof rep, "{\"t\":\"hello\",\"fw\":\"%s\",\"rev\":%u,\"etape\":2}",
-                 esp_app_get_description()->version, (unsigned)efuse_hal_chip_revision());
+        // pages : nombre de pages gardées dans l'écran
+        snprintf(rep, sizeof rep, "{\"t\":\"hello\",\"fw\":\"%s\",\"rev\":%u,\"etape\":3,\"pages\":%d}",
+                 esp_app_get_description()->version, (unsigned)efuse_hal_chip_revision(), pages_count());
         usb_deck_send_line(rep);
     } else if (strcmp(t, "config") == 0) {
-        // étape 3 : les pages arriveront en images
-        usb_deck_send_line("ERR le programme de l'ecran ne recoit pas encore les pages (etape 3)");
+        // ancien format : les pages arrivent maintenant en images (pg-*)
+        usb_deck_send_line("ERR le logiciel doit envoyer les pages en images (logiciel plus recent)");
     }
     // media, clips : ignorés pour l'instant
 }
