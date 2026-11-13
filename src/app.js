@@ -867,8 +867,10 @@ function viewAppareil() {
       <label class="chk" style="${d.swipe === false && d.swipeV === false ? 'opacity:.5' : ''}"><input type="checkbox" data-act="dev-loop" ${d.loop ? 'checked' : ''} ${d.swipe === false && d.swipeV === false ? 'disabled' : ''}>Après la dernière page ou le dernier espace, revenir au premier</label>
       <div class="small muted">Ces réglages partent sur l\u2019écran au prochain envoi.</div></div>
     <div class="panel" style="flex:1 1 360px;min-width:0"><h2 class="disp">État</h2>
+      <div style="line-height:1.6">${ui.deckLinked ? `<span style="color:var(--cyan)">Écran relié en USB${ui.deckFw ? ` · programme de l\u2019écran <b class="mono">${esc(ui.deckFw)}</b>` : ''}.</span>` : 'Écran pas relié (prise « USB » de la carte).'}</div>
+      ${ui.deckLinked ? '' : '<div class="row"><button class="btn" data-act="deck-link">Relier l\u2019écran</button></div>'}
       <div style="line-height:1.6">${ui.deckOk ? '<span style="color:var(--cyan)">Le dernier envoi a réussi.</span>' : 'Aucun envoi réussi pendant cette session.'}</div>
-      <div class="small muted">Le programme de l\u2019écran en est à l\u2019étape 1 (affichage et tactile) : il ne reçoit pas encore les pages. En attendant, l\u2019envoi s\u2019arrête avec « l\u2019écran n\u2019a pas répondu » ; tout se prépare et se teste avec <b>Aperçu de l\u2019écran</b>.</div></div>
+      <div class="small muted">Le programme de l\u2019écran en est à l\u2019étape 2 (USB : clavier, manette, liaison) : il ne reçoit pas encore les pages. En attendant, l\u2019envoi s\u2019arrête avec « l\u2019écran n\u2019a pas répondu » ; tout se prépare et se teste avec <b>Aperçu de l\u2019écran</b>.</div></div>
     ${typeof flasherPanel === 'function' ? flasherPanel() : ''}</div>`;
 }
 
@@ -1091,6 +1093,7 @@ async function deckOpen(port) {
       deckReadLoop(port);
       deckLink.lastCover = null;
       ui.deckLinked = true; render();
+      deckHello();
       deckSendMedia(true);
       if (typeof deckSendClips === 'function') deckSendClips(true);
       return true;
@@ -1110,6 +1113,7 @@ async function deckClose() {
 // Ce que l'écran envoie au logiciel (voir PROTOCOLE.md)
 function onDeckMessage(m) {
   if (!m || !m.t) return;
+  if (m.t === 'hello') { const v = String(m.fw || ''); if (v !== ui.deckFw) { ui.deckFw = v; render(); } return; }
   if (m.t === 'sound') {
     const s = spaceById(m.space); if (!s) return;
     const c = s.pages[m.page] && s.pages[m.page].cells[m.cell];
@@ -1140,8 +1144,11 @@ async function deckReadLoop(port) {
       }
     }
   } catch (e) { /* écran débranché */ }
-  if (deckLink.port === port) { deckLink.writer = null; deckLink.port = null; ui.deckLinked = false; render(); }
+  if (deckLink.port === port) { deckLink.writer = null; deckLink.port = null; ui.deckLinked = false; ui.deckFw = ''; render(); }
 }
+// bonjour au programme de l'écran (il répond avec sa version) ; répété toutes les 3 s tant que l'écran est relié
+function deckHello() { deckWrite({ t: 'hello', app: ui.version || '' }); }
+setInterval(() => { if (deckLink.writer) deckHello(); }, 3000);
 async function deckWrite(obj) {
   if (!deckLink.writer) return false;
   try { await deckLink.writer.write(new TextEncoder().encode(JSON.stringify(obj) + '\n')); return true; }
@@ -1409,6 +1416,13 @@ const ACTIONS = {
   },
   simulate: (d) => openSim(d.id || null),
   send: () => sendToDeck(),
+  'deck-link': async () => {
+    if (!('serial' in navigator)) { toast('La liaison USB n\u2019est possible que dans le logiciel installé.', 'err'); return; }
+    let port;
+    try { port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x303A }] }); }
+    catch (e) { toast('Écran non détecté. Branchez-le sur sa prise « USB » (celle du milieu).', 'err', 6000); return; }
+    if (await deckOpen(port)) toast('Écran relié.', 'ok'); else toast('Problème de connexion USB : le port est peut-être utilisé par un autre programme.', 'err', 6000);
+  },
   page: (d) => { ui.page = +d.i; ui.cell = null; render(); },
   'page-add': () => { const s = curSpace(); s.pages.push({ id: uid(), name: 'PAGE ' + (s.pages.length + 1), cells: Array(isSoundboard(s) ? 12 : 15).fill(null) }); ui.page = s.pages.length - 1; ui.cell = null; commit(); },
   'page-rename': () => { const p = curPage(); textBox('Renommer la page', p.name, (v) => { if (v.trim()) { p.name = v.trim().toUpperCase(); commit(); } }); },

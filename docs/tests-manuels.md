@@ -61,6 +61,16 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Poser le doigt en haut à gauche, puis en bas à droite : le point ambre apparaît **sous le doigt** (et pas à l'opposé). Coordonnées affichées proches de x 0 y 0, puis x 1023 y 599.
 - [ ] Débrancher / rebrancher : l'écran redémarre tout seul sur le même écran.
 
+## Programme de l'écran — étape 2 « USB » (0.2.0)
+- [ ] Installer le programme 0.2.0 (prise « USB TO UART », BOOT + RESET, Installer).
+- [ ] Brancher le câble sur la prise **« USB »** (celle du milieu) : Windows fait le petit son d'appareil branché ; l'écran affiche « USB : reconnu par le PC » en vert.
+- [ ] Gestionnaire de périphériques : un port COM « The Deck - liaison » (ou « Périphérique série USB »), un clavier et un contrôleur de jeu HID.
+- [ ] Bloc-notes ouvert, bouton « Ecrire deck » : le mot `deck` s'écrit.
+- [ ] Bouton « Volume + » : le volume de Windows monte (bandeau du volume).
+- [ ] `Win + R` › `joy.cpl` › The Deck › Propriétés : le bouton 1 s'allume tant qu'on appuie sur « Manette : bouton 1 ».
+- [ ] Logiciel, page Appareil › « Relier l'écran » : l'écran est choisi tout seul ; « Écran relié en USB · programme de l'écran 0.2.0 ». Sur l'écran : « Logiciel The Deck : relié (version 1.1.1) » en vert.
+- [ ] Débrancher : l'écran (alimenté par l'autre prise) repasse à « pas relié » ; le logiciel aussi.
+
 ## Écran (étapes suivantes du programme de l'ESP32-P4)
 - [ ] Envoi sur l'écran : réponse OK, sauvegarde créée.
 - [ ] Les messages `media`, `clips` arrivent ; les appuis envoient `sound`, `clip`.
