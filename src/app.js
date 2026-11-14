@@ -135,7 +135,7 @@ function defaultConfig() {
     soundboardAdded: true,
     clipsAdded: true,
     clips: { when: 'jeu', paused: false, src: 'jeu', monitor: 0, res: 1080, fps: 60, dur: 60, pc: true, mic: true, sb: true, pcDev: '', folder: '' },
-    audio: { meOut: '', micIn: '', passMic: true, volMe: 80, volMic: 80, volStream: 80, master: 100, solo: false },
+    audio: { meOut: '', micIn: '', passMic: true, volMe: 80, volMic: 80, volStream: 80, master: 100, solo: false, cutOnAdd: true },
     cats: [],
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
@@ -541,9 +541,8 @@ function soundPanel(c, img) {
     ${a.file ? `<div class="row"><div class="inp mono grow small" style="display:flex;align-items:center;overflow:hidden;white-space:nowrap">${esc(a.fileName)} · ${fmtDur(a.dur)}</div><button class="btn" data-act="snd-replace">Remplacer…</button></div>`
       : '<div class="row"><button class="btn pri" data-act="snd-replace">Choisir un son…</button><span class="small muted">ou glissez un fichier sur la case</span></div>'}
     ${a.file ? `<div><div class="row" style="justify-content:space-between"><span class="lab" style="margin:0">Découpe</span><span class="mono small" style="color:var(--amber)">${fmtDur(st)} → ${fmtDur(en)}</span></div>
-      <canvas id="sndwave" width="760" height="120" style="width:100%;height:60px;border-radius:10px;background:var(--field);border:1px solid var(--line2);margin-top:6px"></canvas>
-      <div class="row" style="gap:10px;margin-top:6px"><label class="small muted" style="flex:1">Début<input type="range" min="0" max="${dur}" step="0.05" value="${st}" data-field="snd-start" style="width:100%"></label><label class="small muted" style="flex:1">Fin<input type="range" min="0" max="${dur}" step="0.05" value="${en}" data-field="snd-end" style="width:100%"></label></div>
-      <div class="row"><button class="btn sm" data-act="snd-preview">${SOUND.isPlaying('__preview') ? 'Arrêter' : 'Préécouter'}</button><label class="chk"><input type="checkbox" data-act="snd-fade" ${a.fade !== false ? 'checked' : ''}>Fondu à la fin</label></div></div>
+      <canvas id="sndwave" data-act="snd-cut" title="Découper le son" width="760" height="120" style="width:100%;height:60px;border-radius:10px;background:var(--field);border:1px solid var(--line2);margin-top:6px;cursor:pointer"></canvas>
+      <div class="row"><button class="btn sm" data-act="snd-cut">✂ Découper le son…</button><button class="btn sm" data-act="snd-preview">${SOUND.isPlaying('__preview') ? 'Arrêter' : 'Préécouter'}</button><label class="chk"><input type="checkbox" data-act="snd-fade" ${a.fade !== false ? 'checked' : ''}>Fondu à la fin</label></div></div>
       <div><div class="row" style="justify-content:space-between"><label class="lab" for="f-svol" style="margin:0">Volume de ce son</label><span class="mono small" style="color:var(--cyan)">${a.volume} %</span></div><input id="f-svol" type="range" min="0" max="150" step="5" value="${a.volume}" data-field="snd-vol"></div>` : ''}
     ${img}
     <div><span class="lab">Où part ce son</span>${seg('snd-route', [['screen', 'Selon les cases de l\u2019écran'], ['fixed', 'Toujours les mêmes']], a.route || 'screen')}
@@ -580,7 +579,7 @@ async function addSounds(list, fromIndex) {
   }
   if (lastI != null) ui.cell = lastI;
   commit();
-  if (added) toast(added > 1 ? `${added} sons ajoutés.` : 'Son ajouté.', 'ok');
+  if (added) toast(added > 1 ? `${added} sons ajoutés. Pour en découper un : sélectionnez sa case, puis « Découper le son ».` : 'Son ajouté.', 'ok');
   // durées
   for (const c of page.cells) {
     if (c && c.action && c.action.type === 'sound' && c.action.file && c.action.dur == null) {
@@ -588,6 +587,8 @@ async function addSounds(list, fromIndex) {
     }
   }
   commit();
+  // un seul son : on propose tout de suite de le découper
+  if (added === 1 && list.length === 1 && cfg.audio.cutOnAdd !== false) openCut(lastI);
 }
 
 // ---------- Favoris : une copie de la case dans l'espace Favoris ----------
@@ -935,6 +936,7 @@ function modalHTML() {
         <div style="--u:10px;width:190px;height:160px;display:grid;padding:0;border-radius:14px;background:${lookFor(curSpace()).bgColor}">${deckCell(Object.assign({}, c, { image: Object.assign({}, c.image, { showIcon: true, icon: sel }) }), lookFor(curSpace()), {})}</div>
         <div class="row" style="margin-top:auto"><button class="btn grow" data-act="modal-close">Annuler</button><button class="btn pri grow" data-act="picto-ok">Choisir</button></div></div></div></div>`;
   }
+  if (m.type === 'cut') return cutModalHTML(m);
   if (m.type === 'crop') {
     return `<div class="modal" role="dialog" aria-label="Recadrer la photo"><div class="modal-head"><h2 class="disp" style="font-size:25px">${esc(m.title)}</h2><span class="muted small">${esc(m.fileName || '')}</span></div>
       <div class="editor"><div style="flex:999 1 520px;display:flex;flex-direction:column;gap:12px"><div class="cropview" id="cropview"><canvas id="cropcanvas" width="760" height="460"></canvas></div>
@@ -982,6 +984,7 @@ function renderModal() {
   const html = modalHTML();
   $('#modal-root').innerHTML = html ? `<div class="overlay" data-act="overlay">${html}</div>` : '';
   if (ui.modal && ui.modal.type === 'crop') cropDraw();
+  if (ui.modal && ui.modal.type === 'cut') { cutDraw(); cutButtons(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -1352,7 +1355,8 @@ const ACTIONS = {
     a.file = l[0].file; a.fileName = l[0].file.split(/[\\/]/).pop(); a.dur = null; a.start = 0; a.end = null;
     if (!c.name || /^Nouveau son/.test(c.name)) c.name = l[0].name.slice(0, 28);
     commit();
-    try { const b = await SOUND.load(a.file); a.dur = Math.round(b.duration * 100) / 100; commit(); } catch (e) { toast(e.message, 'err'); }
+    try { const b = await SOUND.load(a.file); a.dur = Math.round(b.duration * 100) / 100; commit(); } catch (e) { toast(e.message, 'err'); return; }
+    if (cfg.audio.cutOnAdd !== false) openCut(ui.cell);
   },
   'snd-preview': async () => {
     const a = curCell().action;
@@ -1529,7 +1533,7 @@ const ACTIONS = {
   },
   'reset-all': () => { confirmBox('Tout réinitialiser ?', 'Tous vos espaces et réglages reviendront à ceux d\u2019origine. Une sauvegarde est faite avant.', 'Réinitialiser', true, async () => { await api.createBackup(cfg); cfg = defaultConfig(); ui.view = 'espaces'; commit(); }); },
   'modal-close': () => { ui.modal = null; renderModal(); },
-  overlay: (d, el, ev) => { if (ev.target === el && ui.modal && ui.modal.type !== 'crop') { ui.modal = null; renderModal(); } },
+  overlay: (d, el, ev) => { if (ev.target === el && ui.modal && ui.modal.type !== 'crop' && ui.modal.type !== 'cut') { ui.modal = null; renderModal(); } },
   'confirm-ok': () => { const fn = ui.modal.fn; ui.modal = null; renderModal(); fn(); },
   'text-ok': () => { const fn = ui.modal.fn, v = $('#f-modaltext').value; ui.modal = null; renderModal(); fn(v); }
 };

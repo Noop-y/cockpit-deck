@@ -87,6 +87,15 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Case appli / OBS / Discord : le PC fait l'action (touche réservée).
 - [ ] Débrancher puis rebrancher l'écran : les pages reviennent sans renvoi.
 
+## Découper un son (soundboard)
+- [ ] Glisser un seul fichier son sur la grille : la fenêtre « Découper le son » s'ouvre avec la forme du son.
+- [ ] « Écouter tout le son » : on entend le son, la barre blanche avance au bon rythme ; « Début ici » puis « Fin ici » posent les poignées là où on en est.
+- [ ] Tirer une poignée puis la lâcher : on entend le début du passage (ou les 2 dernières secondes avant la fin).
+- [ ] Molette sur la forme du son : zoom ; « Tout voir » revient au son entier. Boutons −0,1 s / +0,1 s.
+- [ ] « Valider le passage » : la case ne joue que ce passage (bouton Tester, Aperçu de l'écran, et sur le vrai écran) ; durée affichée sur la case.
+- [ ] « Découper le son… » dans les réglages de la case rouvre la fenêtre avec le passage déjà choisi ; « Garder tout le son » revient au son entier.
+- [ ] Glisser plusieurs fichiers d'un coup : pas de fenêtre, tous ajoutés. Décocher « Ouvrir cette fenêtre à chaque son ajouté » : plus de fenêtre à l'ajout.
+
 ## Écran (étapes suivantes du programme de l'ESP32-P4)
 - [ ] Les messages `media`, `clips` arrivent ; les appuis envoient `sound`, `clip`.
 
