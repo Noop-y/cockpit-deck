@@ -825,10 +825,48 @@ if POD_CUT:
         q = np.vstack([h[i] + (h[(i + 1) % len(h)] - h[i]) * k / 20 for i in range(len(h)) for k in range(20)])
         return np.min(np.hypot(q[:, 0] - C_[0], q[:, 1] - C_[1])) > d
     rib_holes_n = [h for h in rib_holes if _near(h, rr_ + 2.4)]
+# passage de câble (21/11/2026) : la prise USB-C est sur le côté gauche ; un trou dans les 2 nervures de gauche, assez grand
+# pour y faire passer une prise USB-A classique, à la hauteur de la prise. Le câble fait le tour du bord gauche, traverse
+# les 2 nervures juste sous la plaque, et redescend au milieu du pied, derrière, jusqu'au bureau.
+CABLE_PASS = not REAR_USB and os.environ.get('DECK_PASSAGE_CABLE', '1') == '1'
+PASS_W, PASS_L = 13.0, 24.0              # trou : largeur le long de la plaque, longueur sous la plaque (prise USB-A : 16 × 8 max)
+PASS_M = 3.0                             # matière gardée autour (sous la plaque, et vers l'arrière de la nervure)
+if CABLE_PASS:
+    def _in_poly(q, P):
+        P = np.asarray(P); x, y = q; ins_ = False
+        for i in range(len(P)):
+            (x1, y1), (x2, y2) = P[i], P[(i + 1) % len(P)]
+            if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+                ins_ = not ins_
+        return ins_
+
+    def _dist_edges(q, P):
+        P = np.asarray(P); d = 1e9
+        for i in range(len(P)):
+            a_, b_ = P[i], P[(i + 1) % len(P)]
+            t_ = np.clip(np.dot(q - a_, b_ - a_) / np.dot(b_ - a_, b_ - a_), 0, 1)
+            d = min(d, np.linalg.norm(q - (a_ + t_ * (b_ - a_))))
+        return d
+    u_p = USB_Y + U0                     # à la hauteur de la prise USB-C
+    r_p = PASS_W / 2
+    w0_p = PT - 0.3 + PASS_M + r_p       # centre de l'arrondi haut (côté plaque)
+    w1_p = w0_p + PASS_L - PASS_W        # centre de l'arrondi bas
+    pts_p = [under(u_p + r_p * np.cos(a), w0_p - r_p * np.sin(a)) for a in np.linspace(0, np.pi, 17)]
+    pts_p += [under(u_p + r_p * np.cos(a), w1_p - r_p * np.sin(a)) for a in np.linspace(np.pi, 2 * np.pi, 17)]
+    pass_hole = poly(pts_p)
+    _rib_pts = [(yf, BUMP_DEPTH), (YB, BUMP_DEPTH), (YB, zb), (yf, zf)]
+    for q in np.asarray(pass_hole):
+        assert _in_poly(q, _rib_pts) and _dist_edges(q, _rib_pts) >= PASS_M - 0.3, 'passage de câble trop près du bord de la nervure'
+    _pc = np.asarray(pass_hole)
+    def _clear(h):                       # garde les lamelles à plus de 2,4 mm du passage
+        q = np.vstack([h[i] + (h[(i + 1) % len(h)] - h[i]) * k / 20 for i in range(len(h)) for k in range(20)])
+        return all(_dist_edges(p_, q) >= 2.4 for p_ in _pc[::2]) and not _in_poly(_pc[0], h)
+    rib_holes_p = [h for h in rib_holes if _clear(np.asarray(h))] + [pass_hole]
 world_bits = []
-for x0 in RIBS_X:
+for i_rib, x0 in enumerate(RIBS_X):
     crossed = POD_CUT and POD_CUT[1] < x0 + 5.0 and x0 < CH_END
-    world_bits.append(xform(extrude(rib2d_n if crossed else rib2d, rib_holes_n if crossed else rib_holes, x0, x0 + 5.0), P_RIB))
+    holes_ = rib_holes_n if crossed else (rib_holes_p if CABLE_PASS and i_rib < 2 else rib_holes)
+    world_bits.append(xform(extrude(rib2d_n if crossed else rib2d, holes_, x0, x0 + 5.0), P_RIB))
 for wb in world_bits:                    # monde -> repère plaque
     stand.append(xform(wb, M.T, -M.T @ O))
 

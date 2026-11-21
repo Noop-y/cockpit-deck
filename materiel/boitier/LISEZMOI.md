@@ -28,6 +28,10 @@ Aussi en 4 fichiers séparés (`The-Deck-0a…0d-…stl`).
 | Adaptateur USB-A → USB-C | 0 ou 1 | seulement si le PC n'a pas de prise USB-C libre |
 | Filament : gris (coque, façade, cadre de maintien, capsule), orange (pied) | — | PETG conseillé pour la façade (clips plus souples) ; en PLA, faire d'abord la pièce de test |
 
+## Pied d'origine + passage de câble (21/11/2026)
+
+Le pied revient à sa forme d'origine (plus d'ouverture pour la capsule ni de goulotte), avec en plus un passage de câble : un trou oblong de 13 × 24 mm dans les 2 nervures de gauche (côté prise USB-C), juste sous la plaque, à la hauteur de la prise. Une prise USB-A classique (jusqu'à environ 16 × 8 mm) y passe. Le câble sort de la prise du côté, fait le tour du bord gauche, traverse les 2 nervures et redescend au milieu du pied, derrière, jusqu'au bureau. Réglages : `PASS_W`, `PASS_L` ; sans passage : `DECK_PASSAGE_CABLE=0`.
+
 ## Clips des côtés affinés (21/11/2026)
 
 Les clips gauche et droite de la façade cassaient en se clipsant : leur bourrelet (1,3 mm) devait plier vers l'écran alors qu'il n'y avait que 0,2 mm entre le rebord et la vitre. Seule la façade change (le corps déjà imprimé reste bon) : rebords des côtés de 2,0 à 1,0 mm (face extérieure au même endroit, contre la paroi), soit 1,2 mm de place derrière pour plier ; bourrelets de 1,3 à 0,7 mm ; une fente de 1 mm de chaque côté de chaque clip, pour qu'il plie seul. Réglages : `DECK_CLIP_EP`, `DECK_CLIP_BOURRELET`. Les clips du haut et du bas ne changent pas.
