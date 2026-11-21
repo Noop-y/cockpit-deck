@@ -30,7 +30,7 @@ Aussi en 4 fichiers séparés (`The-Deck-0a…0d-…stl`).
 
 ## Pied d'origine + passage de câble (21/11/2026)
 
-Le pied revient à sa forme d'origine (plus d'ouverture pour la capsule ni de goulotte), avec en plus un passage de câble : un trou oblong de 13 × 24 mm dans les 2 nervures de gauche (côté prise USB-C), juste sous la plaque, à la hauteur de la prise. Une prise USB-A classique (jusqu'à environ 16 × 8 mm) y passe. Le câble sort de la prise du côté, fait le tour du bord gauche, traverse les 2 nervures et redescend au milieu du pied, derrière, jusqu'au bureau. Réglages : `PASS_W`, `PASS_L` ; sans passage : `DECK_PASSAGE_CABLE=0`.
+Le pied revient à sa forme d'origine (plus d'ouverture pour la capsule ni de goulotte), avec en plus un passage de câble : un trou oblong de 13 × 24 mm dans les 2 nervures de gauche (côté prise USB-C), juste sous la plaque, à la hauteur de la prise. Une prise USB-A classique (jusqu'à environ 16 × 8 mm) y passe. Le câble sort de la prise du côté, fait le tour du bord gauche, traverse les 2 nervures et redescend au milieu du pied, derrière, jusqu'au bureau. Réglages : `PASS_W`, `PASS_L` ; sans passage : `DECK_PASSAGE_CABLE=0`. Correction du même jour : le fichier du pied sortait en miroir (repère du pied inversé), le passage tombait du côté opposé à la prise ; l'export retourne maintenant le pied, le passage est du même côté que la prise USB-C.
 
 ## Clips des côtés affinés (21/11/2026)
 

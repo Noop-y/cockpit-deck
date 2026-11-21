@@ -902,7 +902,9 @@ to_print = {
     'cadre': lambda tr: xform(tr, rot_y(180), [0, 0, SD + FT]),
     'incrustation': lambda tr: tr,                     # déjà à plat, face visible sur le plateau
     'incrustation_place': lambda tr: tr,
-    'pied': lambda tr: tr,
+    # le repère du pied (x, u, w) est un miroir du monde (M a un déterminant -1) : on retourne x à l'export pour que la
+    # pièce imprimée soit la vraie (sinon le passage de câble tombe du mauvais côté ; corrigé le 21/11/2026)
+    'pied': lambda tr: (lambda r: r[:, [0, 2, 1]])(tr * np.array([-1.0, 1.0, 1.0])),
     # debout sur sa face avant (celle de la prise) : pions couchés, dôme vers le haut, rien en porte-à-faux
     'capsule': lambda tr: (lambda r: r - [0, 0, r.reshape(-1, 3)[:, 2].min()])(xform(tr, rot_y(90))),
 }
