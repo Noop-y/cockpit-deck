@@ -28,7 +28,11 @@ Aussi en 4 fichiers séparés (`The-Deck-0a…0d-…stl`).
 | Adaptateur USB-A → USB-C | 0 ou 1 | seulement si le PC n'a pas de prise USB-C libre |
 | Filament : gris (coque, façade, cadre de maintien, capsule), orange (pied) | — | PETG conseillé pour la façade (clips plus souples) ; en PLA, faire d'abord la pièce de test |
 
-## Déport USB-C (validé le 28/10/2026)
+## Prise USB-C sur le côté (21/11/2026) — remplace le déport
+
+Le câble se branche directement sur le côté gauche, dans la prise « USB » de la carte, par un tunnel à la taille du plastique du câble : 11,7 × 6,4 mm mesurés, + 0,2 mm de jeu par côté, coins arrondis à 1,7 mm, centré sur la prise (y = -19,65, à 10 mm de l'avant de la vitre). Le tunnel traverse toute la paroi (11,6 mm) jusqu'à la prise : le plastique du câble (15,5 mm depuis le bord de la carte) s'y enfonce et dépasse d'environ 3,5 mm dehors ; débranché, on ne voit que la prise au fond, pas l'intérieur. Au-dessus, le creux de la prise USB-A reste à l'intérieur, fermé dehors ; la fenêtre du bouton marche/arrêt reste fermée. Plus de capsule, plus de nappe : la fente et les trous des pions dans le dos de la coque sont rebouchés, la plaque du pied n'a plus l'ouverture de la capsule ni la goulotte. Réglages : `PLUG_W`, `PLUG_T`, `PLUG_R`, `PLUG_J` dans `model.py`. Ancien déport : `DECK_USB_ARRIERE=1`.
+
+## Déport USB-C (validé le 28/10/2026, abandonné le 21/11/2026)
 
 Forme de la capsule validée le 02/11/2026 : 21 × 17 × 8 mm, avant en pavé aux angles légèrement arrondis (côté prise), arrière qui s'affine en courbe jusqu'à 2,2 mm, bout arrondi vu de dessus.
 

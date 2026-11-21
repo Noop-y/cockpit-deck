@@ -79,7 +79,12 @@ CABLE = None                     # fenêtre câbles dans le fond : supprimée (l
 
 # déport USB-C (validé le 28/10/2026) : prise USB-C au dos, dans une capsule collée ; la fenêtre USB du côté est rebouchée
 # de l'extérieur (il reste une niche intérieure pour la fiche coudée de la nappe). Ancienne prise sur le côté : DECK_USB_ARRIERE=0.
-REAR_USB = os.environ.get('DECK_USB_ARRIERE', '1') == '1'
+REAR_USB = os.environ.get('DECK_USB_ARRIERE', '0') == '1'   # 21/11/2026 : déport abandonné, retour de la prise sur le côté
+# prise USB-C sur le côté (21/11/2026) : tunnel à la taille du plastique du câble (mesuré : 11,7 × 6,4 mm, dépasse de 15,5 mm
+# du bord de la carte), de l'extérieur jusqu'à la prise « USB ». Débranché, on ne voit que la prise au fond.
+PLUG_W, PLUG_T, PLUG_R = 11.7, 6.4, 1.5   # plastique du câble : largeur (le long du bord), épaisseur, arrondi des coins
+PLUG_J = 0.2                              # jeu par côté
+USB_A_LO = -9.0                           # au-dessus : creux intérieur pour la prise USB-A (fermé côté extérieur)
 SKIN_USB = 1.6                       # épaisseur de la paroi qui rebouche la fenêtre USB (vue de l'extérieur)
 CLOSE_BTN = os.environ.get('DECK_BOUTON_OUVERT') != '1'   # fenêtre du bouton marche/arrêt rebouchée (28/10/2026) ; DECK_BOUTON_OUVERT=1 pour la rouvrir
 POD_YC = USB_Y                       # hauteur de la capsule sur le dos : en face de la prise USB-C (13/11/2026)
@@ -242,6 +247,16 @@ shell.append(extrude(outer, [cav] + top_holes, CUT_TOP - 0.2, SD - PRY_D))
 shell.append(extrude(bottom_notch(outer, OH / 2 - BYC, PRY_D, BXC - PRY_W / 2, BXC + PRY_W / 2), [cav] + top_holes, SD - PRY_D, SD))
 if REAR_USB:                             # fenêtre USB du côté rebouchée : peau extérieure, niche dedans pour la fiche de la nappe
     shell.append(box(xo, xo + SKIN_USB, lo2, hi2, TB - 0.4, CUT_TOP))
+else:
+    # bas de la fenêtre USB rempli, percé du tunnel du câble ; haut gardé en creux pour la prise USB-A, fermé dehors
+    ZC = SD - Z_PORTS
+    hole = rrect(PLUG_W + 2 * PLUG_J, PLUG_T + 2 * PLUG_J, PLUG_R + PLUG_J, USB_Y, ZC)
+    assert USB_Y - (PLUG_W / 2 + PLUG_J) - lo2 >= 1.5 and USB_A_LO - (USB_Y + PLUG_W / 2 + PLUG_J) >= 1.5, 'tunnel trop près du bord de la fenêtre'
+    assert ZC - (PLUG_T / 2 + PLUG_J) >= TB + 1.0 and ZC + PLUG_T / 2 + PLUG_J <= Z_R - 1.0, 'tunnel trop près du fond ou du rebord'
+    blk = extrude(rect(USB_A_LO - lo2, Z_R - (TB - 0.4), (lo2 + USB_A_LO) / 2, (Z_R + TB - 0.4) / 2), [hole], 0.0, xi - xo, maxlen=2.0)
+    shell.append(xform(blk, np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]], float), [xo, 0, 0]))   # (y, z, x) -> monde
+    shell.append(box(xo, -a_ - REC_S, lo2, USB_A_LO, Z_R - 0.01, CUT_TOP))
+    shell.append(box(xo, xo + SKIN_USB, USB_A_LO - 0.01, hi2, TB - 0.4, CUT_TOP))
 if CLOSE_BTN:                            # fenêtre du bouton rebouchée aussi (bouton laissé sur marche), niche gardée dedans
     shell.append(box(xo, xo + SKIN_USB, lo1, hi1, TB - 0.4, CUT_TOP))
 for x, y in ENTR:                         # godets des entretoises de la carte (13/11/2026, remplacent les 4 patins)
