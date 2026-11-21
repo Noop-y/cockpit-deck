@@ -28,6 +28,10 @@ Aussi en 4 fichiers séparés (`The-Deck-0a…0d-…stl`).
 | Adaptateur USB-A → USB-C | 0 ou 1 | seulement si le PC n'a pas de prise USB-C libre |
 | Filament : gris (coque, façade, cadre de maintien, capsule), orange (pied) | — | PETG conseillé pour la façade (clips plus souples) ; en PLA, faire d'abord la pièce de test |
 
+## Clips des côtés affinés (21/11/2026)
+
+Les clips gauche et droite de la façade cassaient en se clipsant : leur bourrelet (1,3 mm) devait plier vers l'écran alors qu'il n'y avait que 0,2 mm entre le rebord et la vitre. Seule la façade change (le corps déjà imprimé reste bon) : rebords des côtés de 2,0 à 1,0 mm (face extérieure au même endroit, contre la paroi), soit 1,2 mm de place derrière pour plier ; bourrelets de 1,3 à 0,7 mm ; une fente de 1 mm de chaque côté de chaque clip, pour qu'il plie seul. Réglages : `DECK_CLIP_EP`, `DECK_CLIP_BOURRELET`. Les clips du haut et du bas ne changent pas.
+
 ## Écran tenu par la façade (21/11/2026) — plus de cadre de maintien
 
 Le cadre de maintien vissé (et ses 4 inserts, 4 vis, logements d'oreilles dans les parois, poches sous la façade) est supprimé. C'est la façade, en se clipsant, qui appuie l'écran contre les godets : son dessous est plat et porte une bande d'appui sur tout le bord noir de la vitre (de 0,3 mm du bord de la vitre jusqu'à la fenêtre), qui descend de 0,2 mm sous le haut de la coque. En clipsant, la façade serre donc la vitre de 0,2 mm. Si les clips ont du mal à s'enclencher : `DECK_APPUI=0.1` ; si l'écran bouge encore : `DECK_APPUI=0.3`, ou un joint mousse adhésif fin sur la bande. Ancien cadre de maintien : `DECK_MAINTIEN=1`.

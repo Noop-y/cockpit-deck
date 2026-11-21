@@ -523,15 +523,24 @@ for sg in (1, -1):
     frame.append(box(-XB + CL, XB - CL, min(y_in, y_out), max(y_in, y_out), SD - LIP_H, SD))
     for xc in BEADS_X:
         frame.append(xform(extrude(bead_profile(y_out - sg * 0.02, sg, BEAD, Z_G0 + 0.1, Z_G1 - 0.1), [], xc - BEAD_L / 2, xc + BEAD_L / 2, maxlen=1e3), P_X))
-for sx in (-1, 1):                             # rebords des côtés (à gauche, pas derrière la prise USB ni le bouton)
-    xa_, xb_ = sorted([sx * (GW / 2 + LIP_GAP), sx * (GW / 2 + LIP_GAP + LIP_T_S)])
-    spans = [(-YB + CL, YB - CL)] if sx > 0 else [(-YB + CL, lo2 - 1.0), (hi2 + 1.0, lo1 - 1.0), (hi1 + 1.0, YB - CL)]
-    for y0_, y1_ in [sp for sp in spans if sp[1] - sp[0] >= 3.0]:
-        frame.append(box(xa_, xb_, y0_, y1_, SD - LIP_H, SD))
-for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI + SIDE_MID)):   # bourrelets des côtés, plus gros
+# 21/11/2026 : les clips des côtés cassaient en se clipsant (bourrelet de 1,3 mm, mais seulement 0,2 mm entre le rebord
+# et la vitre pour plier). Rebords des côtés affinés (face extérieure au même endroit, contre la paroi de la coque déjà
+# imprimée), bourrelets moins hauts, et une fente de chaque côté de chaque clip pour qu'il plie seul, sans tirer le rebord.
+LIP_T_S_F = float(os.environ.get('DECK_CLIP_EP', '1.0'))      # épaisseur des rebords des côtés de la façade
+BEAD_S_F = float(os.environ.get('DECK_CLIP_BOURRELET', '0.7'))  # saillie des bourrelets des côtés
+CLIP_SLIT = 1.0                                               # fente de part et d'autre de chaque clip
+assert LIP_GAP + LIP_T_S - LIP_T_S_F >= BEAD_S_F + 0.2, 'pas assez de place derrière le clip pour qu’il plie'
+for sx, ys in ((1, SIDE_R), (-1, SIDE_LO + SIDE_HI + SIDE_MID)):   # rebords et clips des côtés
     x_out = sx * (GW / 2 + LIP_GAP + LIP_T_S)
+    xa_, xb_ = sorted([x_out, x_out - sx * LIP_T_S_F])
+    spans = [(-YB + CL, YB - CL)] if sx > 0 else [(-YB + CL, lo2 - 1.0), (hi2 + 1.0, lo1 - 1.0), (hi1 + 1.0, YB - CL)]
+    for yc, ln in ys:                  # fentes autour des clips
+        for g0, g1 in ((yc - ln / 2 - CLIP_SLIT, yc - ln / 2), (yc + ln / 2, yc + ln / 2 + CLIP_SLIT)):
+            spans = [q for a0, a1 in spans for q in ((a0, min(a1, g0)), (max(a0, g1), a1)) if q[1] - q[0] > 1e-6]
+    for y0_, y1_ in [sp for sp in spans if sp[1] - sp[0] >= 3.0 or any(abs((sp[0] + sp[1]) / 2 - yc) < 0.01 for yc, _ in ys)]:
+        frame.append(box(xa_, xb_, y0_, y1_, SD - LIP_H, SD))
     for yc, ln in ys:
-        frame.append(xform(extrude(bead_profile(x_out - sx * 0.02, sx, BEAD_S, Z_G0 + 0.1, Z_G1 - 0.1), [], yc - ln / 2, yc + ln / 2, maxlen=1e3), P_Y))
+        frame.append(xform(extrude(bead_profile(x_out - sx * 0.02, sx, BEAD_S_F, Z_G0 + 0.1, Z_G1 - 0.1), [], yc - ln / 2, yc + ln / 2, maxlen=1e3), P_Y))
 parts['cadre'] = frame
 
 
