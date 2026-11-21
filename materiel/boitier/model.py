@@ -56,6 +56,11 @@ SCREWS = [(sx * (OW / 2 - SCREW_M), sy * (OH / 2 - SCREW_M)) for sx in (-1, 1) f
 # façade clipsée (validée le 28/10/2026) : plus aucune vis sur la façade. 4 pattes vissées dans les parois des côtés
 # tiennent l'écran ; la façade se clipse par-dessus (12 clips) et les cache. Ancienne façade vissée : DECK_FACADE_CLIPS=0.
 FACADE_CLIPS = os.environ.get('DECK_FACADE_CLIPS', '1') == '1'
+# 21/11/2026 : plus de cadre de maintien (ni vis ni inserts) : c'est la façade clipsée qui appuie sur le bord noir de la vitre.
+# Le dessous de la façade porte une bande d'appui qui descend de PRESS sous le haut de la coque : les clips la serrent sur la vitre.
+# Ancien cadre de maintien vissé : DECK_MAINTIEN=1.
+MAINTIEN = os.environ.get('DECK_MAINTIEN') == '1'
+PRESS = float(os.environ.get('DECK_APPUI', '0.2'))   # serrage de la façade sur la vitre (mm)
 if not FACADE_CLIPS:
     SLOPE = 0.0                    # la pente n'existe que sur la façade clipsée
 if FACADE_CLIPS:
@@ -114,7 +119,7 @@ for y in (-38.0, -44.0):
     holes.append(rrect(50.0, 3.0, 1.4, 0.0, y))
 shell = [extrude(rrect(OW, OH, R, BXC, BYC), holes, 0.0, TB)]
 CUT_TOP = SD - 1.5                       # fenêtres jusqu'à 1,5 mm de la face avant (pont sous le cadre)
-ins = [circle(INSERT_D / 2, x, y) for x, y in SCREWS]
+ins = [circle(INSERT_D / 2, x, y) for x, y in SCREWS] if (MAINTIEN or not FACADE_CLIPS) else []   # inserts du cadre de maintien
 outer = rrect(OW, OH, R, BXC, BYC)
 SEG = 10
 k = 2 * SEG + 1                          # fin de l'arrondi haut-gauche : début du bord gauche
@@ -229,7 +234,7 @@ if FACADE_CLIPS:
     def corner_rr(b, r, grow, sx, sy):
         x0, x1, y0, y1 = b[0] - grow, b[1] + grow, b[2] - grow, b[3] + grow
         return rrect(x1 - x0, y1 - y0, r + grow, sx * (x0 + x1) / 2, sy * (y0 + y1) / 2)
-    top_holes = [corner_rr(PB, 3.0, 0.2, sx, sy) for sx in (-1, 1) for sy in (-1, 1)]
+    top_holes = [corner_rr(PB, 3.0, 0.2, sx, sy) for sx in (-1, 1) for sy in (-1, 1)] if MAINTIEN else []
     assert PB[0] - 0.2 > a_ + 0.5, 'logement de patte trop près du logement de l’écran'
 cav = poly(inner_path(False))            # creux intérieur (logement de l'écran + creux du rebord), en trou
 cav_g = poly(inner_path(True))
@@ -471,12 +476,17 @@ else:
     win_hi = rrect(WA + 2 * BEVEL, HA + 2 * BEVEL, 2.0, AXC, AYC)   # ancienne fenêtre élargie : marche
 if FACADE_CLIPS:
     # dessous de la façade : une poche pour le cadre de maintien et ses oreilles, et une pour chaque tête de vis
-    heads = [circle(2.95, x, y) for x, y in SCREWS]
-    Z_HEAD = SD + 2.4                        # tête Ø 5,5 × 2,2 posée sur l'oreille (à z = SD) + 0,2 de jeu
-    Z_POCK = SD + RING_T + 0.1
-    assert Z_HEAD <= SD + FT - 0.6 and Z_POCK < SD + FT_LIP
-    island = rrect(2 * (RIN[0] - 0.3), 2 * (RIN[1] - 0.3), 1.0, *RIN_C)     # partie de la façade à l'intérieur du cadre
-    frame = [extrude(rrect(OW, OH, R, BXC, BYC), [ring_outline(0.3)], SD, Z_POCK), extrude(island, [win_lo], SD, Z_POCK)]
+    if MAINTIEN:
+        heads = [circle(2.95, x, y) for x, y in SCREWS]
+        Z_HEAD = SD + 2.4                        # tête Ø 5,5 × 2,2 posée sur l'oreille (à z = SD) + 0,2 de jeu
+        Z_POCK = SD + RING_T + 0.1
+        assert Z_HEAD <= SD + FT - 0.6 and Z_POCK < SD + FT_LIP
+        island = rrect(2 * (RIN[0] - 0.3), 2 * (RIN[1] - 0.3), 1.0, *RIN_C)     # partie de la façade à l'intérieur du cadre
+        frame = [extrude(rrect(OW, OH, R, BXC, BYC), [ring_outline(0.3)], SD, Z_POCK), extrude(island, [win_lo], SD, Z_POCK)]
+    else:
+        # dessous plat, plus une bande d'appui sur tout le bord noir de la vitre (de 0,3 mm du bord de la vitre à la fenêtre)
+        heads, Z_HEAD, Z_POCK = [], SD, SD
+        frame = [extrude(rrect(GW - 0.6, GH - 0.6, 1.0, 0.0, 0.0), [win_lo], SD - PRESS, SD)] if PRESS > 0 else []
     zs_ = sorted({Z_POCK, SD + FT_LIP, Z_HEAD, SD + FT - ENGRAVE})
     for za, zb_ in zip(zs_, zs_[1:]):
         hs = [win_hi if SLOPE else (win_lo if zb_ <= SD + FT_LIP + 1e-9 else win_hi)]
@@ -550,7 +560,7 @@ if INCRUST:
     flat = [xform(t, rot_y(180), [0, 0, SD + FT]) for t in inc]
     _v = np.concatenate(flat).reshape(-1, 3); _h = _v[:, 1].max() - _v[:, 1].min()
     parts['incrustation'] = flat + [t - [0, _h + 6.0, 0] for t in flat]
-if FACADE_CLIPS:
+if FACADE_CLIPS and MAINTIEN:
     # cadre de maintien : le cadre (sur la vitre) + 4 oreilles dans les logements des parois, trous Ø 6,2 pour les têtes de vis
     maintien = [extrude(ring_outline(0.0), [rrect(2 * RIN[0], 2 * RIN[1], 1.0, *RIN_C)] + [circle(2.95, x, y, 32) for x, y in SCREWS], SD - 0.02, SD + RING_T)]
     for sx in (-1, 1):
@@ -874,7 +884,7 @@ pcb = [box(-82, 82, -48.5, 48.5, SD - GT, SD - 6.7)]
 scene = {
     'coque': (world_shell(np.concatenate(parts['coque'])), 'shell', 0.0),
     'cadre': (world_shell(np.concatenate(parts['cadre'])), 'frame', 1.0),
-    **({'maintien': (world_shell(np.concatenate(parts['maintien'])), 'patte', 0.55)} if FACADE_CLIPS else {}),
+    **({'maintien': (world_shell(np.concatenate(parts['maintien'])), 'patte', 0.55)} if 'maintien' in parts else {}),
     'ecran': (world_shell(np.concatenate(display)), 'glass', 0.6),
     'zone': (world_shell(np.concatenate(active)), 'active', 0.6),
     'carte': (world_shell(np.concatenate(pcb)), 'pcb', 0.3),

@@ -21,12 +21,16 @@ Aussi en 4 fichiers séparés (`The-Deck-0a…0d-…stl`).
 | Pièce | Nombre | Référence retenue |
 |---|---|---|
 | Patins silicone adhésifs transparents, ronds 8 mm (épaisseur 2 mm conseillée) | 8 | Tenare, lot de 100 — https://www.amazon.fr/Amortisseurs-Adh%C3%A9sifs-Transparents-Amortissement-dArmoires/dp/B093SMVP38 (vérifier l'épaisseur : le logement fait Ø 8,4 × 1 mm) |
-| Inserts laiton à chaud M3 (longueur 4 à 6 mm) | 8 | ✅ déjà en stock — 4 pour le cadre de maintien, 4 pour le pied |
-| Vis M3 cruciformes à tête plate (cylindrique), tête Ø 5,6 mm max × 2,2 mm max | 4 (cadre de maintien) + 4 (pied) | ✅ déjà en stock — cadre de maintien : M3 × 8 mm (la tête se loge dans une poche sous la façade) ; pied : M3 × 10 mm |
+| Inserts laiton à chaud M3 (longueur 4 à 6 mm) | 4 | ✅ déjà en stock — pour le pied (plus de cadre de maintien depuis le 21/11/2026) |
+| Vis M3 cruciformes à tête plate (cylindrique), tête Ø 5,6 mm max × 2,2 mm max | 4 (pied) | ✅ déjà en stock — pied : M3 × 10 mm |
 | Écran Waveshare ESP32-P4-WIFI6-Touch-LCD-7B (7 pouces, 1024 × 600) | 1 | retenu |
 | Câble USB-C magnétique orange **avec transfert de données** (480 Mbit/s mini), tête qui reste dans la prise | 1 | retenu : AUFU 240 W magnétique 16 broches, 1,8 m, données — https://www.amazon.fr/AUFU-Magn%C3%A9tique-Transfert-Donn%C3%A9es-Samsung/dp/B0D962HKSB (vérifier la couleur à la commande ; la tête aimantée reste dans la prise de la capsule, au dos) |
 | Adaptateur USB-A → USB-C | 0 ou 1 | seulement si le PC n'a pas de prise USB-C libre |
 | Filament : gris (coque, façade, cadre de maintien, capsule), orange (pied) | — | PETG conseillé pour la façade (clips plus souples) ; en PLA, faire d'abord la pièce de test |
+
+## Écran tenu par la façade (21/11/2026) — plus de cadre de maintien
+
+Le cadre de maintien vissé (et ses 4 inserts, 4 vis, logements d'oreilles dans les parois, poches sous la façade) est supprimé. C'est la façade, en se clipsant, qui appuie l'écran contre les godets : son dessous est plat et porte une bande d'appui sur tout le bord noir de la vitre (de 0,3 mm du bord de la vitre jusqu'à la fenêtre), qui descend de 0,2 mm sous le haut de la coque. En clipsant, la façade serre donc la vitre de 0,2 mm. Si les clips ont du mal à s'enclencher : `DECK_APPUI=0.1` ; si l'écran bouge encore : `DECK_APPUI=0.3`, ou un joint mousse adhésif fin sur la bande. Ancien cadre de maintien : `DECK_MAINTIEN=1`.
 
 ## Prise USB-C sur le côté (21/11/2026) — remplace le déport
 
