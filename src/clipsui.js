@@ -248,7 +248,7 @@ function viewClipsSettings() {
         <div class="small muted" style="line-height:1.5">Le fichier contient tout mélangé (ce que les lecteurs jouent), plus deux pistes séparées, votre voix et le son du PC, pour le montage.</div></section>
       <section class="panel"><h2 class="disp">Mémoire en marche</h2>
         ${radio('clips-when', 'toujours', c.when, 'Toujours', 'Dès que The Deck est ouvert.')}
-        ${radio('clips-when', 'jeu', c.when, 'Pendant un jeu', 'Quand un jeu de « Mes espaces » est lancé (Star Citizen…).')}
+        ${radio('clips-when', 'jeu', c.when, 'Pendant un jeu', 'Quand un jeu de « Mes espaces » est lancé (Star Citizen…). Si vous filmez l’écran, la mémoire tourne tout le temps.')}
         ${radio('clips-when', 'jamais', c.when, 'Jamais', 'Seule la case ENREGISTRER filme, à la demande.')}
         <div class="small muted" style="line-height:1.5">${games.length ? 'Jeux reconnus : ' + games.map(g => `<b style="color:var(--soft)">${esc(g.name)}</b>`).join(', ') + (st.game ? ` · <span style="color:#7FE0A8">${esc(st.game)} est lancé</span>` : '') : 'Aucun jeu reconnu : dans un espace de jeu, indiquez son programme (« Ouvrir cet espace quand ce programme démarre »).'}</div>
         <h2 class="disp" style="margin-top:6px">Dossier</h2>

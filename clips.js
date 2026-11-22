@@ -165,11 +165,15 @@ class ClipRecorder extends EventEmitter {
   }
 
   // ---------- la mémoire : démarrer, arrêter ----------
+  // quand la mémoire tourne : « Pendant un jeu » n'a de sens que si on filme le jeu ; si on filme l'écran
+  // (bureau, stream…), elle tourne tout le temps
+  memWhen() { const c = this.conf; return c.when === 'jeu' && c.src && c.src !== 'jeu' ? 'toujours' : c.when; }
   tick() {
     if (this.closed) return;
     if (!this.available()) { this.pushState(); return; }
     const c = this.conf, game = this.runningGame();
-    const want = !!(this.rec.on || (!c.paused && (c.when === 'toujours' || (c.when === 'jeu' && game))));
+    const when = this.memWhen();
+    const want = !!(this.rec.on || (!c.paused && (when === 'toujours' || (when === 'jeu' && game))));
     const target = this.target(game);
     const key = JSON.stringify([target, c.res, c.fps]);
     if (!want) { if (this.proc) this.stop(); }
@@ -388,7 +392,7 @@ class ClipRecorder extends EventEmitter {
     if (!this.proc || !this.segs.size) {
       const why = this.conf.paused ? 'La mémoire est à l’arrêt : rallumez-la pour faire des clips.'
         : (this.conf.when === 'jamais' ? 'La mémoire est réglée sur « Jamais » : seule la case ENREGISTRER filme.'
-          : (this.conf.when === 'jeu' && !this.runningGame() ? 'La mémoire attend qu’un jeu de « Mes espaces » soit lancé.' : 'La mémoire démarre : réessayez dans quelques secondes.'));
+          : (this.memWhen() === 'jeu' && !this.runningGame() ? 'La mémoire attend qu’un jeu de « Mes espaces » soit lancé.' : 'La mémoire démarre : réessayez dans quelques secondes.'));
       return { ok: false, message: why };
     }
     const pressed = this.nowRel();
@@ -525,7 +529,7 @@ class ClipRecorder extends EventEmitter {
       capturing: !!this.proc,
       running: !!this.proc && all.length > 0,
       starting: this.starting || (!!this.proc && !all.length),
-      waiting: !this.proc && !this.conf.paused && this.conf.when === 'jeu' && !game && !this.rec.on,
+      waiting: !this.proc && !this.conf.paused && this.memWhen() === 'jeu' && !game && !this.rec.on,
       paused: !!this.conf.paused,
       when: this.conf.when,
       rec: { on: this.rec.on, since: this.rec.since },

@@ -82,3 +82,15 @@ test('qualité 4K : taille d’image et débit', () => {
   r.setConfig({ res: 720 });
   assert.strictEqual(r.conf.res, 1080);                                   // 720p retiré : retour à 1080p
 });
+
+test('clips : en filmant l’écran, la mémoire n’attend pas un jeu', () => {
+  const r = new ClipRecorder({ ffmpeg: null, temp: os.tmpdir(), data: os.tmpdir(), videos: os.tmpdir(), scanScript: '', shell: {}, nativeImage: null });
+  r.conf = Object.assign({}, r.conf, { when: 'jeu', src: 'ecran' });
+  assert.strictEqual(r.memWhen(), 'toujours');
+  r.conf.src = 'choisir';
+  assert.strictEqual(r.memWhen(), 'toujours');
+  r.conf.src = 'jeu';
+  assert.strictEqual(r.memWhen(), 'jeu', 'en filmant le jeu, elle attend le jeu');
+  r.conf.when = 'jamais'; r.conf.src = 'ecran';
+  assert.strictEqual(r.memWhen(), 'jamais');
+});

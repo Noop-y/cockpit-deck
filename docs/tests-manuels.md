@@ -152,3 +152,9 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Clips › « ON FILME » : « LE JEU » ↔ « L'ECRAN » au moment de l'appui, puis le message « On filme… ».
 - [ ] Stock : − / + changent le nombre tout de suite, et l'image du logiciel suit (avant 0.5.3, elle n'arrivait jamais).
 
+## Clips : filmer l'écran sans jeu lancé
+- [ ] Réglages des clips : « Quand la mémoire tourne » = Pendant un jeu. Sur l'écran, « ON FILME » = L'ÉCRAN, aucun jeu lancé.
+- [ ] Quelques secondes après, l'état dit « Mémoire en marche · … · écran entier » (et plus « en attente d'un jeu »).
+- [ ] Toucher CLIP : « Clip enregistré » ; le clip montre le bureau.
+- [ ] Repasser « ON FILME » sur LE JEU sans jeu lancé : la mémoire attend de nouveau un jeu.
+
