@@ -58,7 +58,9 @@ _Static_assert(sizeof(pack_page_t) == 28, "page");
 #define NAV_MEDIA 0xF000
 _Static_assert(sizeof(pack_zone_t) == 28, "zone");
 
-enum { Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE };
+enum { Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE, Z_COMPTE };
+// Z_COMPTE : un nombre du stock (v1 = valeur, v2 = stock bas). Un bouton − / + lié (rsv2 = n° du compteur dans la page + 1,
+// rsv = pas, -1 ou +1) le change tout de suite sur l'écran, sans attendre la nouvelle image du logiciel.
 enum { M_APPUI, M_MAINTENIR, M_BASCULE };
 #define AUCUN 0xFFFFFFFFu
 
@@ -78,6 +80,8 @@ static const pack_page_t *s_pages;
 static const pack_zone_t *s_zones;
 static const char *s_str;
 static uint8_t *s_on;                     // cases en bascule allumées (une par zone)
+static int32_t *s_cnt, *s_base;           // compteurs : valeur actuelle, et valeur dessinée sur l'image
+static lv_obj_t *s_cntl;                  // nombres redessinés par l'écran (au-dessus de l'image)
 static int s_count;
 static int s_page = -1;
 
@@ -125,6 +129,8 @@ static void meta_free(void)
     ovr_free();
     free(s_meta); s_meta = NULL;
     free(s_on); s_on = NULL;
+    free(s_cnt); s_cnt = NULL;
+    free(s_base); s_base = NULL;
     s_hdr = NULL; s_pages = NULL; s_zones = NULL; s_str = NULL;
     s_count = 0;
 }
@@ -153,6 +159,9 @@ static bool meta_load(void)
     if ((const uint8_t *)(s_zones + nz) > s_meta + h.str_off) { meta_free(); return false; }
     s_str = (const char *)(s_meta + h.str_off);
     s_on = calloc(nz ? nz : 1, 1);
+    s_cnt = calloc(nz ? nz : 1, sizeof(int32_t));
+    s_base = calloc(nz ? nz : 1, sizeof(int32_t));
+    for (size_t k = 0; k < nz && s_cnt && s_base; k++) s_cnt[k] = s_base[k] = s_zones[k].v1;
     s_ovr = calloc(h.count, sizeof(uint8_t *));
     s_ovr_len = calloc(h.count, sizeof(uint32_t));
     s_count = h.count;
@@ -213,8 +222,36 @@ static void press_reset(void)
 }
 
 // contours des cases en bascule allumées
+// nombres changés sur l'écran depuis la dernière image : on les redessine par-dessus
+static void draw_counters(void)
+{
+    if (!s_cntl) return;
+    lv_obj_clean(s_cntl);
+    if (s_page < 0 || !s_cnt) return;
+    const pack_page_t *p = &s_pages[s_page];
+    for (int k = 0; k < p->zone_count; k++) {
+        int zi = p->zone_first + k;
+        const pack_zone_t *z = &s_zones[zi];
+        if (z->kind != Z_COMPTE || s_cnt[zi] == s_base[zi]) continue;
+        lv_obj_t *o = lv_obj_create(s_cntl);
+        lv_obj_remove_style_all(o);
+        lv_obj_set_pos(o, z->x - 2, z->y - 2);
+        lv_obj_set_size(o, z->w + 4, z->h + 4);
+        lv_obj_set_style_bg_color(o, lv_color_hex(0x0D1116), 0);
+        lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+        lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_t *l = lv_label_create(o);
+        lv_label_set_text_fmt(l, "%d", (int)s_cnt[zi]);
+        lv_obj_set_style_text_font(l, z->h >= 34 ? &lv_font_montserrat_32 : &lv_font_montserrat_24, 0);
+        uint32_t col = s_cnt[zi] == 0 ? 0xFF8A95 : (z->v2 && s_cnt[zi] < z->v2) ? 0xFFB547 : 0xE6EDF3;
+        lv_obj_set_style_text_color(l, lv_color_hex(col), 0);
+        lv_obj_center(l);
+    }
+}
+
 static void draw_layer(void)
 {
+    draw_counters();
     lv_obj_clean(s_layer);
     s_hit = NULL; s_bar = NULL;
     const pack_page_t *p = &s_pages[s_page];
@@ -246,6 +283,15 @@ static void fire(const pack_zone_t *z, bool down)
     case Z_MESSAGE: {
         const char *m = str_at(down ? z->s_down : z->s_up);
         if (m) usb_deck_send_line(m);
+        if (down && z->rsv2 && s_page >= 0 && s_cnt) {   // − / + du stock : le nombre change tout de suite
+            const pack_page_t *p = &s_pages[s_page];
+            if (z->rsv2 <= p->zone_count) {
+                int ci = p->zone_first + z->rsv2 - 1;
+                int32_t v = s_cnt[ci] + (int8_t)z->rsv;
+                s_cnt[ci] = v < 0 ? 0 : v;
+                draw_counters();
+            }
+        }
         break;
     }
     default: break;
@@ -295,7 +341,7 @@ static int zone_at(int x, int y)
     const pack_page_t *p = &s_pages[s_page];
     for (int k = p->zone_count - 1; k >= 0; k--) {
         const pack_zone_t *z = &s_zones[p->zone_first + k];
-        if (z->kind == Z_RIEN) continue;
+        if (z->kind == Z_RIEN || z->kind == Z_COMPTE) continue;
         if (x >= z->x && x < z->x + z->w && y >= z->y && y < z->y + z->h) return (int)(p->zone_first + k);
     }
     return -1;
@@ -454,6 +500,10 @@ bool pages_start(void)
     s_img = lv_image_create(s_scr);
     lv_obj_set_pos(s_img, 0, 0);
     lv_obj_remove_flag(s_img, LV_OBJ_FLAG_CLICKABLE);
+    s_cntl = lv_obj_create(s_scr);
+    lv_obj_remove_style_all(s_cntl);
+    lv_obj_set_size(s_cntl, W, H);
+    lv_obj_remove_flag(s_cntl, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
     s_layer = lv_obj_create(s_scr);
     lv_obj_remove_style_all(s_layer);
     lv_obj_set_size(s_layer, W, H);
@@ -561,6 +611,21 @@ static void pi_line(const char *t, const char *line)
             memcpy(img, s_pi_buf, s_pi_size);
             if (s_ovr[s_pi_page]) free(s_ovr[s_pi_page]);
             s_ovr[s_pi_page] = img; s_ovr_len[s_pi_page] = (uint32_t)s_pi_size;
+            // les vrais nombres de la nouvelle image ("n":[…], dans l'ordre des compteurs de la page)
+            const char *pn = strstr(line, "\"n\":[");
+            if (pn && s_cnt) {
+                pn += 5;
+                const pack_page_t *pg = &s_pages[s_pi_page];
+                for (int k = 0; k < pg->zone_count && *pn && *pn != ']'; k++) {
+                    int zi = pg->zone_first + k;
+                    if (s_zones[zi].kind != Z_COMPTE) continue;
+                    char *e = NULL;
+                    long v = strtol(pn, &e, 10);
+                    if (e == pn) break;
+                    s_cnt[zi] = s_base[zi] = v < 0 ? 0 : (int32_t)v;
+                    pn = e; while (*pn == ',' || *pn == ' ') pn++;
+                }
+            }
             if (s_pi_page == s_page && lv_screen_active() == s_scr) show_page(s_page);
         } else free(img);
         bsp_display_unlock();

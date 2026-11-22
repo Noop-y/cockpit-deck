@@ -31,7 +31,7 @@ Relu au début de chaque session, mis à jour à la fin.
 
 ## À faire
 
-- Stock d'électronique (22/11/2026, maquettes : artefact « The Deck · Stock ») — étapes 1 (onglet Stock du logiciel) et 2 (écran 0.5.0, − / + en direct) écrites, à tester ; étape 3 (Claude) à faire. Choix de l'utilisateur :
+- Stock d'électronique (22/11/2026, maquettes : artefact « The Deck · Stock ») — étapes 1 (onglet Stock du logiciel) et 2 (écran 0.5.1, − / + en direct, le nombre change tout de suite sur l'écran) écrites, à tester ; étape 3 (Claude) à faire. Choix de l'utilisateur :
   - écran : maquette 5 « par rangement » (rangements renommables à gauche, tiroirs à droite) ; appui sur un tiroir → fenêtre −/+ pour corriger la quantité ;
   - logiciel : onglet Stock, renommer les rangements, nombre de tiroirs, pièces (quantité, seuil stock bas, lien d'achat) ;
   - Claude a accès au stock par un petit connecteur (MCP local) fourni par le logiciel, avec seulement deux fonctions : lire le stock, et proposer un retrait/ajout. Une proposition s'affiche sur l'écran (VALIDER / REFUSER) et ne s'applique qu'après VALIDER ; historique + Annuler dans le logiciel ;

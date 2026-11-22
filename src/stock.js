@@ -248,7 +248,7 @@ function deckStock(space, sim, view) {
   const pager = (parts, part, A) => (A = A || S, parts > 1) ? `<div class="dstpager"><div class="dstpg${part > 0 ? '' : ' off'}" ${part > 0 ? A(`data-simstock="part" data-p="${part - 1}"`) : ''}>‹</div><span>${part + 1} / ${parts}</span><div class="dstpg${part < parts - 1 ? '' : ' off'}" ${part < parts - 1 ? A(`data-simstock="part" data-p="${part + 1}"`) : ''}>›</div></div>` : '';
   const rowsOf = (items, part, A) => (A = A || S, items).slice(part * STOCK_PER, part * STOCK_PER + STOCK_PER).map(it => {
     const st = stockState(it);
-    return `<div class="dstrow" style="${st === 'out' ? 'border-color:#FF4D5E' : ''}"><span class="dstrn">${esc(it.name)}</span><div class="dstbtn m" style="border-color:${look.accent};color:${look.accent}" ${A(`data-simstock="q" data-id="${esc(it.id)}" data-d="-1"`)}>−</div><span class="dstq mono" style="color:${st === 'ok' ? '#E6EDF3' : color(st)}">${it.q}</span><div class="dstbtn" ${A(`data-simstock="q" data-id="${esc(it.id)}" data-d="1"`)}>+</div></div>`;
+    return `<div class="dstrow" style="${st === 'out' ? 'border-color:#FF4D5E' : ''}"><span class="dstrn">${esc(it.name)}</span><div class="dstbtn m" style="border-color:${look.accent};color:${look.accent}" ${A(`data-simstock="q" data-id="${esc(it.id)}" data-d="-1"`)}>−</div><span class="dstq mono" style="color:${st === 'ok' ? '#E6EDF3' : color(st)}" ${A(`data-simstock="n" data-id="${esc(it.id)}" data-q="${it.q}" data-low="${it.low}"`)}>${it.q}</span><div class="dstbtn" ${A(`data-simstock="q" data-id="${esc(it.id)}" data-d="1"`)}>+</div></div>`;
   }).join('');
   let right;
   if (c.sub) {

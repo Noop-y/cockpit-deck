@@ -20,7 +20,7 @@ function loadPack(extra) {
   }, extra || {});
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'src', 'deckpack.js'), 'utf8') +
-    '\nObject.assign(this, { keyCombo, pgZone, pgCellAction, pgBuildPack, crc32, pgList, pgNav, Z, MODE });', ctx);
+    '\nObject.assign(this, { keyCombo, pgZone, pgCellAction, pgBuildPack, crc32, pgList, pgNav, pgLinkCounters, Z, MODE });', ctx);
   return ctx;
 }
 
@@ -133,10 +133,10 @@ test('programme de l’écran : format du paquet identique des deux côtés', ()
   assert.match(src, /sizeof\(pack_page_t\) == 28/);
   assert.match(src, /#define NAV_NONE 0xFFFF/); assert.match(src, /#define NAV_MEDIA 0xF000/);
   assert.match(src, /sizeof\(pack_zone_t\) == 28/);
-  assert.match(src, /enum \{ Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE \}/);
+  assert.match(src, /enum \{ Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE, Z_COMPTE \}/);
   assert.match(src, /enum \{ M_APPUI, M_MAINTENIR, M_BASCULE \}/);
   const c = loadPack();
-  assert.deepStrictEqual({ ...c.Z }, { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5 });
+  assert.deepStrictEqual({ ...c.Z }, { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5, compte: 6 });
   assert.deepStrictEqual({ ...c.MODE }, { tap: 0, hold: 1, toggle: 2 });
 });
 
@@ -157,4 +157,18 @@ test('glisser le doigt : où mène chaque glissement, et rangé dans le paquet',
   // dans le paquet : 4 nombres après la couleur, 0xFFFF = rien
   const pack = Buffer.from(c.pgBuildPack([{ jpeg: new Uint8Array([1]), zones: [], nav: { next: 3, prev: null, up: 7, down: null } }]));
   assert.deepStrictEqual([20, 22, 24, 26].map(o => pack.readUInt16LE(24 + o)), [3, 0xFFFF, 7, 0xFFFF]);
+});
+
+test('stock : les − / + savent quel nombre changer tout de suite sur l’écran', () => {
+  const c = loadPack();
+  const zones = c.pgLinkCounters([
+    { kind: 5, cid: 'a', delta: -1 }, { kind: 6, cid: 'a', v1: 85 }, { kind: 5, cid: 'a', delta: 1 },
+    { kind: 5, cid: 'b', delta: -1 }, { kind: 6, cid: 'b', v1: 3 }, { kind: 4, v1: 2 }]);
+  assert.deepStrictEqual(zones.map(z => z.link || 0), [2, 0, 2, 5, 0, 0]);
+  const pack = Buffer.from(c.pgBuildPack([{ jpeg: new Uint8Array([1]), zones: zones.map(z => Object.assign({ x: 0, y: 0, w: 1, h: 1, mode: 0 }, z)) }]));
+  const z0 = 24 + 28;   // première zone
+  assert.strictEqual(pack[z0 + 11], 0xFF, 'pas −1');
+  assert.strictEqual(pack.readUInt16LE(z0 + 18), 2, 'compteur n° 2');
+  assert.strictEqual(pack[z0 + 28 * 2 + 11], 1, 'pas +1');
+  assert.strictEqual(pack.readUInt16LE(z0 + 28 + 14), 85, 'valeur du compteur');
 });

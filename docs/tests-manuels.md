@@ -119,3 +119,11 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Changer une quantité ou un nom dans le logiciel : l'écran suit (environ 2 s).
 - [ ] Ajouter une catégorie ou un tiroir dans le logiciel : l'écran reçoit tout de nouveau tout seul (bandeau « Réception des pages »).
 - [ ] Débrancher / rebrancher l'écran après des − / + : il reçoit tout de nouveau tout seul, les bons nombres s'affichent.
+
+## Stock : − / + instantanés (programme 0.5.1)
+- [ ] Page Appareil : « Mettre à jour l'écran par le câble USB » (0.5.1), puis « Envoyer sur l'écran ».
+- [ ] Ouvrir un tiroir sur l'écran, toucher − : le nombre baisse **tout de suite** (sans attendre). Une seconde après, l'image arrive et montre le même nombre.
+- [ ] Toucher + plusieurs fois vite : le nombre suit chaque toucher.
+- [ ] Toucher − jusqu'à 0 : le nombre devient rouge et ne descend pas sous 0.
+- [ ] Logiciel fermé : toucher − change le nombre à l'écran, puis le logiciel rouvert renvoie le vrai nombre (le stock n'a pas changé).
+

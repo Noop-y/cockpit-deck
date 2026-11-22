@@ -43,7 +43,7 @@ const MEDIA_USAGE = { volplus: 0xE9, volmoins: 0xEA, muet: 0xE2, lecture: 0xCD, 
 const PLAYER_MEDIA = { prev: 'precedente', next: 'suivante', play: 'lecture', vmoins: 'volmoins', vplus: 'volplus' };
 
 // ---------- ce que fait chaque zone ----------
-const Z = { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5 };
+const Z = { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5, compte: 6 };   // compte : nombre que l'écran change tout seul
 const MODE = { tap: 0, hold: 1, toggle: 2 };
 
 function pgList() {
@@ -108,7 +108,8 @@ function pgZone(item, r, keyIndex, warn) {
     else if (d.simstock === 'sub') z = to(v.cat, +d.j, 0);
     else if (d.simstock === 'close') z = to(v.cat, null, 0);
     else if (d.simstock === 'part') z = to(v.cat, v.sub, +d.p);
-    else if (d.simstock === 'q') z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'stock', id: d.id, d: +d.d }) };
+    else if (d.simstock === 'q') z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'stock', id: d.id, d: +d.d }), cid: d.id, delta: +d.d };
+    else if (d.simstock === 'n') z = { kind: Z.compte, mode: MODE.tap, v1: Math.min(0xFFFF, +d.q || 0), v2: Math.min(0xFFFF, +d.low || 0), cid: d.id };
   }
   if (!z) return null;
   return Object.assign({ hold: 1500, v1: 0, v2: 0, down: null, up: null }, z, {
@@ -154,6 +155,16 @@ function pgHtml(item) {
   const toast = ui.clipToast; ui.clipToast = null;
   try { return item.kind === 'home' ? deckHome(sim, item.page) : deckPage(item.space, item.page, sim); }
   finally { ui.clipToast = toast; }
+}
+
+// − / + du stock : chaque bouton connaît le compteur à changer tout de suite sur l'écran (n° dans la page + 1)
+function pgLinkCounters(zones) {
+  zones.forEach(z => {
+    if (z.kind !== Z.message || !z.cid || !z.delta) return;
+    let k = -1; zones.forEach((c, i) => { if (c.kind === Z.compte && c.cid === z.cid) k = i; });
+    if (k >= 0) z.link = k + 1;
+  });
+  return zones;
 }
 
 // ---------- paquet binaire ----------
@@ -202,8 +213,8 @@ function pgBuildPack(pages) {
   zones.forEach((z, i) => {
     const o = zOff + 28 * i;
     [z.x, z.y, z.w, z.h].forEach((v, k) => dv.setUint16(o + 2 * k, Math.max(0, Math.min(0xFFFF, Math.round(v))), true));
-    dv.setUint8(o + 8, z.kind); dv.setUint8(o + 9, z.mode || 0); dv.setUint8(o + 10, z.radius || 0); dv.setUint8(o + 11, 0);
-    dv.setUint16(o + 12, Math.max(0, Math.min(0xFFFF, z.hold || 0)), true); dv.setUint16(o + 14, z.v1 || 0, true); dv.setUint16(o + 16, z.v2 || 0, true); dv.setUint16(o + 18, 0, true);
+    dv.setUint8(o + 8, z.kind); dv.setUint8(o + 9, z.mode || 0); dv.setUint8(o + 10, z.radius || 0); dv.setUint8(o + 11, (z.delta || 0) & 0xFF);
+    dv.setUint16(o + 12, Math.max(0, Math.min(0xFFFF, z.hold || 0)), true); dv.setUint16(o + 14, z.v1 || 0, true); dv.setUint16(o + 16, z.v2 || 0, true); dv.setUint16(o + 18, z.link || 0, true);
     dv.setUint32(o + 20, z._d, true); dv.setUint32(o + 24, z._u, true);
     delete z._d; delete z._u;
   });
@@ -227,9 +238,10 @@ async function pgPrepare() {
     jpeg: new Uint8Array(shots[i].jpeg),
     accent: (it.kind === 'home' ? cfg.look : lookFor(it.space)).accent,
     nav: pgNav(it, keyIndex),
-    zones: shots[i].zones.map(r => pgZone(it, r, keyIndex, warn)).filter(Boolean)
+    zones: pgLinkCounters(shots[i].zones.map(r => pgZone(it, r, keyIndex, warn)).filter(Boolean))
   }));
-  return { pack: pgBuildPack(pages), count: pages.length, warn, sent: { keys: list.map(it => it.key), html: htmls } };
+  return { pack: pgBuildPack(pages), count: pages.length, warn,
+    sent: { keys: list.map(it => it.key), html: htmls, counters: pages.map(p => p.zones.filter(z => z.kind === Z.compte).map(z => z.cid)) } };
 }
 
 async function pgSend(pack) {
@@ -315,14 +327,14 @@ async function pgLiveRun() {
     const shots = await api.deckRender(changed.map(c => c.h));
     if (!shots) return;
     for (let k = 0; k < changed.length; k++) {
-      await pgSendPage(changed[k].i, new Uint8Array(shots[k].jpeg));
+      await pgSendPage(changed[k].i, new Uint8Array(shots[k].jpeg), (sent.counters && sent.counters[changed[k].i] || []).map(id => { const x = stockFindItem(id); return x ? x.item.q : 0; }));
       sent.html[changed[k].i] = changed[k].h;
     }
     if (!cfg.device.pgStale) { cfg.device.pgStale = true; commit(true); }
   } catch (e) { console.error(e); toast('L’écran n’a pas reçu la mise à jour : ' + (e && e.message ? e.message : e) + '. Essayez « Envoyer sur l’écran ».', 'err', 8000); }
   finally { pgLive.busy = false; if (pgLive.again) { pgLive.again = false; pgLiveRefresh(); } }
 }
-async function pgSendPage(index, jpeg) {
+async function pgSendPage(index, jpeg, counts) {
   const isPi = (t) => (m) => m.t === t || m.t === 'pi-err';
   const fail = (m) => { throw new Error(m && m.msg ? m.msg : 'l’écran ne répond pas'); };
   deckWrite({ t: 'pi-begin', page: index, size: jpeg.length, crc: crc32(jpeg) });
@@ -336,7 +348,7 @@ async function pgSendPage(index, jpeg) {
     if (m.t === 'pi-err') fail(m);
     tries = 0; off = m.off;
   }
-  deckWrite({ t: 'pi-end' });
+  deckWrite({ t: 'pi-end', n: counts || [] });   // les vrais nombres de la page, pour les compteurs de l'écran
   m = await fwWaitMsg(isPi('pi-done'), 4000);
   if (!m || m.t === 'pi-err') fail(m);
 }
