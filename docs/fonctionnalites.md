@@ -130,3 +130,7 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 - **Ce que ça fait** : sur l'écran, les cases MOI / DISCORD / JEU / STREAM se cochent et se décochent (la coche change dès l'appui) ; en haut, − / + règlent le volume des sons envoyés dans le micro (Discord et jeu), de 10 en 10, de 0 à 100 % ; « Stop tout » coupe tous les sons.
 - **Comment** : `deckSound` (`app.js`) pose des zones liées (`data-simdest`, `data-simsb`, `data-simtext`) ; `pgZone` en fait des messages `sb-dest`, `sb-vol`, `sound-stop` et des zones « choix » (coche : fond par choix ; volume : s'arrête aux bouts). Le logiciel enregistre (`space.sound.sel`, `cfg.audio.volMic`, `sbVolStep`) et redessine la page (`pgLiveable` inclut la soundboard). Avant, ces cases n'étaient reliées à rien depuis que l'écran affiche des images.
 
+## Accueil : transparence des cases (22/11/2026)
+- **Ce que ça fait** : Apparence › « Écran d'accueil · cases » : Transparentes (par défaut), Un peu, Opaques.
+- **Comment** : `cfg.look.homeGlass` (0,3 / 0,6 / 1 ; `DEFAULT_LOOK` dans `data.js`), lu par `homeGlass()` dans `deckHome` (`app.js`).
+

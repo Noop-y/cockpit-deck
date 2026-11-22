@@ -106,7 +106,7 @@ const THEMES = [
   { name: 'Néon', bgColor: '#1C1430', idleEdge: '#3A2F66', accent: '#FF7EB6' },
   { name: 'Forêt', bgColor: '#0F2218', idleEdge: '#26303A', accent: '#3FB97A' }
 ];
-const DEFAULT_LOOK = { bgType: 'color', bgColor: '#07090C', bgPhoto: null, bgDim: 0.3, idleEdge: '#26303A', accent: '#FFB547' };
+const DEFAULT_LOOK = { bgType: 'color', bgColor: '#07090C', bgPhoto: null, bgDim: 0.3, idleEdge: '#26303A', accent: '#FFB547', homeGlass: 0.3 };
 
 const CATEGORIES = {
   favoris: { label: 'Favoris', color: '#FFD45C', icon: 'favori' },

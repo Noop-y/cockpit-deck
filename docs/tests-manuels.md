@@ -168,4 +168,5 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Un son avec DISCORD coché : un ami l'entend ; décoché : il ne l'entend plus.
 - [ ] En haut, − / + : « SONS DANS LE MICRO » change tout de suite (de 10 en 10, s'arrête à 0 % et 100 %) ; dans Discord, le son est plus faible / plus fort. La page Sorties audio montre le même volume.
 - [ ] « Stop tout » coupe les sons en cours.
+- [ ] Apparence › « Écran d'accueil · cases » : Transparentes / Un peu / Opaques ; après « Envoyer sur l'écran », l'accueil suit le choix. Le choix reste après avoir fermé et rouvert le logiciel.
 

@@ -417,6 +417,8 @@ function deckPage(space, pageIdx, sim) {
   }).join('');
   return deckFrame(look, `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div><div class="dgrid${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div>${sim && typeof clipToastHTML === 'function' ? clipToastHTML() : ''}`, '', spaceOverlay(space, sim));
 }
+// transparence des cases de l'accueil (0,3 = on voit le fond ; 1 = opaque)
+const homeGlass = () => { const v = +(cfg.look && cfg.look.homeGlass); return v > 0 && v <= 1 ? v : 0.3; };
 function deckHome(sim, pageArg) {
   const look = cfg.look;
   const all = homeSpaces();
@@ -425,7 +427,7 @@ function deckHome(sim, pageArg) {
   const spaces = all.slice(pg * HOME_PER_PAGE, pg * HOME_PER_PAGE + HOME_PER_PAGE);
   const cards = spaces.map(s => {
     const cat = catOf(s.category);
-    return `<div class="dhcard" style="border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isClips(s) ? 'Clips' : isStock(s) ? 'Composants' : isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
+    return `<div class="dhcard" style="border:1.5px solid ${look.idleEdge};background:rgba(10,13,18,${homeGlass()})" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isClips(s) ? 'Clips' : isStock(s) ? 'Composants' : isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
   });
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   const dots = nPages > 1 ? `<div class="ddots">${Array.from({ length: nPages }, (_, k) => `<i style="${k === pg ? `background:${look.accent}` : ''}"></i>`).join('')}</div>` : `<div style="color:#C9D6E2;font-size:1.5cqw">Choisissez un espace</div>`;
@@ -722,6 +724,7 @@ function viewApparence() {
       <div class="card" style="gap:14px"><div class="row" style="justify-content:space-between"><h2 class="disp">Fond d\u2019écran</h2>${seg('bg-type', [['color', 'Couleur unie'], ['photo', 'Photo']], look.bgType)}</div>
         ${look.bgType === 'color' ? swatches('bg-color', COLORS_BG, look.bgColor) : `<div class="row">${look.bgPhoto ? `<span style="width:150px;height:88px;border-radius:8px;background:url('${look.bgPhoto}') center/cover;border:1px solid var(--line)"></span>` : ''}<button class="btn" data-act="bg-photo">${look.bgPhoto ? 'Changer de photo' : 'Importer une photo…'}</button></div>
         <div><span class="lab">Assombrir la photo</span>${seg('bg-dim', [[0, 'Aucun'], [0.3, 'Léger'], [0.55, 'Fort']], look.bgDim || 0)}</div>`}</div>
+      ${sp ? '' : `<div class="card" style="gap:12px"><h2 class="disp">Écran d\u2019accueil · cases</h2><div class="small muted">Les grandes cases de l\u2019accueil (Favoris, Soundboard, Clips…) : en transparence, le fond d\u2019écran se voit à travers.</div>${seg('home-glass', [[0.3, 'Transparentes'], [0.6, 'Un peu'], [1, 'Opaques']], homeGlass())}</div>`}
       <div class="card" style="gap:12px"><h2 class="disp">Case au repos · contour</h2>${swatches('edge-color', COLORS_EDGE, look.idleEdge)}</div>
       <div class="card" style="gap:12px"><h2 class="disp">Case appuyée ou allumée</h2><div class="small muted">Le contour, le pictogramme et le nom prennent cette couleur.</div>${swatches('acc-color', COLORS_ACCENT, look.accent)}</div>
     </div>
@@ -1525,6 +1528,7 @@ const ACTIONS = {
   'bg-color': (d) => { editLook().bgColor = d.v; commit(); },
   'bg-photo': () => { ui.pickFor = 'bg'; $('#file-image').click(); },
   'bg-dim': (d) => { editLook().bgDim = +d.v; commit(); },
+  'home-glass': (d) => { cfg.look.homeGlass = +d.v; commit(); },
   'edge-color': (d) => { editLook().idleEdge = d.v; commit(); },
   'acc-color': (d) => { editLook().accent = d.v; commit(); },
   theme: (d) => { const t = THEMES[+d.i]; Object.assign(editLook(), { bgType: 'color', bgColor: t.bgColor, idleEdge: t.idleEdge, accent: t.accent }); commit(); },
