@@ -146,3 +146,9 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Case « MA VOIX » et « MÉMOIRE » : l'écran change et un message le dit.
 - [ ] Case CLIP (dans l'espace Clips, puis une case Clip dans un autre espace, ex. Star Citizen) : message « Clip en cours… · on filme … » puis « Clip enregistré » sur l'écran.
 
+## Écran 0.5.3 : mises à jour en direct et choix instantanés
+- [ ] Page Appareil : mettre l'écran à jour par le câble (0.5.3), puis « Envoyer sur l'écran ».
+- [ ] Clips › « RETOUR EN ARRIÈRE » : la durée change **au moment de l'appui** (15 s → 30 s → 1 min → 2 min → 3 min → 5 min → 15 s). Une seconde après, l'image du logiciel arrive avec la même durée (police un peu différente pendant ce temps : normal).
+- [ ] Clips › « ON FILME » : « LE JEU » ↔ « L'ECRAN » au moment de l'appui, puis le message « On filme… ».
+- [ ] Stock : − / + changent le nombre tout de suite, et l'image du logiciel suit (avant 0.5.3, elle n'arrivait jamais).
+

@@ -58,9 +58,12 @@ _Static_assert(sizeof(pack_page_t) == 28, "page");
 #define NAV_MEDIA 0xF000
 _Static_assert(sizeof(pack_zone_t) == 28, "zone");
 
-enum { Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE, Z_COMPTE };
+enum { Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE, Z_COMPTE, Z_TEXTE };
 // Z_COMPTE : un nombre du stock (v1 = valeur, v2 = stock bas). Un bouton − / + lié (rsv2 = n° du compteur dans la page + 1,
 // rsv = pas, -1 ou +1) le change tout de suite sur l'écran, sans attendre la nouvelle image du logiciel.
+// Z_TEXTE : un choix parmi plusieurs (ex. durée des clips « 15 s|30 s|1 min… ») : s_down = les choix séparés par « | »,
+// v1 = n° du choix montré, v2 = couleur du texte (RGB565), hold_ms = couleur du fond (RGB565). Un bouton lié passe
+// au choix suivant tout de suite sur l'écran.
 enum { M_APPUI, M_MAINTENIR, M_BASCULE };
 #define AUCUN 0xFFFFFFFFu
 
@@ -223,6 +226,27 @@ static void press_reset(void)
 
 // contours des cases en bascule allumées
 // nombres changés sur l'écran depuis la dernière image : on les redessine par-dessus
+static const char *str_at(uint32_t off);
+static uint32_t rgb565(uint16_t c) { return ((uint32_t)((c >> 11) & 31) * 255 / 31) << 16 | ((uint32_t)((c >> 5) & 63) * 255 / 63) << 8 | (uint32_t)(c & 31) * 255 / 31; }
+// nombre de choix d'une zone Z_TEXTE, et copie du choix n° i (sans les autres)
+static int choix_count(const pack_zone_t *z)
+{
+    const char *s = str_at(z->s_down);
+    if (!s || !*s) return 0;
+    int n = 1;
+    for (; *s; s++) if (*s == '|') n++;
+    return n;
+}
+static void choix_get(const pack_zone_t *z, int i, char *out, size_t len)
+{
+    out[0] = 0;
+    const char *s = str_at(z->s_down);
+    if (!s) return;
+    while (i > 0 && *s) { if (*s++ == '|') i--; }
+    size_t k = 0;
+    while (*s && *s != '|' && k + 1 < len) out[k++] = *s++;
+    out[k] = 0;
+}
 static void draw_counters(void)
 {
     if (!s_cntl) return;
@@ -232,11 +256,26 @@ static void draw_counters(void)
     for (int k = 0; k < p->zone_count; k++) {
         int zi = p->zone_first + k;
         const pack_zone_t *z = &s_zones[zi];
-        if (z->kind != Z_COMPTE || s_cnt[zi] == s_base[zi]) continue;
+        if ((z->kind != Z_COMPTE && z->kind != Z_TEXTE) || s_cnt[zi] == s_base[zi]) continue;
         lv_obj_t *o = lv_obj_create(s_cntl);
         lv_obj_remove_style_all(o);
         lv_obj_set_pos(o, z->x - 2, z->y - 2);
         lv_obj_set_size(o, z->w + 4, z->h + 4);
+        if (z->kind == Z_TEXTE) {   // un choix : texte à gauche, sur la couleur de la case
+            lv_obj_set_style_bg_color(o, lv_color_hex(rgb565(z->hold_ms)), 0);
+            lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+            lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+            char txt[40];
+            choix_get(z, (int)s_cnt[zi], txt, sizeof txt);
+            lv_obj_t *l = lv_label_create(o);
+            lv_label_set_text(l, txt);
+            const lv_font_t *f = z->h >= 30 ? &lv_font_montserrat_32 : &lv_font_montserrat_24;
+            if (f == &lv_font_montserrat_32 && lv_text_get_width(txt, strlen(txt), f, 0) > z->w) f = &lv_font_montserrat_24;   // trop long : plus petit
+            lv_obj_set_style_text_font(l, f, 0);
+            lv_obj_set_style_text_color(l, lv_color_hex(rgb565(z->v2)), 0);
+            lv_obj_align(l, LV_ALIGN_LEFT_MID, 2, 0);
+            continue;
+        }
         lv_obj_set_style_bg_color(o, lv_color_hex(0x0D1116), 0);
         lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
         lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
@@ -288,7 +327,10 @@ static void fire(const pack_zone_t *z, bool down)
             if (z->rsv2 <= p->zone_count) {
                 int ci = p->zone_first + z->rsv2 - 1;
                 int32_t v = s_cnt[ci] + (int8_t)z->rsv;
-                s_cnt[ci] = v < 0 ? 0 : v;
+                if (s_zones[ci].kind == Z_TEXTE) {   // choix suivant (on revient au premier après le dernier)
+                    int n = choix_count(&s_zones[ci]);
+                    s_cnt[ci] = n > 0 ? ((v % n) + n) % n : 0;
+                } else s_cnt[ci] = v < 0 ? 0 : v;
                 draw_counters();
             }
         }
@@ -341,7 +383,7 @@ static int zone_at(int x, int y)
     const pack_page_t *p = &s_pages[s_page];
     for (int k = p->zone_count - 1; k >= 0; k--) {
         const pack_zone_t *z = &s_zones[p->zone_first + k];
-        if (z->kind == Z_RIEN || z->kind == Z_COMPTE) continue;
+        if (z->kind == Z_RIEN || z->kind == Z_COMPTE || z->kind == Z_TEXTE) continue;
         if (x >= z->x && x < z->x + z->w && y >= z->y && y < z->y + z->h) return (int)(p->zone_first + k);
     }
     return -1;
@@ -618,7 +660,7 @@ static void pi_line(const char *t, const char *line)
                 const pack_page_t *pg = &s_pages[s_pi_page];
                 for (int k = 0; k < pg->zone_count && *pn && *pn != ']'; k++) {
                     int zi = pg->zone_first + k;
-                    if (s_zones[zi].kind != Z_COMPTE) continue;
+                    if (s_zones[zi].kind != Z_COMPTE && s_zones[zi].kind != Z_TEXTE) continue;
                     char *e = NULL;
                     long v = strtol(pn, &e, 10);
                     if (e == pn) break;

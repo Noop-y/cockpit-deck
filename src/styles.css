@@ -277,7 +277,7 @@ body.celldragging, body.celldragging * { cursor: grabbing !important; }
 .deck .clc.on-v { border: 2px solid #8E9BFF; }
 .deck .clc.free { border-style: dashed; background: transparent; align-items: center; justify-content: center; font-size: 1.2cqw; color: #5B6875; }
 .deck .cll { font-size: 1.15cqw; color: #8E9BA8; letter-spacing: .05cqw; }
-.deck .cldur { font-size: 3.3cqw; line-height: 1; }
+.deck .cldur, .deck .clc .cldur { font-size: 3.3cqw; line-height: 1; }
 .deck .cldots { display: flex; gap: .4cqw; }
 .deck .cldots i { width: 1.3cqw; height: .4cqw; border-radius: .2cqw; background: #26303A; }
 .deck .clrecent { grid-column: 3 / span 3; border-radius: 1.4cqw; border: 1.5px solid #26303A; background: #11161C; padding: 1.2cqw 1.4cqw; display: flex; flex-direction: column; gap: .8cqw; min-height: 0; min-width: 0; }

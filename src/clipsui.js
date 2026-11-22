@@ -82,6 +82,13 @@ function clipSrcText() {
   return 'l’écran entier';
 }
 
+// choix que l'écran change tout seul (sans accent : la police de l'écran n'en a pas)
+function clipChoice(k) {
+  const c = cfg.clips;
+  if (k === 'dur') return { opts: CLIP_DURS.map(d => d[1]), i: Math.max(0, CLIP_DURS.findIndex(d => d[0] === c.dur)) };
+  return { opts: ['LE JEU', "L'ECRAN"], i: c.src === 'jeu' ? 0 : 1 };   // l'appui passe de « jeu » à « écran » et inversement
+}
+
 // ---------- actions ----------
 function clipToast(title, sub, kind) {
   ui.clipToast = { title, sub, kind: kind || 'ok', t: Date.now() };
@@ -145,7 +152,9 @@ function clipToastHTML() {
 }
 function deckClips(space, sim) {
   const look = lookFor(space), c = cfg.clips;
-  const A = (op) => sim ? `data-simclip="${op}"` : '';
+  const A = (op) => sim ? `data-simclip="${op}"${op === 'dur' || op === 'src' ? ` data-cid="clip:${op}"` : ''}` : '';
+  // la valeur d'une case que l'écran change tout seul, sans attendre l'image (programme de l'écran 0.5.3)
+  const T = (k, color) => { if (!sim) return ''; const ch = clipChoice(k); return `data-simtext="clip:${k}" data-opts="${esc(ch.opts.join('|'))}" data-i="${ch.i}" data-color="${color}" data-bg="#11161C" style="display:block;align-self:stretch;color:${color}"`; };
   const memOn = !c.paused && c.when !== 'jamais';
   const rec = !!cstate.rec.on;
   const tabs = `<div class="dtabs">${homeBtn(look, sim)}<div class="dtab disp" style="border-color:${look.accent};color:${look.accent}">CLIPS</div></div>`;
@@ -159,11 +168,11 @@ function deckClips(space, sim) {
       <div class="clbig${memOn ? '' : ' off'}" ${A('clip')}>${svg('retour', 64, '#FF6B79', 1.8)}<span class="cltx"><span class="disp clt">CLIP</span><span class="cls">${clipKeepText()}</span></span></div>
       <div class="clc${rec ? ' rec' : ''}" ${A('rec')}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#FF4D5E" stroke-width="1.8"/><circle cx="12" cy="12" r="${rec ? 4 : 6}" fill="#FF4D5E"/></svg><span class="cltx"><span class="disp">${rec ? 'ARRÊTER' : 'ENREGISTRER'}</span><span class="clsub mono">${rec ? '● ' + fmtClock(recElapsed()) : 'Vidéo longue'}</span></span></div>
       <div class="clc" ${A('shot')}>${svg('appareilphoto', 28, '#7CC4FF')}<span class="cltx"><span class="disp">CAPTURE</span><span class="clsub">Une image</span></span></div>
-      <div class="clc" ${A('dur')}><span class="cll">RETOUR EN ARRIÈRE</span><span class="disp cldur" style="color:${look.accent}">${clipDurLabel()}</span><span class="cldots">${dots}</span></div>
+      <div class="clc" ${A('dur')}><span class="cll">RETOUR EN ARRIÈRE</span><span class="disp cldur" ${T('dur', look.accent) || `style="color:${look.accent}"`}>${clipDurLabel()}</span><span class="cldots">${dots}</span></div>
       <div class="clrecent"><div class="clrh"><span class="disp">DERNIERS CLIPS</span><span>Vidéos › The Deck › Clips</span></div><div class="clthumbs">${recent}</div></div>
       <div class="clc${memOn ? ' on-g' : ''}" ${A('mem')}>${svg('alimentation', 26, memOn ? '#3FB97A' : '#8E9BA8', 1.9)}<span class="cltx"><span class="disp">MÉMOIRE</span><span class="clsub" style="color:${memOn ? '#3FB97A' : '#8E9BA8'}">${memOn ? 'En marche' : 'À l’arrêt'}</span></span></div>
       <div class="clc${c.mic ? ' on-v' : ''}" ${A('mic')}>${svg('micro', 26, c.mic ? '#8E9BFF' : '#8E9BA8')}<span class="cltx"><span class="disp">MA VOIX</span><span class="clsub" style="color:${c.mic ? '#8E9BFF' : '#8E9BA8'}">${c.mic ? 'Dans les clips' : 'Coupée'}</span></span></div>
-      <div class="clc" ${A('src')}><span class="cll">ON FILME</span><span class="disp cldur" style="color:#C9D6E2">${srcName}</span><span class="clsub">${srcSub}</span></div>
+      <div class="clc" ${A('src')}><span class="cll">ON FILME</span><span class="disp cldur" ${T('src', '#C9D6E2') || 'style="color:#C9D6E2"'}>${srcName}</span><span class="clsub">${srcSub}</span></div>
       <div class="clc" ${A('folder')}>${svg('dossier', 26, '#FFB547')}<span class="cltx"><span class="disp">DOSSIER</span><span class="clsub">S’ouvre sur le PC</span></span></div>
       <div class="clc free"><span>Case libre</span></div>
     </div>${clipToastHTML()}`;

@@ -43,7 +43,8 @@ const MEDIA_USAGE = { volplus: 0xE9, volmoins: 0xEA, muet: 0xE2, lecture: 0xCD, 
 const PLAYER_MEDIA = { prev: 'precedente', next: 'suivante', play: 'lecture', vmoins: 'volmoins', vplus: 'volplus' };
 
 // ---------- ce que fait chaque zone ----------
-const Z = { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5, compte: 6 };   // compte : nombre que l'écran change tout seul
+const Z = { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5, compte: 6, texte: 7 };   // compte, texte : nombre ou choix que l'écran change tout seul
+const rgb565 = (hex) => { const n = parseInt(String(hex || '#E6EDF3').replace('#', ''), 16) || 0; return ((n >> 19) & 31) << 11 | ((n >> 10) & 63) << 5 | ((n >> 3) & 31); };
 const MODE = { tap: 0, hold: 1, toggle: 2 };
 
 function pgList() {
@@ -100,7 +101,8 @@ function pgZone(item, r, keyIndex, warn) {
   else if (d.sim === 'page' && item.kind === 'space') z = go(`space:${item.space.id}:${+d.i || 0}`);
   else if (d.sim === 'space') z = go(`space:${d.id}:0`);
   else if (d.simbtn && PLAYER_MEDIA[d.simbtn]) z = { kind: Z.media, mode: MODE.tap, v1: MEDIA_USAGE[PLAYER_MEDIA[d.simbtn]] };
-  else if (d.simclip) z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'clip', op: d.simclip }) };
+  else if (d.simclip) z = Object.assign({ kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'clip', op: d.simclip }) }, d.cid ? { cid: d.cid, delta: 1 } : {});
+  else if (d.simtext) z = { kind: Z.texte, mode: MODE.tap, v1: +d.i || 0, v2: rgb565(d.color), hold: rgb565(d.bg), down: d.opts || '', cid: d.simtext };
   else if (d.simstock && item.stock) {   // espace Stock : catégories, tiroirs, suite, − / +
     const v = item.stock, sid = item.space.id;
     const to = (cat, sub, part) => go(stockViewKey(sid, { cat, sub, part }));
@@ -164,7 +166,7 @@ function pgHtml(item, live) {
 function pgLinkCounters(zones) {
   zones.forEach(z => {
     if (z.kind !== Z.message || !z.cid || !z.delta) return;
-    let k = -1; zones.forEach((c, i) => { if (c.kind === Z.compte && c.cid === z.cid) k = i; });
+    let k = -1; zones.forEach((c, i) => { if ((c.kind === Z.compte || c.kind === Z.texte) && c.cid === z.cid) k = i; });
     if (k >= 0) z.link = k + 1;
   });
   return zones;
@@ -233,7 +235,7 @@ async function pgPrepare() {
   const list = pgList();
   const keyIndex = {};
   list.forEach((it, i) => { keyIndex[it.key] = i; if (it.alias) keyIndex[it.alias] = i; });
-  const htmls = list.map(pgHtml);
+  const htmls = list.map(it => pgHtml(it));   // sans le message des clips
   const shots = await api.deckRender(htmls);
   if (!shots || shots.length !== list.length) throw new Error('impossible de dessiner les pages');
   const warn = [];
@@ -244,7 +246,7 @@ async function pgPrepare() {
     zones: pgLinkCounters(shots[i].zones.map(r => pgZone(it, r, keyIndex, warn)).filter(Boolean))
   }));
   return { pack: pgBuildPack(pages), count: pages.length, warn,
-    sent: { keys: list.map(it => it.key), html: htmls, counters: pages.map(p => p.zones.filter(z => z.kind === Z.compte).map(z => z.cid)) } };
+    sent: { keys: list.map(it => it.key), html: htmls, counters: pages.map(p => p.zones.filter(z => z.kind === Z.compte || z.kind === Z.texte).map(z => z.cid)) } };
 }
 
 async function pgSend(pack) {
@@ -345,12 +347,18 @@ async function pgLiveRun() {
     const shots = await api.deckRender(changed.map(c => c.h));
     if (!shots) return;
     for (let k = 0; k < changed.length; k++) {
-      await pgSendPage(changed[k].i, new Uint8Array(shots[k].jpeg), (sent.counters && sent.counters[changed[k].i] || []).map(id => { const x = stockFindItem(id); return x ? x.item.q : 0; }));
+      await pgSendPage(changed[k].i, new Uint8Array(shots[k].jpeg), (sent.counters && sent.counters[changed[k].i] || []).map(pgCounterValue));
       sent.html[changed[k].i] = changed[k].h;
     }
     if (!cfg.device.pgStale) { cfg.device.pgStale = true; commit(true); }
   } catch (e) { console.error(e); toast('L’écran n’a pas reçu la mise à jour : ' + (e && e.message ? e.message : e) + '. Essayez « Envoyer sur l’écran ».', 'err', 8000); }
   finally { pgLive.busy = false; if (pgLive.again) { pgLive.again = false; pgLiveRefresh(undefined, quiet); } }
+}
+// valeur actuelle d'un compteur (pièce du stock) ou d'un choix (« clip:dur »…)
+function pgCounterValue(id) {
+  if (String(id).startsWith('clip:') && typeof clipChoice === 'function') return clipChoice(String(id).slice(5)).i;
+  const x = typeof stockFindItem === 'function' ? stockFindItem(id) : null;
+  return x ? x.item.q : 0;
 }
 async function pgSendPage(index, jpeg, counts) {
   const isPi = (t) => (m) => m.t === t || m.t === 'pi-err';

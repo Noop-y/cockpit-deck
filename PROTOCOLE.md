@@ -38,7 +38,7 @@ Paquet (nombres en petit-boutiste) :
 | Textes | | messages JSON terminés par un 0 |
 | Images | | JPEG 1024 × 600 (début aligné sur 4 octets) |
 
-Sortes de zones : 0 rien, 1 touche clavier (v1 = Ctrl 1 / Maj 2 / Alt 4 / Windows 8, v2 = code USB de la touche), 2 bouton de manette (v1 = 1 à 32), 3 touche multimédia (v1 = code USB), 4 aller à la page n° v1 du paquet (0 = accueil), 5 message au logiciel (par exemple `{"t":"sound",…}` ou `{"t":"clip","op":"rec"}`), 6 compteur du stock (v1 = nombre, v2 = stock bas ; écran 0.5.1). Un message lié à un compteur porte dans l'octet 11 son pas (−1 ou +1, signé) et dans les 16 bits 18–19 le n° du compteur dans la page + 1 : l'écran change le nombre tout de suite, sans attendre l'image. Comportements : 0 appui (enfoncé tant que le doigt est posé), 1 maintenir (déclenche après le temps de maintien), 2 bascule (contour allumé ou éteint à chaque appui).
+Sortes de zones : 0 rien, 1 touche clavier (v1 = Ctrl 1 / Maj 2 / Alt 4 / Windows 8, v2 = code USB de la touche), 2 bouton de manette (v1 = 1 à 32), 3 touche multimédia (v1 = code USB), 4 aller à la page n° v1 du paquet (0 = accueil), 5 message au logiciel (par exemple `{"t":"sound",…}` ou `{"t":"clip","op":"rec"}`), 6 compteur du stock (v1 = nombre, v2 = stock bas ; écran 0.5.1), 7 choix (texte = les choix séparés par « | », v1 = n° du choix montré, v2 = couleur du texte et hold = couleur du fond en RGB565 ; écran 0.5.3 ; ex. durée des clips, « on filme »). Un message lié à un compteur ou à un choix porte dans l'octet 11 son pas (−1 ou +1, signé) et dans les 16 bits 18–19 le n° du compteur dans la page + 1 : l'écran change le nombre tout de suite, sans attendre l'image. Comportements : 0 appui (enfoncé tant que le doigt est posé), 1 maintenir (déclenche après le temps de maintien), 2 bascule (contour allumé ou éteint à chaque appui).
 
 L'ancien message `config` (ci-dessous) est remplacé par ces pages ; l'écran y répond `ERR`.
 
@@ -48,7 +48,7 @@ Pour le stock : après un − / +, le logiciel redessine seulement la page qui a
 
 1. `{"t":"pi-begin","page":<n° de page du paquet>,"size":<octets>,"crc":<CRC-32>}` → `{"t":"pi-ack","off":0}`.
 2. `{"t":"pi-data","off":<position>,"b64":"<8 Ko>"}` → `{"t":"pi-ack","off":<nouvelle position>}`.
-3. `{"t":"pi-end","n":[<nombres>]}` (les vrais nombres des compteurs de la page, dans l'ordre) → l'écran garde l'image en mémoire vive (elle passe avant celle de la mémoire flash) et la réaffiche si c'est la page montrée : `{"t":"pi-done"}`. Erreur : `{"t":"pi-err","msg":"…"}`.
+3. `{"t":"pi-end","n":[<nombres>]}` (les vrais nombres des compteurs et n° des choix de la page, dans l'ordre) → l'écran garde l'image en mémoire vive (elle passe avant celle de la mémoire flash) et la réaffiche si c'est la page montrée : `{"t":"pi-done"}`. Erreur : `{"t":"pi-err","msg":"…"}`.
 
 Les images en direct sont oubliées au redémarrage ou au prochain paquet complet : le logiciel note qu'il faut tout renvoyer (`device.pgStale`) et le fait tout seul quand l'écran se rebranche.
 

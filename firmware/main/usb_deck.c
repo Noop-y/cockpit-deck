@@ -336,7 +336,7 @@ static void on_line(const char *line)
     json_str(line, "t", t, sizeof t);
     if (strncmp(t, "fw-", 3) == 0) {
         ota_line(t, line);
-    } else if (strncmp(t, "pg-", 3) == 0) {
+    } else if (strncmp(t, "pg-", 3) == 0 || strncmp(t, "pi-", 3) == 0) {   // pages, et une page remplacée en direct
         pages_line(t, line);
     } else if (strcmp(t, "hello") == 0) {
         s_hello_us = esp_timer_get_time();

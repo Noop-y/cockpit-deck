@@ -133,10 +133,10 @@ test('programme de l’écran : format du paquet identique des deux côtés', ()
   assert.match(src, /sizeof\(pack_page_t\) == 28/);
   assert.match(src, /#define NAV_NONE 0xFFFF/); assert.match(src, /#define NAV_MEDIA 0xF000/);
   assert.match(src, /sizeof\(pack_zone_t\) == 28/);
-  assert.match(src, /enum \{ Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE, Z_COMPTE \}/);
+  assert.match(src, /enum \{ Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE, Z_COMPTE, Z_TEXTE \}/);
   assert.match(src, /enum \{ M_APPUI, M_MAINTENIR, M_BASCULE \}/);
   const c = loadPack();
-  assert.deepStrictEqual({ ...c.Z }, { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5, compte: 6 });
+  assert.deepStrictEqual({ ...c.Z }, { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5, compte: 6, texte: 7 });
   assert.deepStrictEqual({ ...c.MODE }, { tap: 0, hold: 1, toggle: 2 });
 });
 
@@ -182,4 +182,28 @@ test('direct : l’espace Clips et les pages avec une case Clips sont redessiné
   assert.strictEqual(c.pgLiveable({ space: sp([null, { action: { type: 'clip', op: 'clip' } }]), page: 0 }), true);
   assert.strictEqual(c.pgLiveable({ space: sp([{ action: { type: 'key' } }]), page: 0 }), false);
   assert.strictEqual(c.pgLiveable({ kind: 'home', page: 0 }), false);
+});
+
+test('programme de l’écran : les images en direct (pi-*) arrivent bien aux pages', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'main', 'usb_deck.c'), 'utf8');
+  assert.match(src, /strncmp\(t, "pi-", 3\) == 0\)[^\n]*\n\s*pages_line\(t, line\)/, 'sinon l’écran jette les mises à jour en direct');
+});
+
+test('clips : la durée et « on filme » changent tout de suite sur l’écran (choix liés)', () => {
+  const c = loadPack();
+  const r = (data) => ({ x: 0, y: 0, w: 100, h: 34, radius: 0, data });
+  const item = { kind: 'space', space: { id: 's', layout: 'clips', pages: [] }, page: 0 };
+  const zones = c.pgLinkCounters([
+    c.pgZone(item, r({ simclip: 'dur', cid: 'clip:dur' }), {}, []),
+    c.pgZone(item, r({ simtext: 'clip:dur', opts: '15 s|30 s|1 min|2 min|3 min|5 min', i: '4', color: '#FFB547', bg: '#11161C' }), {}, []),
+    c.pgZone(item, r({ simclip: 'mic' }), {}, [])]);
+  assert.strictEqual(zones[0].link, 2);
+  assert.strictEqual(zones[0].delta, 1);
+  assert.strictEqual(zones[1].kind, 7);
+  assert.strictEqual(zones[1].v1, 4);
+  assert.strictEqual(zones[1].hold, 0x10A3, 'fond #11161C en RGB565');
+  assert.strictEqual(zones[2].link, undefined);
+  const pack = Buffer.from(c.pgBuildPack([{ jpeg: new Uint8Array([1]), zones }]));
+  assert.strictEqual(pack.readUInt16LE(24 + 28 + 18), 2);
+  assert.ok(pack.includes(Buffer.from('15 s|30 s|1 min|2 min|3 min|5 min')));
 });
