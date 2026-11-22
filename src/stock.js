@@ -281,7 +281,11 @@ function stockDelta(id, d) {
 }
 function stockFromDeck(m) {
   const x = stockDelta(m.id, m.d);
-  if (!x) return;
+  if (!x) {
+    if (!stockFindItem(String(m.id))) toast('L’écran montre une pièce qui n’existe plus : cliquez sur « Envoyer sur l’écran ».', 'err', 7000);
+    return;
+  }
+  toast(`${x.item.name} : ${x.item.q}`, 'ok', 1500);   // on voit dans le logiciel que l'appui est arrivé
   commit(ui.view !== 'stock');   // l'onglet Stock ouvert : on le redessine pour voir le nouveau nombre
   if (ui.view === 'stock') render();
   if (typeof pgLiveRefresh === 'function') pgLiveRefresh();

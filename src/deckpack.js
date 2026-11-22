@@ -293,8 +293,14 @@ function pgLiveRefresh(delay) { clearTimeout(pgLive.timer); pgLive.timer = setTi
 async function pgLiveRun() {
   if (pgLive.busy) { pgLive.again = true; return; }
   const sent = ui.pgSent;
-  if (!sent || !ui.deckLinked || !ui.deckFw || fwOlder(ui.deckFw, PI_VERSION_MIN)) return;
+  if (!ui.deckLinked) return;
   if (ui.pg && (ui.pg.state === 'draw' || ui.pg.state === 'send')) { pgLive.again = true; return; }
+  if (!ui.deckFw || fwOlder(ui.deckFw, PI_VERSION_MIN)) {
+    if (!pgLive.warned) { pgLive.warned = true; toast(`Pour voir les nombres changer sur l’écran, mettez son programme à jour en ${PI_VERSION_MIN} (page Appareil).`, 'err', 9000); }
+    return;
+  }
+  // le logiciel a redémarré depuis le dernier envoi : il ne sait plus ce que montre l'écran, on renvoie tout
+  if (!sent) { clearTimeout(pgLive.structTimer); pgLive.structTimer = setTimeout(() => { if (ui.deckLinked) deckSendPages(); }, 1500); return; }
   const list = pgList();
   if (list.map(it => it.key).join('|') !== sent.keys.join('|')) {   // pages ajoutées ou retirées : tout renvoyer
     clearTimeout(pgLive.structTimer);
@@ -313,7 +319,7 @@ async function pgLiveRun() {
       sent.html[changed[k].i] = changed[k].h;
     }
     if (!cfg.device.pgStale) { cfg.device.pgStale = true; commit(true); }
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error(e); toast('L’écran n’a pas reçu la mise à jour : ' + (e && e.message ? e.message : e) + '. Essayez « Envoyer sur l’écran ».', 'err', 8000); }
   finally { pgLive.busy = false; if (pgLive.again) { pgLive.again = false; pgLiveRefresh(); } }
 }
 async function pgSendPage(index, jpeg) {
