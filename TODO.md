@@ -31,7 +31,11 @@ Relu au début de chaque session, mis à jour à la fin.
 
 ## À faire
 
-- Idée (22/11/2026) : gestion du stock d'électronique (onglet Stock dans le logiciel, espace Stock sur l'écran avec −1/+1, projets, liste de courses) — à préciser avec l'utilisateur, a besoin de l'étape 4 (affichage en direct).
+- Stock d'électronique (22/11/2026, maquettes : artefact « The Deck · Stock ») — choix de l'utilisateur :
+  - écran : maquette 5 « par rangement » (rangements renommables à gauche, tiroirs à droite) ; appui sur un tiroir → fenêtre −/+ pour corriger la quantité ;
+  - logiciel : onglet Stock, renommer les rangements, nombre de tiroirs, pièces (quantité, seuil stock bas, lien d'achat) ;
+  - Claude a accès au stock (lecture ; retrait seulement à la phrase de fin de projet, après confirmation) — moyen à valider (proposé : petit serveur MCP local fourni par le logiciel) ;
+  - a besoin de l'étape 4 (affichage en direct) pour que la quantité change sur l'écran.
 
 - Programme de l'écran : étapes 2 à 4 (voir En cours) et nouveau message `config` en images dans `PROTOCOLE.md`.
 - Twitch : marqueurs, clips, pub, titre du live.
