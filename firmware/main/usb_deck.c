@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include "usb_deck.h"
 #include "pages.h"
+#include "bsp/esp-bsp.h"
 
 static const char *TAG = "usb";
 
@@ -209,6 +210,7 @@ void usb_deck_type(const char *s)
 }
 
 bool usb_deck_mounted(void) { return tud_mounted(); }
+bool usb_deck_suspended(void) { return tud_suspended(); }
 
 // ---------- liaison série avec le logiciel (une ligne JSON par message) ----------
 // Les lignes reçues sont recopiées dans une file et traitées par une tâche à part : la mise à jour du
@@ -369,6 +371,11 @@ static void on_line(const char *line)
         ota_line(t, line);
     } else if (strncmp(t, "pg-", 3) == 0 || strncmp(t, "pi-", 3) == 0) {   // pages, et une page remplacée en direct
         pages_line(t, line);
+    } else if (strcmp(t, "dev") == 0) {   // luminosité et veille
+        long bri = 100, sl = 0;
+        json_num(line, "bri", &bri);
+        json_num(line, "sleep", &sl);
+        if (bsp_display_lock(-1)) { pages_device((int)bri, (int)sl); bsp_display_unlock(); }
     } else if (strcmp(t, "kb") == 0) {
         kb_line(line);
     } else if (strcmp(t, "hello") == 0) {

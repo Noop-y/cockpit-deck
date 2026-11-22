@@ -177,3 +177,10 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] « Stop tout » pendant un long son : le micro du jeu s'éteint.
 - [ ] Débrancher le câble pendant un son : la touche V n'est pas bloquée (relâchée au bout de 2,5 s au plus).
 
+## Veille et PC éteint (écran 0.5.6)
+- [ ] Page Appareil : écran en 0.5.6. Luminosité : bouger le curseur → l'écran change tout de suite.
+- [ ] Mise en veille 15 s : ne plus toucher → l'écran s'éteint au bout de 15 s. Toucher une case : l'écran se rallume, la case ne se déclenche pas. Toucher de nouveau : la case marche.
+- [ ] Jamais : l'écran reste allumé.
+- [ ] Éteindre le PC (The Deck branché) : l'écran s'éteint quelques secondes après. Rallumer le PC : il se rallume.
+- [ ] Mettre le PC en veille : l'écran s'éteint ; réveil du PC : il se rallume.
+

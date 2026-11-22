@@ -16,6 +16,8 @@ void usb_deck_start(void);
 
 // true quand Windows a reconnu l'écran
 bool usb_deck_mounted(void);
+// le PC a mis l'USB en pause (PC éteint ou en veille, câble toujours alimenté)
+bool usb_deck_suspended(void);
 // true quand le logiciel The Deck a dit bonjour il y a moins de 6 s ; version du logiciel (ou "")
 bool usb_deck_app_linked(void);
 const char *usb_deck_app_version(void);

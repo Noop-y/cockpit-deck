@@ -236,3 +236,11 @@ test('push-to-talk : l’écran sait tenir une touche à la demande et la relâc
   const c = loadPack();
   assert.deepStrictEqual({ ...c.keyCombo('V') }, { mods: 0, code: 0x19 });
 });
+
+test('veille : l’écran reçoit luminosité et veille, et s’éteint quand le PC s’éteint', () => {
+  const u = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'main', 'usb_deck.c'), 'utf8');
+  const p = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'main', 'pages.c'), 'utf8');
+  assert.match(u, /strcmp\(t, "dev"\) == 0\)[\s\S]{0,300}pages_device\(/);
+  assert.match(p, /usb_deck_suspended\(\)/, 'PC en veille ou éteint');
+  assert.match(p, /veille_wake\(\)\) \{ s_swallow = true; return; \}/, 'l’appui qui réveille ne déclenche rien');
+});

@@ -144,7 +144,7 @@ function defaultConfig() {
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
     discord: { clientId: '', clientSecret: '', autoConnect: false, shortcuts: [] },
-    device: { brightness: 80, sleepMin: 10, swipe: true, swipeV: true, loop: false, pgStale: false },
+    device: { brightness: 80, sleepSec: 0, swipe: true, swipeV: true, loop: false, pgStale: false },
     settings: { startWithWindows: true },
     stock: { cats: [], history: [] }
   };
@@ -443,6 +443,13 @@ function deckPage(space, pageIdx, sim) {
     return deckCell(c, look, { on: st.on || st.flash, prog: st.prog, attrs: sim && c ? `data-simcell="${i}"` : '' });
   }).join('');
   return deckFrame(look, `<div class="dtop">${tabs}<div class="small disp" style="color:#C9D6E2;font-size:1.6cqw">${esc(space.name)}</div></div><div class="dgrid${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div>${sim && typeof clipToastHTML === 'function' ? clipToastHTML() : ''}`, '', spaceOverlay(space, sim));
+}
+// luminosité et veille de l'écran (programme 0.5.6 : message « dev ») ; envoyées à chaque branchement et à chaque changement
+const SLEEP_CHOICES = [[0, 'Jamais'], [15, '15 s'], [30, '30 s'], [60, '1 min'], [120, '2 min'], [300, '5 min'], [1800, '30 min']];
+let devSyncT = null;
+function devSync() {
+  clearTimeout(devSyncT);
+  devSyncT = setTimeout(() => { if (ui.deckLinked) deckWrite({ t: 'dev', bri: Math.round(cfg.device.brightness || 80), sleep: Math.round(cfg.device.sleepSec || 0) }); }, 200);
 }
 // transparence des cases de l'accueil (0,3 = on voit le fond ; 1 = opaque)
 const homeGlass = () => { const v = +(cfg.look && cfg.look.homeGlass); return v > 0 && v <= 1 ? v : 0.3; };
@@ -919,7 +926,7 @@ function viewAppareil() {
   return `<div class="head"><div><h1 class="disp">Appareil</h1><div class="muted" style="margin-top:4px">L\u2019écran tactile The Deck, branché en USB.</div></div><button class="btn pri" data-act="send">Envoyer sur l\u2019écran</button></div>
     <div class="editor"><div class="panel" style="flex:1 1 420px;min-width:0">
       <div><div class="row" style="justify-content:space-between"><label class="lab" for="f-bri">Luminosité de l\u2019écran</label><span class="mono" style="color:var(--amber)">${d.brightness} %</span></div><input id="f-bri" type="range" min="10" max="100" step="5" value="${d.brightness}" data-field="bri"></div>
-      <div><span class="lab">Mise en veille après</span>${seg('sleep', [[0, 'Jamais'], [5, '5 min'], [10, '10 min'], [30, '30 min']], d.sleepMin)}</div>
+      <div><span class="lab">Mise en veille après (sans toucher l\u2019écran)</span>${seg('sleep', SLEEP_CHOICES, d.sleepSec || 0)}<div class="small muted" style="margin-top:6px">L\u2019écran s\u2019éteint ; un appui le rallume (cet appui ne déclenche aucune case). Il s\u2019éteint aussi quand le PC s\u2019éteint ou se met en veille. Écran 0.5.6.</div></div>
       <label class="chk"><input type="checkbox" data-act="dev-swipe" ${d.swipe !== false ? 'checked' : ''}>Changer de page en glissant le doigt vers la gauche ou la droite</label>
       <label class="chk"><input type="checkbox" data-act="dev-swipev" ${d.swipeV !== false ? 'checked' : ''}>Changer d\u2019espace en glissant le doigt vers le haut ou le bas (dans l\u2019ordre de l\u2019accueil)</label>
       <label class="chk" style="${d.swipe === false && d.swipeV === false ? 'opacity:.5' : ''}"><input type="checkbox" data-act="dev-loop" ${d.loop ? 'checked' : ''} ${d.swipe === false && d.swipeV === false ? 'disabled' : ''}>Après la dernière page ou le dernier espace, revenir au premier</label>
@@ -929,7 +936,7 @@ function viewAppareil() {
       ${ui.deckLinked ? '' : '<div class="row"><button class="btn" data-act="deck-link">Relier l\u2019écran</button></div>'}
       <div style="line-height:1.6">${ui.deckOk ? '<span style="color:var(--cyan)">Le dernier envoi a réussi.</span>' : 'Aucun envoi réussi pendant cette session.'}</div>
       ${ui.pg && ui.pg.state !== 'idle' ? `<div style="line-height:1.6;${ui.pg.state === 'err' ? 'color:var(--red)' : ''}">${esc(ui.pg.msg)}</div>${ui.pg.state === 'send' ? `<div style="height:10px;border-radius:5px;background:#1A222B;overflow:hidden"><div style="height:100%;width:${ui.pg.pct}%;background:var(--amber)"></div></div><div class="small mono">${ui.pg.pct} %</div>` : ''}` : ''}
-      <div class="small muted">« Envoyer sur l\u2019écran » dessine chaque page comme dans <b>Aperçu de l\u2019écran</b> et l\u2019envoie en image ; l\u2019écran la garde même débranché. Pas encore sur l\u2019écran : glisser le doigt, luminosité, mise en veille, et ce qui bouge (jaquette, chrono des clips, sorties de la soundboard).</div></div>
+      <div class="small muted">« Envoyer sur l\u2019écran » dessine chaque page comme dans <b>Aperçu de l\u2019écran</b> et l\u2019envoie en image ; l\u2019écran la garde même débranché. La luminosité et la mise en veille partent tout de suite sur l\u2019écran.</div></div>
     ${typeof flasherPanel === 'function' ? flasherPanel() : ''}</div>`;
 }
 
@@ -1188,7 +1195,7 @@ async function deckClose() {
 // Ce que l'écran envoie au logiciel (voir PROTOCOLE.md)
 function onDeckMessage(m) {
   if (!m || !m.t) return;
-  if (m.t === 'hello') { const v = String(m.fw || ''); if (typeof m.rev === 'number') ui.deckRev = m.rev; if (v !== ui.deckFw) { const first = !ui.deckFw; ui.deckFw = v; render(); if (first && typeof pgOnHello === 'function') pgOnHello(); } return; }
+  if (m.t === 'hello') { const v = String(m.fw || ''); if (typeof m.rev === 'number') ui.deckRev = m.rev; if (v !== ui.deckFw) { const first = !ui.deckFw; ui.deckFw = v; render(); if (first && typeof pgOnHello === 'function') pgOnHello(); } devSync(); return; }
   if (m.t === 'sound') {
     const s = spaceById(m.space); if (!s) return;
     const c = s.pages[m.page] && s.pages[m.page].cells[m.cell];
@@ -1607,7 +1614,7 @@ const ACTIONS = {
   },
   'obs-off': () => { OBS.disconnect(); },
   'obs-auto': (d, el) => { cfg.obs.autoConnect = el.checked; commit(true); },
-  sleep: (d) => { cfg.device.sleepMin = +d.v; commit(); },
+  sleep: (d) => { cfg.device.sleepSec = +d.v; commit(); devSync(); },
   startwin: async (d, el) => { cfg.settings.startWithWindows = el.checked; await api.setStartWithWindows(el.checked); commit(true); },
   'backups-folder': () => api.openBackupsFolder(),
   'backup-now': async () => { const n = await api.createBackup(cfg); if (n) { toast('Sauvegarde créée.', 'ok'); ui.backups = await api.listBackups(); render(); } else toast('Disponible dans le logiciel installé.'); },
@@ -1689,7 +1696,7 @@ function onField(el, isChange) {
     case 'obs-host': cfg.obs.host = v; commit(true); break;
     case 'obs-port': cfg.obs.port = +v || 4455; commit(true); break;
     case 'obs-pass': cfg.obs.password = v; commit(true); break;
-    case 'bri': cfg.device.brightness = +v; commit(!isChange); if (!isChange) { const s = el.parentElement.querySelector('.mono'); if (s) s.textContent = v + ' %'; } break;
+    case 'bri': cfg.device.brightness = +v; commit(!isChange); devSync(); if (!isChange) { const s = el.parentElement.querySelector('.mono'); if (s) s.textContent = v + ' %'; } break;
     case 'ns-name': ui.modal.name = v; break;
     case 'ns-exe': ui.modal.exe = v; break;
     case 'picto-search': ui.search = v; renderModal(); { const s = $('#f-psearch'); if (s) { s.focus(); s.setSelectionRange(v.length, v.length); } } break;
@@ -1954,6 +1961,11 @@ function migrate(c) {
   out.cats = Array.isArray(c.cats) ? c.cats : [];
   if (!Array.isArray(out.discord.shortcuts)) out.discord.shortcuts = [];
   out.device = Object.assign({}, d.device, c.device || {});
+  if (c.device && c.device.sleepSec == null && c.device.sleepMin != null) {   // ancien réglage en minutes → choix le plus proche
+    const s = (+c.device.sleepMin || 0) * 60;
+    out.device.sleepSec = s ? SLEEP_CHOICES.map(x => x[0]).filter(Boolean).reduce((a, b) => Math.abs(b - s) < Math.abs(a - s) ? b : a) : 0;
+  }
+  delete out.device.sleepMin;
   out.settings = Object.assign({}, d.settings, c.settings || {});
   out.stock = typeof stockNorm === 'function' ? stockNorm(c.stock) : (c.stock || d.stock);   // stock d'électronique (stock.js)
   out.spaces = (c.spaces || []).filter(s => s && s.pages);

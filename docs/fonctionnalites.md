@@ -139,3 +139,7 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 - **Comment** : l'écran est un vrai clavier USB, donc le jeu voit un vrai appui. Logiciel : `pttEnsure`, `pttSync`, `pttRelease` (`app.js`), `SOUND.playingToGame()` (`sound.js`), message `kb`. Écran : `kb_line` (`usb_deck.c`) avec un minuteur qui relâche la touche si le logiciel ne redit rien pendant 2,5 s.
 - **Attention** : si la fenêtre de discussion du jeu est ouverte, la lettre s'y écrit.
 
+## Veille de l'écran et PC éteint (22/11/2026, écran 0.5.6)
+- **Ce que ça fait** : Appareil › « Mise en veille après » : Jamais, 15 s, 30 s, 1 min, 2 min, 5 min, 30 min sans toucher l'écran → il s'éteint ; un appui le rallume (cet appui ne déclenche aucune case). La luminosité s'applique tout de suite. Quand le PC s'éteint ou se met en veille (l'USB reste alimenté), l'écran s'éteint ; il se rallume quand le PC revient.
+- **Comment** : logiciel : `devSync()` et `SLEEP_CHOICES` (`app.js`), message `dev`, `cfg.device.sleepSec` (l'ancien `sleepMin` est repris au plus proche). Écran : `veille_tick` (toutes les 0,5 s : `lv_display_get_inactive_time`, `tud_mounted` / `tud_suspended`), `veille_wake` dans `touch_cb`, `pages_device` (`pages.c`).
+

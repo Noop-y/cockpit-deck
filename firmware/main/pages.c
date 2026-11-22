@@ -443,9 +443,55 @@ static void press_cancel(void)
     s_active = -1;
 }
 
+// ---------- veille et écran éteint quand le PC s'éteint ----------
+// Luminosité et délai de veille : envoyés par le logiciel (message « dev »). Veille = rétroéclairage à 0 après
+// un temps sans toucher ; le premier appui rallume sans rien déclencher. PC éteint ou en veille (USB débranché
+// ou suspendu pendant plus de 3 s, après avoir été relié au moins une fois) : écran éteint jusqu'au retour du PC.
+static int s_bri = 100;
+static uint32_t s_sleep_ms;
+static bool s_asleep, s_hostoff, s_was_host, s_swallow;
+static int s_applied = -1;
+static int64_t s_host_lost;
+static void veille_apply(void)
+{
+    int b = (s_asleep || s_hostoff) ? 0 : s_bri;
+    if (b != s_applied) { bsp_display_brightness_set(b); s_applied = b; }
+}
+static void veille_tick(lv_timer_t *t)
+{
+    bool host = usb_deck_mounted() && !usb_deck_suspended();
+    int64_t now = esp_timer_get_time();
+    if (host) {
+        s_was_host = true; s_host_lost = 0;
+        if (s_hostoff) { s_hostoff = false; s_asleep = false; lv_display_trigger_activity(NULL); }
+    } else if (s_was_host) {
+        if (!s_host_lost) s_host_lost = now;
+        else if (now - s_host_lost > 3000000) s_hostoff = true;
+    }
+    if (s_sleep_ms && !s_asleep && !s_hostoff && lv_display_get_inactive_time(NULL) > s_sleep_ms) s_asleep = true;
+    veille_apply();
+}
+// un appui sur l'écran éteint : on rallume (en veille) et cet appui ne fait rien d'autre
+static bool veille_wake(void)
+{
+    if (s_hostoff) return true;
+    if (s_asleep) { s_asleep = false; veille_apply(); return true; }
+    return false;
+}
+void pages_device(int bri, int sleep_s)
+{
+    s_bri = bri < 5 ? 5 : (bri > 100 ? 100 : bri);
+    s_sleep_ms = sleep_s > 0 ? (uint32_t)sleep_s * 1000u : 0;
+    s_asleep = false;
+    lv_display_trigger_activity(NULL);
+    veille_apply();
+}
+
 static void touch_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_PRESSED && veille_wake()) { s_swallow = true; return; }
+    if (s_swallow) { if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) s_swallow = false; return; }
     if (s_rx || s_count == 0) return;
     lv_indev_t *indev = lv_indev_active();
     if (!indev) return;
@@ -533,6 +579,7 @@ static void info_timer(lv_timer_t *t)
 // ---------- démarrage ----------
 bool pages_start(void)
 {
+    lv_timer_create(veille_tick, 500, NULL);   // veille et PC éteint (même sans pages)
     s_part = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "pages");
     if (!s_part) { ESP_LOGE(TAG, "espace « pages » introuvable"); return false; }
 

@@ -16,5 +16,9 @@ bool pages_start(void);
 // Nombre de pages gardées dans l'écran (0 = aucune)
 int pages_count(void);
 
+// Réglages venus du logiciel : luminosité (%) et veille après sleep_s secondes sans toucher (0 = jamais).
+// À appeler avec l'affichage verrouillé.
+void pages_device(int bri, int sleep_s);
+
 // Lignes pg-begin / pg-data / pg-end reçues du logiciel
 void pages_line(const char *t, const char *line);

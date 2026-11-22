@@ -52,6 +52,10 @@ Pour le stock : après un − / +, le logiciel redessine seulement la page qui a
 
 Les images en direct sont oubliées au redémarrage ou au prochain paquet complet : le logiciel note qu'il faut tout renvoyer (`device.pgStale`) et le fait tout seul quand l'écran se rebranche.
 
+### Luminosité et veille (écran 0.5.6)
+
+`{"t":"dev","bri":80,"sleep":120}` : luminosité en % et mise en veille après `sleep` secondes sans toucher (0 = jamais). Envoyé à chaque branchement (après `hello`) et à chaque changement. En veille, le premier appui rallume sans rien déclencher. L'écran s'éteint aussi tout seul quand l'USB du PC est débranché ou suspendu plus de 3 s (PC éteint ou en veille), et se rallume quand le PC revient.
+
 ### Tenir une touche (écran 0.5.5)
 
 `{"t":"kb","mods":0,"code":25,"down":1}` : l'écran appuie (down 1) ou relâche (down 0) une touche de son clavier USB (code USB, ex. 25 = V). Sert au push-to-talk du jeu pendant un son de la soundboard. Le logiciel redit `down:1` chaque seconde ; sans nouvelle pendant 2,5 s, l'écran relâche tout seul.
