@@ -30,7 +30,8 @@ Fabrication officielle : chaque `git push` lance GitHub Actions (`.github/workfl
   - `obs.js` OBS (obs-websocket) ; `sound.js` moteur de la soundboard ; `cliprec.js` son des clips (AudioWorklet) ;
   - `app.js` le cœur : configuration `cfg`, état `ui`, rendu (`render()` reconstruit la page en HTML), écran du Deck (`deckPage`, `deckCell`…), simulateur, liaison USB, actions (`ACTIONS`, `data-act`), champs (`onField`, `data-field`), migration des anciennes configurations (`migrate`) ;
   - `flasher.js` installation et mise à jour du programme de l'écran ; `deckpack.js` pages dessinées en images (avec `rendu.html`, fenêtre invisible) et envoyées à l'écran ;
-  - `stock.js` stock d'électronique (onglet Stock : catégories, sous-catégories facultatives, pièces) ; `soundcut.js` découpage des sons ;
+  - `stock.js` stock d'électronique (onglet Stock : catégories, sous-catégories facultatives, pièces ; propositions de Claude) ; `soundcut.js` découpage des sons ;
+  - `lien-claude.js` connecteur MCP lancé par l'application Claude (pas chargé par l'interface ; ADR 0006) ;
   - `clipsui.js` tout ce qui touche aux clips dans l'interface (chargé après `app.js`, il ajoute ses actions à `ACTIONS`) ;
   - `styles.css` ; sur l'écran du Deck, les tailles sont en `cqw` (1 cqw = 1 % de la largeur de l'écran).
 - `build/` — icônes de l'application. `vendor/` — FFmpeg, téléchargé à la fabrication (pas dans git).
@@ -54,6 +55,7 @@ Fabrication officielle : chaque `git push` lance GitHub Actions (`.github/workfl
 - Ils ne sont **jamais** mis dans un espace exporté ni envoyés à l'écran (`deviceConfig()` ne les contient pas).
 - **Ne jamais** les écrire en clair, les afficher dans un log, ni les committer. Aucune configuration réelle de l'utilisateur dans le dépôt.
 - Ouverture de liens externes limitée (`link:open` : vb-audio.com et discord.com) ; lecture de fichiers limitée aux dossiers du logiciel (`sound:read`, `clips.inside()`).
+- Claude (connecteur local, tuyau `the-deck-claude`) peut seulement lire le stock et proposer : rien ne s'applique sans VALIDER. Ne jamais lui donner accès aux réglages ni aux codes secrets.
 
 ## Règles de travail
 

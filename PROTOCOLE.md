@@ -52,9 +52,25 @@ Pour le stock : après un − / +, le logiciel redessine seulement la page qui a
 
 Les images en direct sont oubliées au redémarrage ou au prochain paquet complet : le logiciel note qu'il faut tout renvoyer (`device.pgStale`) et le fait tout seul quand l'écran se rebranche.
 
+### Montrer une page (écran 0.5.2)
+
+`{"t":"pg-show","page":<n° de page du paquet>}` : l'écran affiche cette page tout de suite (pas de réponse). Sert à montrer une proposition de Claude. Les écrans plus anciens l'ignorent.
+
 ### Écran → PC : stock
 
 `{"t":"stock","id":"<id de la pièce>","d":-1}` (ou `1`) : appui sur − ou + d'une pièce de l'espace Stock. Le logiciel change la quantité, l'enregistre et renvoie la page.
+
+`{"t":"stock-prop","op":"ok","id":"<id de la proposition>"}` (ou `"op":"non"`) : appui sur VALIDER (ou REFUSER) dans la fenêtre « Proposition de Claude ».
+
+## Lien avec l'application Claude (tuyau Windows)
+
+L'application Claude lance `lien-claude.js` (connecteur MCP, une ligne JSON-RPC par message sur l'entrée / la sortie standard). Il pose ses questions au logiciel par le tuyau `\\.\pipe\the-deck-claude`, une ligne JSON par message :
+
+- `{"id":1,"op":"lire"}` → `{"id":1,"resultat":{categories, proposition_en_attente, historique}}` ;
+- `{"id":1,"op":"proposer","args":{titre, changements:[{piece_id, quantite} | {nouvelle_piece:{nom, categorie_id, tiroir_id}, quantite}]}}` → `{"id":1,"resultat":{id, etat}}` ou `{"id":1,"erreur":"…"}` ;
+- `{"id":1,"op":"etat","args":{id}}` → `{"id":1,"resultat":{id, etat}}`.
+
+Rien d'autre n'est possible : pas d'écriture directe du stock, aucun réglage, aucun code secret.
 
 ## Du logiciel vers l'écran
 

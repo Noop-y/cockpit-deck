@@ -421,3 +421,17 @@ body.celldragging, body.celldragging * { cursor: grabbing !important; }
 .dstpg { width: 6cqw; height: 4.4cqw; border-radius: 1cqw; border: 1.5px solid #26303A; background: #1A222B; color: #E6EDF3; font-size: 2.6cqw; display: flex; align-items: center; justify-content: center; }
 .dstpg.off { opacity: .3; }
 .dstempty { color: #8E9BA8; font-size: 1.6cqw; padding: 2cqw; }
+.dstright2 { display: flex; align-items: center; gap: 1.6cqw; }
+.dsthelp { height: 4.4cqw; padding: 0 1.8cqw; border-radius: 1cqw; border: 1.5px solid #26303A; background: #11161C; color: #8E9BA8; font-size: 1.6cqw; letter-spacing: .08em; display: flex; align-items: center; }
+.dstplist { flex: 1; display: flex; flex-direction: column; gap: 0.7cqw; min-height: 0; overflow: hidden; }
+.dstprow { display: grid; grid-template-columns: minmax(0, 1fr) 8cqw 12cqw; align-items: center; gap: 1.2cqw; height: 4.2cqw; padding: 0 1.4cqw; border-radius: 1cqw; background: #0D1116; border: 1.5px solid #26303A; flex-shrink: 0; }
+.dstprow .mono { font-size: 2.2cqw; font-weight: 600; text-align: right; }
+.dstprow .dstcs.mono { font-size: 1.5cqw; font-weight: 400; }
+.dstpbtns { display: flex; gap: 1.6cqw; }
+.dstpbtn { flex: 1; height: 8cqw; border-radius: 1.4cqw; border: 2px solid; display: flex; align-items: center; justify-content: center; font-size: 2.8cqw; letter-spacing: .08em; }
+.dstpbtn.ok { background: #12301F; border-color: #3FB97A; color: #3FB97A; }
+.dstpbtn.no { background: #2A1418; border-color: #FF6B78; color: #FF8A95; }
+.dstaide { display: flex; flex-direction: column; gap: 0.2cqw; padding: 0.9cqw 1.4cqw; border-radius: 1cqw; background: #0D1116; border: 1.5px solid #26303A; flex-shrink: 0; }
+.dstaide .mono { font-size: 1.9cqw; }
+.dstaide .dstcs { white-space: normal; font-size: 1.3cqw; }
+.stprop { border-color: #8E9BFF; margin-bottom: 16px; gap: 8px; }

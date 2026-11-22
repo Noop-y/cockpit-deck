@@ -587,6 +587,93 @@ ipcMain.handle('discord:run', async (e, op, arg) => {
 });
 
 // ---------- démarrage ----------
+// ---------- lien avec l'application Claude (stock d'électronique) ----------
+// L'application Claude lance src/lien-claude.js (copié dans le dossier de The Deck) avec ce même programme en mode
+// Node (ELECTRON_RUN_AS_NODE). Ce petit programme pose ses questions ici, par un tuyau Windows ; on les passe à
+// l'interface, qui tient le stock (stock.js : claudeAsk). Claude peut seulement lire et proposer.
+const net = require('net');
+const CLAUDE_PIPE = process.platform === 'win32' ? '\\\\.\\pipe\\the-deck-claude' : path.join(require('os').tmpdir(), 'the-deck-claude.sock');
+const claudeScript = () => path.join(dataDir(), 'lien-claude.js');
+const claudeWait = new Map();
+let claudeSeq = 0, claudeServer = null;
+function claudeAsk(op, args) {
+  return new Promise((resolve) => {
+    if (!win || win.isDestroyed()) { resolve({ erreur: 'The Deck démarre encore. Réessayez dans quelques secondes.' }); return; }
+    const rid = ++claudeSeq;
+    const t = setTimeout(() => { claudeWait.delete(rid); resolve({ erreur: 'The Deck ne répond pas.' }); }, 6000);
+    claudeWait.set(rid, (r) => { clearTimeout(t); resolve(r); });
+    win.webContents.send('claude-ask', { rid, op: String(op || ''), args: args && typeof args === 'object' ? args : {} });
+  });
+}
+ipcMain.on('claude:answer', (e, rid, r) => { const f = claudeWait.get(rid); if (f) { claudeWait.delete(rid); f(r || { erreur: 'Pas de réponse.' }); } });
+function startClaudePipe() {
+  if (process.platform !== 'win32') { try { fs.unlinkSync(CLAUDE_PIPE); } catch (e) { /* pas là */ } }
+  claudeServer = net.createServer((sock) => {
+    let buf = '';
+    sock.setEncoding('utf8');
+    sock.on('data', async (d) => {
+      buf += d;
+      if (buf.length > 200000) { sock.destroy(); return; }
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        let m; try { m = JSON.parse(line); } catch (err) { continue; }
+        const r = await claudeAsk(m.op, m.args);
+        try { sock.write(JSON.stringify(Object.assign({ id: m.id }, r)) + '\n'); } catch (err) { /* fermé */ }
+      }
+    });
+    sock.on('error', () => {});
+  });
+  claudeServer.on('error', (err) => console.error('lien Claude :', err.message));
+  claudeServer.listen(CLAUDE_PIPE);
+}
+// fichiers de réglages de l'application Claude : version classique, et version du Microsoft Store
+function claudeConfigFiles() {
+  const out = [];
+  const roaming = process.env.APPDATA, local = process.env.LOCALAPPDATA;
+  if (roaming && fs.existsSync(path.join(roaming, 'Claude'))) out.push(path.join(roaming, 'Claude', 'claude_desktop_config.json'));
+  if (local) {
+    try {
+      fs.readdirSync(path.join(local, 'Packages')).filter(n => /claude/i.test(n)).forEach(n => {
+        const d = path.join(local, 'Packages', n, 'LocalCache', 'Roaming', 'Claude');
+        if (fs.existsSync(d)) out.push(path.join(d, 'claude_desktop_config.json'));
+      });
+    } catch (e) { /* pas de dossier Packages */ }
+  }
+  return out;
+}
+function claudeState() {
+  const files = claudeConfigFiles();
+  const linked = files.some(f => { const c = readJson(f); return !!(c && c.mcpServers && c.mcpServers['the-deck']); });
+  return { found: files.length > 0, linked, portable: !!process.env.PORTABLE_EXECUTABLE_FILE };
+}
+ipcMain.handle('claude:state', () => claudeState());
+ipcMain.handle('claude:link', (e, on) => {
+  if (process.platform !== 'win32') return { ok: false, message: 'Disponible dans le logiciel installé sur Windows.' };
+  if (on && process.env.PORTABLE_EXECUTABLE_FILE) return { ok: false, message: 'Avec la version Portable, le lien ne tient pas : installez la version « Installation » de The Deck, puis recommencez.' };
+  const files = claudeConfigFiles();
+  if (!files.length) return { ok: false, message: 'Application Claude introuvable sur ce PC. Installez-la (claude.ai/download), ouvrez-la une fois, puis recommencez.' };
+  try {
+    if (on) fs.writeFileSync(claudeScript(), fs.readFileSync(path.join(__dirname, 'src', 'lien-claude.js')));
+    for (const f of files) {
+      let c = {};
+      if (fs.existsSync(f)) {
+        c = readJson(f);
+        if (!c || typeof c !== 'object') return { ok: false, message: 'Le fichier de réglages de Claude est illisible : rien n’a été changé.' };
+        const keep = f + '.avant-the-deck';
+        if (!fs.existsSync(keep)) fs.copyFileSync(f, keep);   // copie de l'original, une seule fois
+      }
+      c.mcpServers = c.mcpServers && typeof c.mcpServers === 'object' ? c.mcpServers : {};
+      if (on) c.mcpServers['the-deck'] = { command: process.execPath, args: [claudeScript()], env: { ELECTRON_RUN_AS_NODE: '1' } };
+      else delete c.mcpServers['the-deck'];
+      fs.writeFileSync(f + '.tmp', JSON.stringify(c, null, 2)); fs.renameSync(f + '.tmp', f);   // lisible : on peut l'ouvrir à la main
+    }
+    return { ok: true, state: claudeState() };
+  } catch (err) {
+    return { ok: false, message: 'Impossible d’écrire les réglages de Claude : ' + err.message };
+  }
+});
+
 // Une seule copie à la fois. Si une copie plus ancienne tourne déjà (cachée près de l'horloge),
 // elle se ferme et la nouvelle version prend sa place.
 const newer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -622,6 +709,7 @@ if (!gotLock) {
     createWindow();
     createTray();
     clips.init();
+    startClaudePipe();
   });
   app.on('before-quit', () => { quitting = true; });
   app.on('will-quit', () => {

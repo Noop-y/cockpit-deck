@@ -10,6 +10,14 @@
 const STOCK_COLORS = [['ambre', '#FFB547'], ['vert', '#3FB97A'], ['bleu', '#5CC8FF'], ['rose', '#FF7EB6'], ['violet', '#8E9BFF'], ['gris', '#8E9BA8']];
 const stockId = () => Math.random().toString(36).slice(2, 10);
 if (typeof ui !== 'undefined') ui.stock = ui.stock || {};
+// phrases convenues avec Claude (rappelées sur l'écran : case « Aide », et dans Paramètres)
+const STOCK_PHRASES = [
+  ['Projet terminé : <nom>', 'Claude liste les pièces utilisées, vous corrigez, puis la proposition de retrait arrive sur l’écran.'],
+  ['Commande reçue : …', 'Claude propose d’ajouter les pièces reçues.'],
+  ['Annule la dernière validation', 'Claude propose l’inverse de la dernière proposition validée.'],
+  ['Qu’est-ce que je dois commander ?', 'Claude liste les pièces épuisées ou en stock bas (rien ne change).'],
+  ['Rappelle-moi les phrases du stock', 'Claude redonne ces phrases.']
+];
 const stockInt = (v) => Math.max(0, Math.min(999999, Math.floor(+v || 0)));
 
 // ---------- données (fonctions pures, testées dans tests/stock.test.js) ----------
@@ -28,7 +36,8 @@ function stockNorm(st) {
     subs: (Array.isArray(c.subs) ? c.subs : []).filter(x => x && typeof x === 'object').map(x => ({ id: String(x.id || stockId()), name: String(x.name == null ? 'Tiroir' : x.name).slice(0, 60), items: items(x.items) })),
     items: items(c.items)
   }));
-  return { cats, history: Array.isArray(s.history) ? s.history.slice(-200) : [] };
+  const prop = s.prop && typeof s.prop === 'object' && s.prop.id && Array.isArray(s.prop.changes) ? s.prop : null;
+  return { cats, history: (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h === 'object' && h.id).slice(-200), prop };
 }
 // 'out' épuisé, 'low' stock bas, 'ok'
 function stockState(it) { return it.q === 0 ? 'out' : it.low > 0 && it.q < it.low ? 'low' : 'ok'; }
@@ -58,6 +67,83 @@ function stockCounts(items) {
   let out = 0, low = 0;
   items.forEach(it => { const st = stockState(it); if (st === 'out') out++; else if (st === 'low') low++; });
   return { out, low };
+}
+
+// ---------- propositions de Claude (fonctions pures, testées) ----------
+// cfg.stock.prop : la proposition qui attend VALIDER / REFUSER (une seule à la fois)
+//   { id, at, title, changes: [{ id (pièce existante) | add: { name, cat, sub } (nouvelle pièce), name, path, d }] }
+// cfg.stock.history : ce qui a été décidé { id, prop, at, title, status: 'ok' | 'non' | 'remplacee', undone, changes: [{ id, name, path, d (vraiment appliqué) }] }
+function stockFindIn(stock, id) { return stockAll(stock).find(x => x.item.id === id) || null; }
+function stockPropBuild(stock, args) {
+  args = args && typeof args === 'object' ? args : {};
+  const title = String(args.titre || '').trim().slice(0, 60);
+  if (!title) return { erreur: 'Il manque le titre de la proposition.' };
+  const list = Array.isArray(args.changements) ? args.changements : [];
+  if (!list.length || list.length > 40) return { erreur: 'Il faut entre 1 et 40 changements.' };
+  const changes = [];
+  for (const ch of list) {
+    const d = Math.trunc(+(ch && ch.quantite));
+    if (!d || Math.abs(d) > 100000) return { erreur: 'Quantité invalide (un nombre entier, positif pour ajouter, négatif pour retirer).' };
+    if (ch.piece_id) {
+      const x = stockFindIn(stock, String(ch.piece_id));
+      if (!x) return { erreur: `Pièce introuvable : ${ch.piece_id}. Relisez le stock avec lire_stock.` };
+      if (changes.some(c => c.id === x.item.id)) return { erreur: `La pièce « ${x.item.name} » apparaît deux fois : additionnez les quantités.` };
+      changes.push({ id: x.item.id, name: x.item.name, path: x.path, d });
+    } else if (ch.nouvelle_piece && typeof ch.nouvelle_piece === 'object') {
+      const n = ch.nouvelle_piece, name = String(n.nom || '').trim().slice(0, 80);
+      const c = stock.cats.find(k => k.id === String(n.categorie_id));
+      if (!name || !c) return { erreur: 'Nouvelle pièce : il faut un nom et une categorie_id existante.' };
+      const sub = c.sub ? c.subs.find(k => k.id === String(n.tiroir_id || '')) : null;
+      if (c.sub && !sub) return { erreur: `La catégorie « ${c.name} » a des tiroirs : donnez tiroir_id.` };
+      if (d < 0) return { erreur: 'Une nouvelle pièce ne peut être qu’ajoutée.' };
+      changes.push({ add: { name, cat: c.id, sub: sub ? sub.id : null }, name, path: sub ? `${c.name} › ${sub.name}` : c.name, d });
+    } else return { erreur: 'Chaque changement doit avoir piece_id ou nouvelle_piece.' };
+  }
+  return { prop: { id: 'p' + stockId(), at: Date.now(), title, changes } };
+}
+// applique une proposition validée ; renvoie la ligne d'historique
+function stockPropApply(stock, prop) {
+  const done = [];
+  prop.changes.forEach(ch => {
+    if (ch.add) {
+      const c = stock.cats.find(k => k.id === ch.add.cat); if (!c) return;
+      const list = c.sub ? (c.subs.find(k => k.id === ch.add.sub) || {}).items : c.items; if (!list) return;
+      let it = list.find(i => i.name.toLowerCase() === ch.add.name.toLowerCase());
+      if (!it) { it = stockNormItem({ name: ch.add.name, q: 0 }); list.push(it); }
+      const before = it.q; it.q = stockInt(before + ch.d);
+      done.push({ id: it.id, name: it.name, path: ch.path, d: it.q - before });
+    } else {
+      const x = stockFindIn(stock, ch.id); if (!x) return;
+      const before = x.item.q; x.item.q = stockInt(before + ch.d);
+      done.push({ id: ch.id, name: x.item.name, path: x.path, d: x.item.q - before });
+    }
+  });
+  return { id: 'h' + stockId(), prop: prop.id, at: Date.now(), title: prop.title, status: 'ok', undone: false, changes: done };
+}
+// annule une proposition validée (remet les quantités d'avant)
+function stockUndo(stock, hid) {
+  const h = stock.history.find(x => x.id === hid);
+  if (!h || h.status !== 'ok' || h.undone) return false;
+  h.changes.forEach(ch => { const x = stockFindIn(stock, ch.id); if (x) x.item.q = stockInt(x.item.q - ch.d); });
+  h.undone = true;
+  return true;
+}
+// ce que Claude lit (pas de lien d'achat inutile, ni rien d'autre que le stock)
+function stockForClaude(stock) {
+  const piece = (it) => ({ id: it.id, nom: it.name, quantite: it.q, stock_bas_sous: it.low || null, etat: { out: 'épuisée', low: 'stock bas', ok: 'ok' }[stockState(it)] });
+  return {
+    categories: stock.cats.map(c => Object.assign({ id: c.id, nom: c.name, rangement: c.place || null },
+      c.sub ? { tiroirs: c.subs.map(s => ({ id: s.id, nom: s.name, pieces: s.items.map(piece) })) } : { pieces: c.items.map(piece) })),
+    proposition_en_attente: stock.prop ? { id: stock.prop.id, titre: stock.prop.title } : null,
+    historique: stock.history.slice(-8).map(h => ({ id: h.prop || h.id, titre: h.title, date: new Date(h.at).toISOString().slice(0, 16), etat: h.undone ? 'annulée' : { ok: 'validée', non: 'refusée', remplacee: 'remplacée' }[h.status] || h.status,
+      changements: (h.changes || []).map(c => ({ piece_id: c.id, nom: c.name, quantite: c.d })) }))
+  };
+}
+function stockPropState(stock, id) {
+  if (stock.prop && stock.prop.id === id) return 'en attente : l’utilisateur n’a pas encore appuyé sur VALIDER ou REFUSER';
+  const h = stock.history.slice().reverse().find(x => x.prop === id);
+  if (!h) return 'inconnue';
+  return h.undone ? 'validée puis annulée' : { ok: 'validée : le stock a été mis à jour', non: 'refusée : rien n’a changé', remplacee: 'remplacée par une proposition plus récente' }[h.status] || h.status;
 }
 
 // ---------- écran du logiciel ----------
@@ -109,7 +195,22 @@ function viewStock() {
     ${list.length ? `<div class="strow sthead small muted"><span>Pièce</span><span>Quantité</span><span>Stock bas</span><span>Lien d’achat</span><span></span></div>${rows}` : '<div class="muted">Aucune pièce ici pour l’instant.</div>'}
     <div><button class="btn sm" data-act="stock-item-add">+ Ajouter une pièce</button></div>
     <div class="small muted">« Stock bas » : la quantité passe en orange en dessous de ce nombre (vide = jamais). À 0, elle passe en rouge.</div>`}</div>`;
-  return head + `<div class="stwrap">${col1}${col2}${col3}</div>`;
+  return head + stockPropBanner() + `<div class="stwrap">${col1}${col2}${col3}</div>` + stockHistoryPanel();
+}
+function stockPropBanner() {
+  const p = cfg.stock.prop; if (!p) return '';
+  const rows = p.changes.map(ch => {
+    const x = ch.id ? stockFindItem(ch.id) : null, before = x ? x.item.q : 0;
+    return `<div class="row small" style="justify-content:space-between;gap:12px"><span><b>${esc(ch.name)}</b> <span class="muted">${esc(ch.path)}${ch.add ? ' · nouvelle pièce' : ''}</span></span><span class="mono">${ch.d > 0 ? '+' : '−'}${Math.abs(ch.d)} <span class="muted">(${before} → ${stockInt(before + ch.d)})</span></span></div>`;
+  }).join('');
+  return `<div class="panel stprop"><div class="row" style="justify-content:space-between"><div><div class="lab" style="margin:0">Proposition de Claude · en attente</div><h2 class="disp" style="margin:2px 0 0">${esc(p.title)}</h2></div>
+    <div class="row"><button class="btn" data-act="stock-prop" data-ok="0">Refuser</button><button class="btn pri" data-act="stock-prop" data-ok="1">Valider</button></div></div>${rows}
+    <div class="small muted">Elle s’affiche aussi sur l’écran (espace Stock). Rien ne change tant que personne n’a appuyé sur VALIDER.</div></div>`;
+}
+function stockHistoryPanel() {
+  const h = cfg.stock.history.slice(-10).reverse(); if (!h.length) return '';
+  const st = (x) => x.undone ? '<span class="muted">annulée</span>' : x.status === 'ok' ? '<span style="color:var(--green)">validée</span>' : x.status === 'non' ? '<span class="muted">refusée</span>' : '<span class="muted">remplacée</span>';
+  return `<div class="panel" style="margin-top:16px"><div class="lab">Historique des propositions de Claude</div>${h.map(x => `<div class="row" style="justify-content:space-between;gap:12px"><span><b>${esc(x.title)}</b> <span class="small muted">${new Date(x.at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })} · ${(x.changes || []).length} pièce${(x.changes || []).length > 1 ? 's' : ''}</span></span><span class="row small">${st(x)}${x.status === 'ok' && !x.undone ? `<button class="btn sm" data-act="stock-undo" data-id="${esc(x.id)}">Annuler</button>` : ''}</span></div>`).join('')}</div>`;
 }
 
 // ---------- actions ----------
@@ -171,6 +272,13 @@ Object.assign(ACTIONS, {
     const it = list.find(i => i.id === d.id);
     confirmBox('Supprimer « ' + it.name + ' » ?', 'Elle disparaît du stock.', 'Supprimer', true, () => { list.splice(list.indexOf(it), 1); commit(); stockSaved(); });
   },
+  'stock-prop': (d) => stockPropAnswer(d.ok === '1', cfg.stock.prop && cfg.stock.prop.id),
+  'stock-undo': (d) => {
+    const h = cfg.stock.history.find(x => x.id === d.id); if (!h) return;
+    confirmBox('Annuler « ' + h.title + ' » ?', 'Les quantités reviennent comme avant cette validation.', 'Annuler la validation', false, () => {
+      if (stockUndo(cfg.stock, d.id)) { commit(); stockSaved(); toast('Validation annulée.', 'ok'); }
+    });
+  },
   'stock-q': (d) => { const x = stockFindItem(d.id); if (!x) return; x.item.q = stockInt(x.item.q + +d.d); commit(); stockSaved(); }
 });
 
@@ -211,33 +319,36 @@ function stockClampView(v) {
   const n = !c ? 0 : c.sub ? (sub != null ? c.subs[sub].items.length : c.subs.length) : c.items.length;
   const parts = Math.max(1, Math.ceil(n / STOCK_PER));
   const part = Math.max(0, Math.min((v && v.part) || 0, parts - 1));
-  return { cat, sub, part, parts };
+  return { cat, sub, part, parts, aide: !!(v && v.aide) };
 }
 // toutes les vues d'un espace Stock (une page d'image chacune sur l'écran)
 function stockViews() {
   const out = [];
   const cats = cfg.stock.cats;
-  if (!cats.length) return [{ cat: 0, sub: null, part: 0 }];
+  if (!cats.length) return [{ cat: 0, sub: null, part: 0 }, { cat: 0, sub: null, part: 0, aide: true }];
   cats.forEach((c, i) => {
     const n0 = c.sub ? c.subs.length : c.items.length;
     for (let p = 0; p < Math.max(1, Math.ceil(n0 / STOCK_PER)); p++) out.push({ cat: i, sub: null, part: p });
     if (c.sub) c.subs.forEach((s, j) => { for (let p = 0; p < Math.max(1, Math.ceil(s.items.length / STOCK_PER)); p++) out.push({ cat: i, sub: j, part: p }); });
   });
+  out.push({ cat: 0, sub: null, part: 0, aide: true });   // page « Aide » : les phrases pour Claude
   return out;
 }
-const stockViewKey = (spaceId, v) => `stock:${spaceId}:${v.cat}:${v.sub == null ? '-' : v.sub}:${v.part || 0}`;
+const stockViewKey = (spaceId, v) => v.aide ? `stock:${spaceId}:aide` : `stock:${spaceId}:${v.cat}:${v.sub == null ? '-' : v.sub}:${v.part || 0}`;
 
 function deckStock(space, sim, view) {
   const look = lookFor(space);
   const cats = cfg.stock.cats;
   const v = stockClampView(view || {});
-  const popOpen = !!(cats[v.cat] && cats[v.cat].sub && v.sub != null);
+  const prop = cfg.stock.prop && !v.aide && v.cat === 0 && v.sub == null && v.part === 0 ? cfg.stock.prop : null;   // proposition : sur la 1re vue
+  const popOpen = !!(cats[v.cat] && cats[v.cat].sub && v.sub != null) || !!prop || v.aide;
   const S = (attrs) => sim && !popOpen ? attrs : '';   // tiroir ouvert : seules ses lignes se touchent
   const P = (attrs) => sim ? attrs : '';
   const all = stockAll(cfg.stock).map(x => x.item), tot = stockCounts(all);
   const sum = !cats.length ? '' : tot.out || tot.low ? `<span style="color:${tot.out ? '#FF8A95' : '#FFB547'}">${tot.out ? tot.out + ' épuisée' + (tot.out > 1 ? 's' : '') : ''}${tot.out && tot.low ? ' · ' : ''}${tot.low ? tot.low + ' en stock bas' : ''}</span>` : `${all.length} pièce${all.length > 1 ? 's' : ''}`;
-  const top = `<div class="dtop"><div class="dtabs">${homeBtn(look, sim)}<div class="dtab disp" style="border-color:${look.accent};color:${look.accent}">${esc(space.name).toUpperCase()}</div></div><div class="dstsum">${sum}</div></div>`;
-  if (!cats.length) return deckFrame(look, top + '<div class="dstempty">Ajoutez vos catégories et vos pièces dans le logiciel, menu « Stock ».</div>', '', spaceOverlay(space, sim));
+  const top = `<div class="dtop"><div class="dtabs">${popOpen ? homeBtn(look, false) : homeBtn(look, sim)}<div class="dtab disp" style="border-color:${look.accent};color:${look.accent}">${esc(space.name).toUpperCase()}</div></div><div class="dstright2"><div class="dstsum">${sum}</div><div class="dsthelp disp" ${S('data-simstock="aide"')}>AIDE</div></div></div>`;
+  const extra = v.aide ? stockAidePop(look, P) : prop ? stockPropPop(prop, P) : '';
+  if (!cats.length) return deckFrame(look, top + '<div class="dstempty">Ajoutez vos catégories et vos pièces dans le logiciel, menu « Stock ».</div>' + extra, '', spaceOverlay(space, sim));
   const c = cats[v.cat];
   const color = (st) => st === 'out' ? '#FF8A95' : st === 'low' ? '#FFB547' : '#3FB97A';
   const left = cats.slice(0, 7).map((x, i) => {
@@ -269,7 +380,24 @@ function deckStock(space, sim, view) {
     const s = c.subs[v.sub];
     pop = `<div class="dstdim" ${P('data-simstock="close"')}></div><div class="dstpop" style="border-color:${look.accent}"><div class="dstph"><div><div class="dstpw">${esc(c.name)} · Tiroir ${String.fromCharCode(65 + (v.sub % 26))}</div><div class="disp dstpt">${esc(s.name)}</div></div><div class="dstx" ${P('data-simstock="close"')}>✕</div></div><div class="dstrows">${s.items.length ? rowsOf(s.items, v.part, P) : '<div class="dstempty">Tiroir vide.</div>'}</div>${pager(v.parts, v.part, P)}</div>`;
   }
-  return deckFrame(look, `${top}<div class="dstbody"><div class="dstleft">${left}</div>${right}</div>${pop}`, '', spaceOverlay(space, sim));
+  return deckFrame(look, `${top}<div class="dstbody"><div class="dstleft">${left}</div>${right}</div>${extra ? '' : pop}${extra}`, '', spaceOverlay(space, sim));
+}
+// fenêtre « Proposition de Claude » (VALIDER / REFUSER)
+function stockPropPop(p, P) {
+  const MAX = 7;
+  const rows = p.changes.slice(0, MAX).map(ch => {
+    const x = ch.id ? stockFindItem(ch.id) : null, before = x ? x.item.q : 0;
+    return `<div class="dstprow"><span class="dstrn">${esc(ch.name)}<span class="dstcs"> ${esc(ch.path)}</span></span><span class="mono" style="color:${ch.d > 0 ? '#3FB97A' : '#FFB547'}">${ch.d > 0 ? '+' : '−'}${Math.abs(ch.d)}</span><span class="mono dstcs">${before} → ${stockInt(before + ch.d)}</span></div>`;
+  }).join('') + (p.changes.length > MAX ? `<div class="dstcs">+ ${p.changes.length - MAX} autre${p.changes.length - MAX > 1 ? 's' : ''} (voir le logiciel, onglet Stock)</div>` : '');
+  return `<div class="dstdim"></div><div class="dstpop" style="border-color:#8E9BFF"><div class="dstph"><div><div class="dstpw" style="color:#8E9BFF">Proposition de Claude</div><div class="disp dstpt">${esc(p.title)}</div></div></div>
+    <div class="dstplist">${rows}</div>
+    <div class="dstpbtns"><div class="dstpbtn no disp" ${P(`data-simstock="prop" data-op="non" data-id="${esc(p.id)}"`)}>REFUSER</div><div class="dstpbtn ok disp" ${P(`data-simstock="prop" data-op="ok" data-id="${esc(p.id)}"`)}>VALIDER</div></div></div>`;
+}
+// fenêtre « Aide » : les phrases à écrire à Claude
+function stockAidePop(look, P) {
+  return `<div class="dstdim" ${P('data-simstock="close"')}></div><div class="dstpop" style="border-color:${look.accent}"><div class="dstph"><div><div class="dstpw">Stock · Claude</div><div class="disp dstpt">Les phrases à écrire à Claude</div></div><div class="dstx" ${P('data-simstock="close"')}>✕</div></div>
+    <div class="dstplist">${STOCK_PHRASES.map(([a, b]) => `<div class="dstaide"><span class="mono" style="color:${look.accent}">« ${esc(a)} »</span><span class="dstcs">${esc(b)}</span></div>`).join('')}</div>
+    <div class="dstcs">Claude ne fait que proposer : rien ne change dans le stock sans VALIDER sur cet écran.</div></div>`;
 }
 
 // ---------- quantités changées depuis l'écran (ou l'aperçu) ----------
@@ -293,9 +421,52 @@ function stockFromDeck(m) {
 // aperçu de l'écran : mêmes gestes
 function simStock(m, d) {
   const v = stockClampView(m.stock || {});
-  if (d.simstock === 'cat') m.stock = { cat: +d.i, sub: null, part: 0 };
+  if (d.simstock === 'aide') m.stock = { cat: 0, sub: null, part: 0, aide: true };
+  else if (d.simstock === 'prop') stockPropAnswer(d.op === 'ok', d.id);
+  else if (d.simstock === 'cat') m.stock = { cat: +d.i, sub: null, part: 0 };
   else if (d.simstock === 'sub') m.stock = { cat: v.cat, sub: +d.j, part: 0 };
   else if (d.simstock === 'close') m.stock = { cat: v.cat, sub: null, part: 0 };
   else if (d.simstock === 'part') m.stock = { cat: v.cat, sub: v.sub, part: +d.p };
   else if (d.simstock === 'q') { if (stockDelta(d.id, d.d)) { commit(true); if (typeof pgLiveRefresh === 'function') pgLiveRefresh(); } }
+}
+
+// ---------- Claude : questions arrivées par le lien (main.js → claude-ask) ----------
+function stockClaudeOp(op, args) {
+  const st = cfg && cfg.stock; if (!st) return { erreur: 'The Deck démarre encore.' };
+  if (op === 'lire') return { resultat: stockForClaude(st) };
+  if (op === 'etat') return { resultat: { id: String(args.id || ''), etat: stockPropState(st, String(args.id || '')) } };
+  if (op === 'proposer') {
+    const r = stockPropBuild(st, args); if (r.erreur) return r;
+    if (st.prop) st.history.push({ id: 'h' + stockId(), prop: st.prop.id, at: Date.now(), title: st.prop.title, status: 'remplacee', undone: false, changes: [] });
+    st.prop = r.prop;
+    commit(ui.view !== 'stock'); if (ui.view === 'stock') render();
+    toast('Claude propose : « ' + r.prop.title + ' ». À valider sur l’écran.', 'ok', 6000);
+    stockShowProp();
+    const warn = r.prop.changes.filter(ch => { const x = ch.id && stockFindItem(ch.id); return x && x.item.q + ch.d < 0; }).map(ch => `« ${ch.name} » : il n’en reste que ${stockFindItem(ch.id).item.q}, la quantité s’arrêtera à 0.`);
+    return { resultat: { id: r.prop.id, etat: 'affichée sur The Deck : en attente de VALIDER ou REFUSER (rien n’est encore changé)', avertissements: warn } };
+  }
+  return { erreur: 'Demande inconnue.' };
+}
+if (typeof api !== 'undefined' && api.onClaudeAsk) api.onClaudeAsk((q) => {
+  let r; try { r = stockClaudeOp(q.op, q.args || {}); } catch (e) { r = { erreur: String(e && e.message || e) }; }
+  api.claudeAnswer(q.rid, r);
+});
+// montre la proposition sur l'écran : redessine la page, puis l'affiche (programme de l'écran 0.5.2 : pg-show)
+function stockShowProp() {
+  if (typeof pgLiveRefresh === 'function') pgLiveRefresh(0);
+  const sp = homeSpaces().find(isStock);
+  const sent = ui.pgSent;
+  if (!sp || !sent || !ui.deckLinked || !ui.deckFw || fwOlder(ui.deckFw, '0.5.2')) return;
+  const i = sent.keys.indexOf(stockViewKey(sp.id, { cat: 0, sub: null, part: 0 }));
+  if (i >= 0) deckWrite({ t: 'pg-show', page: i });
+}
+// VALIDER / REFUSER (écran, aperçu ou logiciel)
+function stockPropAnswer(ok, id) {
+  const st = cfg.stock, p = st.prop;
+  if (!p || (id && id !== p.id)) { toast('Cette proposition n’est plus en attente.', 'err'); if (typeof pgLiveRefresh === 'function') pgLiveRefresh(); return; }
+  st.prop = null;
+  if (ok) { st.history.push(stockPropApply(st, p)); toast('Stock mis à jour : ' + p.title, 'ok', 4000); }
+  else { st.history.push({ id: 'h' + stockId(), prop: p.id, at: Date.now(), title: p.title, status: 'non', undone: false, changes: [] }); toast('Proposition refusée : rien n’a changé.', 'ok', 3000); }
+  if (st.history.length > 200) st.history.splice(0, st.history.length - 200);
+  commit(); stockSaved();
 }

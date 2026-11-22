@@ -48,5 +48,9 @@ contextBridge.exposeInMainWorld('deck', {
   clipsFileUrl: (f) => ipcRenderer.invoke('clips:file-url', f),
   clipsChooseFolder: () => ipcRenderer.invoke('clips:choose-folder'),
   onClipsState: (cb) => ipcRenderer.on('clips-state', (e, st) => cb(st)),
-  onClipsSaved: (cb) => ipcRenderer.on('clips-saved', (e, info) => cb(info))
+  onClipsSaved: (cb) => ipcRenderer.on('clips-saved', (e, info) => cb(info)),
+  claudeState: () => ipcRenderer.invoke('claude:state'),
+  claudeLink: (on) => ipcRenderer.invoke('claude:link', on),
+  onClaudeAsk: (cb) => ipcRenderer.on('claude-ask', (e, q) => cb(q)),
+  claudeAnswer: (rid, r) => ipcRenderer.send('claude:answer', rid, r)
 });

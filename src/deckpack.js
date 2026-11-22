@@ -106,8 +106,10 @@ function pgZone(item, r, keyIndex, warn) {
     const to = (cat, sub, part) => go(stockViewKey(sid, { cat, sub, part }));
     if (d.simstock === 'cat') z = to(+d.i, null, 0);
     else if (d.simstock === 'sub') z = to(v.cat, +d.j, 0);
-    else if (d.simstock === 'close') z = to(v.cat, null, 0);
+    else if (d.simstock === 'close') z = to(v.aide ? 0 : v.cat, null, 0);
     else if (d.simstock === 'part') z = to(v.cat, v.sub, +d.p);
+    else if (d.simstock === 'aide') z = go(stockViewKey(sid, { aide: true }));
+    else if (d.simstock === 'prop') z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'stock-prop', op: d.op, id: d.id }) };
     else if (d.simstock === 'q') z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'stock', id: d.id, d: +d.d }), cid: d.id, delta: +d.d };
     else if (d.simstock === 'n') z = { kind: Z.compte, mode: MODE.tap, v1: Math.min(0xFFFF, +d.q || 0), v2: Math.min(0xFFFF, +d.low || 0), cid: d.id };
   }

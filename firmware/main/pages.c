@@ -637,6 +637,17 @@ static void pi_line(const char *t, const char *line)
 void pages_line(const char *t, const char *line)
 {
     if (strncmp(t, "pi-", 3) == 0) { if (s_ready) pi_line(t, line); else usb_deck_send_line("{\"t\":\"pi-err\",\"msg\":\"pages pas pretes\"}"); return; }
+    if (strcmp(t, "pg-show") == 0) {   // le logiciel montre une page (ex. une proposition de Claude à valider)
+        long pg = -1;
+        json_num(line, "page", &pg);
+        bsp_display_lock(-1);
+        if (s_ready && !s_rx && pg >= 0 && pg < s_count) {
+            show_page((int)pg);
+            if (s_page >= 0) lv_screen_load(s_scr);
+        }
+        bsp_display_unlock();
+        return;
+    }
     if (!s_part || !s_ready) { usb_deck_send_line("{\"t\":\"pg-err\",\"msg\":\"memoire des pages introuvable\"}"); return; }
     if (strcmp(t, "pg-begin") == 0) {
         long size = 0;

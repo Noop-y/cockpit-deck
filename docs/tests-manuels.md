@@ -127,3 +127,15 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Toucher − jusqu'à 0 : le nombre devient rouge et ne descend pas sous 0.
 - [ ] Logiciel fermé : toucher − change le nombre à l'écran, puis le logiciel rouvert renvoie le vrai nombre (le stock n'a pas changé).
 
+## Stock : Claude (logiciel + écran 0.5.2)
+- [ ] Page Appareil : mettre l'écran à jour par le câble (0.5.2), puis « Envoyer sur l'écran ».
+- [ ] Écran, espace Stock : la case « AIDE » ouvre la liste des phrases ; ✕ la referme.
+- [ ] Paramètres › Claude : « Relier Claude » → message vert « Claude est relié ». Quitter l'application Claude (près de l'horloge) et la rouvrir.
+- [ ] Dans l'application Claude (Réglages › Connecteurs, ou l'icône des outils) : « the-deck » apparaît.
+- [ ] Écrire « Qu'est-ce que je dois commander ? » : Claude liste les pièces épuisées / en stock bas ; rien ne change.
+- [ ] Écrire « Projet terminé : test » avec une ou deux pièces : Claude montre la liste, puis propose. La fenêtre « Proposition de Claude » s'ouvre sur l'écran (et dans l'onglet Stock).
+- [ ] REFUSER : rien ne change. Refaire, puis VALIDER : les quantités changent, l'historique montre « validée ».
+- [ ] Onglet Stock › Historique › « Annuler » : les quantités reviennent comme avant.
+- [ ] The Deck fermé : Claude dit que le logiciel n'est pas ouvert.
+- [ ] « Délier » : l'entrée disparaît de Claude après redémarrage de Claude.
+

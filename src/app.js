@@ -55,7 +55,8 @@ const api = window.deck || (() => {
     clipsList: async () => ({ items: [], total: 0, free: null, folder: '', count: 0 }),
     clipsOpenFolder: async () => null, clipsShow: async () => null, clipsCopy: async () => ({ ok: false }), clipsDelete: async () => ({ ok: false }),
     clipsRename: async () => ({ ok: false }), clipsTrim: async () => ({ ok: false }), clipsFileUrl: async () => '', clipsChooseFolder: async () => null,
-    onClipsState: () => {}, onClipsSaved: () => {}
+    onClipsState: () => {}, onClipsSaved: () => {},
+    claudeState: async () => ({ found: false, linked: false, browser: true }), claudeLink: async () => ({ ok: false, message: 'Disponible dans le logiciel installé sur Windows.' }), onClaudeAsk: () => {}, claudeAnswer: () => {}
   };
 })();
 
@@ -892,7 +893,20 @@ function viewParametres() {
       <div class="small muted">Une sauvegarde est créée à chaque envoi réussi sur l\u2019écran, et quand vous cliquez sur « Sauvegarder maintenant ».</div>
       <div class="row"><button class="btn" data-act="backup-now">Sauvegarder maintenant</button></div>
       ${bk.length ? bk.slice(0, 12).map(n => `<div class="row" style="justify-content:space-between"><span class="mono small">${esc(n.replace('sauvegarde_', '').replace('.json', ''))}</span><button class="btn sm" data-act="backup-restore" data-name="${esc(n)}">Restaurer</button></div>`).join('') : '<div class="muted small">Aucune sauvegarde pour l\u2019instant.</div>'}
-      <button class="btn danger" data-act="reset-all">Tout réinitialiser…</button></div></div>`;
+      <button class="btn danger" data-act="reset-all">Tout réinitialiser…</button></div>
+    ${viewClaudePanel()}</div>`;
+}
+// lien avec l'application Claude (stock d'électronique : lire et proposer, jamais changer seul)
+function viewClaudePanel() {
+  const c = ui.claude || {};
+  const etat = c.browser ? 'Disponible dans le logiciel installé sur Windows.' : c.linked ? '<span style="color:var(--green)">Relié.</span> Redémarrez l’application Claude si vous venez de le faire (clic droit sur son icône près de l’horloge, Quitter, puis rouvrez-la).'
+    : c.found ? 'Pas encore relié.' : 'Application Claude introuvable sur ce PC : installez-la et ouvrez-la une fois.';
+  const phrases = typeof STOCK_PHRASES !== 'undefined' ? STOCK_PHRASES.map(([a, b]) => `<div class="small"><span class="mono" style="color:var(--amber)">« ${esc(a)} »</span> <span class="muted">${esc(b)}</span></div>`).join('') : '';
+  return `<div class="panel" style="flex:1 1 860px;min-width:0"><div class="row" style="justify-content:space-between"><h2 class="disp">Claude</h2>
+      ${c.linked ? '<button class="btn sm" data-act="claude-link" data-on="0">Délier</button>' : `<button class="btn pri" data-act="claude-link" data-on="1"${c.browser ? ' disabled' : ''}>Relier Claude</button>`}</div>
+    <div class="small muted">Relie l’application Claude de ce PC à votre stock d’électronique. Claude peut seulement lire le stock et proposer un changement : la proposition s’affiche sur l’écran avec VALIDER / REFUSER, et rien ne change sans votre accord. Il ne voit ni vos mots de passe, ni vos réglages, ni vos fichiers.</div>
+    <div class="small">${etat}</div>
+    <div class="lab" style="margin-top:6px">Les phrases à écrire à Claude</div>${phrases}</div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1134,6 +1148,7 @@ function onDeckMessage(m) {
   if (m.t === 'sound-stop') SOUND.stopAll();
   if (m.t === 'clip' && m.op) runClip(String(m.op));
   if (m.t === 'stock' && typeof stockFromDeck === 'function') stockFromDeck(m);
+  if (m.t === 'stock-prop' && typeof stockPropAnswer === 'function') stockPropAnswer(m.op === 'ok', String(m.id || ''));
   if (m.t === 'volume' && typeof m.value === 'number') { cfg.audio.master = Math.max(0, Math.min(100, m.value)); commit(true); SOUND.setup(cfg.audio); }
 }
 async function deckReadLoop(port) {
@@ -1331,7 +1346,13 @@ function confirmBox(title, text, ok, danger, fn) { ui.modal = { type: 'confirm',
 function textBox(title, value, fn, max) { ui.modal = { type: 'text', title, value, fn, max: max || 24 }; renderModal(); setTimeout(() => { const el = $('#f-modaltext'); if (el) { el.focus(); el.select(); } }, 0); }
 
 const ACTIONS = {
-  nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'audio' && !api.browser) ensureAudio().then(render); if (d.view === 'clips' && !api.browser && !SOUND.state.ready) SOUND.refreshDevices().then(() => { if (ui.view === 'clips') render(); }); if (d.view === 'clips' && ui.clipsTab === 'biblio') loadClipsLib(); if (d.view === 'parametres') api.listBackups().then(b => { ui.backups = b; render(); }); render(); },
+  'claude-link': async (d) => {
+    const r = await api.claudeLink(d.on === '1');
+    if (!r || !r.ok) { toast((r && r.message) || 'Impossible de relier Claude.', 'err', 9000); return; }
+    ui.claude = r.state; render();
+    toast(d.on === '1' ? 'Claude est relié. Redémarrez l’application Claude pour qu’elle le voie.' : 'Claude n’est plus relié.', 'ok', 7000);
+  },
+  nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'audio' && !api.browser) ensureAudio().then(render); if (d.view === 'clips' && !api.browser && !SOUND.state.ready) SOUND.refreshDevices().then(() => { if (ui.view === 'clips') render(); }); if (d.view === 'clips' && ui.clipsTab === 'biblio') loadClipsLib(); if (d.view === 'parametres') { api.listBackups().then(b => { ui.backups = b; render(); }); api.claudeState().then(c => { ui.claude = c; render(); }); } render(); },
   'cat-new': () => { ui.modal = { type: 'cat', id: null, label: '', icon: 'etoile', color: '#B79CFF' }; renderModal(); setTimeout(() => { const el = $('#f-catname'); if (el) el.focus(); }, 0); },
   'cat-edit': (d) => { const c = cfg.cats.find(x => x.id === d.id); ui.modal = { type: 'cat', id: c.id, label: c.label, icon: c.icon, color: c.color }; renderModal(); },
   'cat-color': (d) => { ui.modal.color = d.v; renderModal(); },
