@@ -270,7 +270,7 @@ static void draw_counters(void)
             lv_obj_t *l = lv_label_create(o);
             lv_label_set_text(l, txt);
             const lv_font_t *f = z->h >= 30 ? &lv_font_montserrat_32 : &lv_font_montserrat_24;
-            if (f == &lv_font_montserrat_32 && lv_text_get_width(txt, strlen(txt), f, 0) > z->w) f = &lv_font_montserrat_24;   // trop long : plus petit
+            if (f == &lv_font_montserrat_32 && (int)strlen(txt) * 22 > z->w) f = &lv_font_montserrat_24;   // trop long : plus petit (≈ 22 px par lettre)
             lv_obj_set_style_text_font(l, f, 0);
             lv_obj_set_style_text_color(l, lv_color_hex(rgb565(z->v2)), 0);
             lv_obj_align(l, LV_ALIGN_LEFT_MID, 2, 0);
