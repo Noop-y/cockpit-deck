@@ -152,9 +152,10 @@ function pgNav(item, keyIndex) {
 }
 
 // HTML d'une page, dessinée comme dans l'aperçu (sans animation ni bandeau de clip)
-function pgHtml(item) {
+// live : mise à jour en direct (le message des clips reste affiché ; dans le paquet complet, il n'y est jamais)
+function pgHtml(item, live) {
   const sim = { screen: item.kind, spaceId: item.space ? item.space.id : null, page: item.page, homePage: item.page, cells: {}, render: true, stock: item.stock || null };
-  const toast = ui.clipToast; ui.clipToast = null;
+  const toast = ui.clipToast; if (!live) ui.clipToast = null;
   try { return item.kind === 'home' ? deckHome(sim, item.page) : deckPage(item.space, item.page, sim); }
   finally { ui.clipToast = toast; }
 }
@@ -302,12 +303,26 @@ async function deckSendPages() {
 // envoie leur image (pi-begin / pi-data / pi-end). L'écran la garde en mémoire vive ; « pgStale » note qu'il faudra
 // renvoyer toutes les pages au prochain branchement (après un redémarrage, l'écran relit les anciennes).
 const PI_VERSION_MIN = '0.5.0';
-const pgLive = { busy: false, again: false, timer: null, structTimer: null };
-function pgLiveRefresh(delay) { clearTimeout(pgLive.timer); pgLive.timer = setTimeout(pgLiveRun, delay == null ? 120 : delay); }
+const pgLive = { busy: false, again: false, timer: null, structTimer: null, quiet: true };
+// quiet : ne jamais renvoyer tout le paquet pour ça (clips : l'état change souvent, même sans rien toucher)
+function pgLiveRefresh(delay, quiet) {
+  if (!quiet) pgLive.quiet = false;
+  clearTimeout(pgLive.timer); pgLive.timer = setTimeout(pgLiveRun, delay == null ? 120 : delay);
+}
+// pages redessinées en direct : le stock, l'espace Clips, et les pages qui ont une case Clips (message « Clip enregistré »…)
+function pgLiveable(it) {
+  if (it.stock) return true;
+  if (!it.space) return false;
+  if (typeof isClips === 'function' && isClips(it.space)) return true;
+  const p = it.space.pages && it.space.pages[it.page];
+  return !!(p && p.cells && p.cells.some(c => c && c.action && c.action.type === 'clip'));
+}
 async function pgLiveRun() {
   if (pgLive.busy) { pgLive.again = true; return; }
   const sent = ui.pgSent;
+  const quiet = pgLive.quiet; pgLive.quiet = true;
   if (!ui.deckLinked) return;
+  if (quiet && (!sent || !ui.deckFw || fwOlder(ui.deckFw, PI_VERSION_MIN))) return;
   if (ui.pg && (ui.pg.state === 'draw' || ui.pg.state === 'send')) { pgLive.again = true; return; }
   if (!ui.deckFw || fwOlder(ui.deckFw, PI_VERSION_MIN)) {
     if (!pgLive.warned) { pgLive.warned = true; toast(`Pour voir les nombres changer sur l’écran, mettez son programme à jour en ${PI_VERSION_MIN} (page Appareil).`, 'err', 9000); }
@@ -317,12 +332,13 @@ async function pgLiveRun() {
   if (!sent) { clearTimeout(pgLive.structTimer); pgLive.structTimer = setTimeout(() => { if (ui.deckLinked) deckSendPages(); }, 1500); return; }
   const list = pgList();
   if (list.map(it => it.key).join('|') !== sent.keys.join('|')) {   // pages ajoutées ou retirées : tout renvoyer
+    if (quiet) return;
     clearTimeout(pgLive.structTimer);
     pgLive.structTimer = setTimeout(() => { if (ui.deckLinked) deckSendPages(); }, 3000);
     return;
   }
   const changed = [];
-  list.forEach((it, i) => { if (!it.stock) return; const h = pgHtml(it); if (h !== sent.html[i]) changed.push({ i, h }); });
+  list.forEach((it, i) => { if (!pgLiveable(it)) return; const h = pgHtml(it, true); if (h !== sent.html[i]) changed.push({ i, h }); });
   if (!changed.length) return;
   pgLive.busy = true;
   try {
@@ -334,7 +350,7 @@ async function pgLiveRun() {
     }
     if (!cfg.device.pgStale) { cfg.device.pgStale = true; commit(true); }
   } catch (e) { console.error(e); toast('L’écran n’a pas reçu la mise à jour : ' + (e && e.message ? e.message : e) + '. Essayez « Envoyer sur l’écran ».', 'err', 8000); }
-  finally { pgLive.busy = false; if (pgLive.again) { pgLive.again = false; pgLiveRefresh(); } }
+  finally { pgLive.busy = false; if (pgLive.again) { pgLive.again = false; pgLiveRefresh(undefined, quiet); } }
 }
 async function pgSendPage(index, jpeg, counts) {
   const isPi = (t) => (m) => m.t === t || m.t === 'pi-err';

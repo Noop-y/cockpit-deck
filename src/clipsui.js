@@ -54,6 +54,7 @@ function setCstate(st) {
   deckSendClips(false);
 }
 function refreshClipsUI() {
+  if (typeof pgLiveRefresh === 'function') pgLiveRefresh(150, true);   // l'écran suit (pages dessinées en images)
   if (ui.modal && ui.modal.type === 'sim') { simRender(); return; }
   if (ui.modal) return;                                   // ne pas couper une vidéo en lecture
   if (ui.view === 'clips' || (ui.view === 'editeur' && isClips(curSpace()))) render();
@@ -73,22 +74,31 @@ function clipStatusText() {
 }
 const clipDot = () => (cstate.running || cstate.rec.on) ? 'background:#FF4D5E;box-shadow:0 0 0 .4cqw rgba(255,77,94,.25)' : ((cstate.starting || cstate.waiting) && !cfg.clips.paused ? 'background:#FFB547' : 'background:#5B6875');
 
+// ce qui est filmé, en clair (« le jeu (Star Citizen) », « l’écran entier »…)
+function clipSrcText() {
+  const c = cfg.clips, st = cstate;
+  if (c.src === 'jeu') return st.game && st.target === st.game ? `le jeu (${st.game})` : 'le jeu dès qu’il est lancé (pour l’instant : l’écran entier)';
+  if (c.src === 'choisir') return 'l’écran ' + ((+c.monitor || 0) + 1);
+  return 'l’écran entier';
+}
+
 // ---------- actions ----------
 function clipToast(title, sub, kind) {
   ui.clipToast = { title, sub, kind: kind || 'ok', t: Date.now() };
   const t = ui.clipToast;
+  if (typeof pgLiveRefresh === 'function') pgLiveRefresh(100);   // appui de l'utilisateur : l'écran doit suivre
   refreshClipsUI(); deckSendClips(true);
-  setTimeout(() => { if (ui.clipToast === t) { ui.clipToast = null; refreshClipsUI(); } }, 2800);
+  setTimeout(() => { if (ui.clipToast === t) { ui.clipToast = null; refreshClipsUI(); } }, 3500);
 }
 async function runClip(op) {
   const c = cfg.clips;
-  if (op === 'dur') { const i = CLIP_DURS.findIndex(d => d[0] === c.dur); c.dur = CLIP_DURS[(i + 1) % CLIP_DURS.length][0]; commit(true); refreshClipsUI(); deckSendClips(false); return; }
+  if (op === 'dur') { const i = CLIP_DURS.findIndex(d => d[0] === c.dur); c.dur = CLIP_DURS[(i + 1) % CLIP_DURS.length][0]; commit(true); clipToast('Retour en arrière : ' + clipDurLabel(), clipKeepText() + ' à chaque CLIP.', 'info'); return; }
   if (op === 'mem') { c.paused = !c.paused; commit(true); clipToast(c.paused ? 'Mémoire à l’arrêt' : 'Mémoire en marche', c.paused ? 'CLIP ne garde plus rien.' : 'CLIP garde à nouveau les dernières secondes.', c.paused ? 'info' : 'ok'); return; }
-  if (op === 'mic') { c.mic = !c.mic; commit(true); refreshClipsUI(); deckSendClips(false); return; }
-  if (op === 'src') { c.src = c.src === 'jeu' ? 'ecran' : 'jeu'; commit(true); refreshClipsUI(); deckSendClips(false); return; }
+  if (op === 'mic') { c.mic = !c.mic; commit(true); clipToast(c.mic ? 'Ma voix : dans les clips' : 'Ma voix : coupée', c.mic ? 'Votre micro est enregistré avec le son du jeu.' : 'Seul le son du PC est enregistré.', 'info'); return; }
+  if (op === 'src') { c.src = c.src === 'jeu' ? 'ecran' : 'jeu'; commit(true); clipToast(c.src === 'jeu' ? 'On filme le jeu' : 'On filme l’écran entier', c.src === 'jeu' ? 'Seulement la fenêtre du jeu : ' + clipSrcText() + '.' : 'Tout ce qui s’affiche sur l’écran est enregistré.', 'info'); return; }
   if (op === 'folder') { if (api.browser) toast('Disponible dans le logiciel installé sur Windows.'); else api.clipsOpenFolder(); return; }
   if (op !== 'clip' && op !== 'rec' && op !== 'shot') return;
-  if (op === 'clip') clipToast('Clip en cours…', 'Assemblage des ' + clipDurLabel() + ' d’avant', 'info');
+  if (op === 'clip') clipToast('Clip en cours…', `Les ${clipDurLabel()} d’avant · on filme ${clipSrcText()}`, 'info');
   const r = await api.clipsAction(op);
   if (!r || !r.ok) { const msg = (r && r.message) || 'Action impossible.'; clipToast(op === 'clip' ? 'Pas de clip' : (op === 'rec' ? 'Pas de vidéo' : 'Pas de capture'), msg, 'err'); toast(msg, 'err', 6000); return; }
   if (op === 'rec' && r.rec) clipToast('Enregistrement lancé', 'Touchez ARRÊTER pour finir la vidéo.', 'ok');
@@ -153,7 +163,7 @@ function deckClips(space, sim) {
       <div class="clrecent"><div class="clrh"><span class="disp">DERNIERS CLIPS</span><span>Vidéos › The Deck › Clips</span></div><div class="clthumbs">${recent}</div></div>
       <div class="clc${memOn ? ' on-g' : ''}" ${A('mem')}>${svg('alimentation', 26, memOn ? '#3FB97A' : '#8E9BA8', 1.9)}<span class="cltx"><span class="disp">MÉMOIRE</span><span class="clsub" style="color:${memOn ? '#3FB97A' : '#8E9BA8'}">${memOn ? 'En marche' : 'À l’arrêt'}</span></span></div>
       <div class="clc${c.mic ? ' on-v' : ''}" ${A('mic')}>${svg('micro', 26, c.mic ? '#8E9BFF' : '#8E9BA8')}<span class="cltx"><span class="disp">MA VOIX</span><span class="clsub" style="color:${c.mic ? '#8E9BFF' : '#8E9BA8'}">${c.mic ? 'Dans les clips' : 'Coupée'}</span></span></div>
-      <div class="clc" ${A('src')}>${svg('ecranmfd', 26, '#C9D6E2')}<span class="cltx"><span class="disp">${srcName}</span><span class="clsub">${srcSub}</span></span></div>
+      <div class="clc" ${A('src')}><span class="cll">ON FILME</span><span class="disp cldur" style="color:#C9D6E2">${srcName}</span><span class="clsub">${srcSub}</span></div>
       <div class="clc" ${A('folder')}>${svg('dossier', 26, '#FFB547')}<span class="cltx"><span class="disp">DOSSIER</span><span class="clsub">S’ouvre sur le PC</span></span></div>
       <div class="clc free"><span>Case libre</span></div>
     </div>${clipToastHTML()}`;

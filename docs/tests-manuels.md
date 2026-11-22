@@ -139,3 +139,10 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] The Deck fermé : Claude dit que le logiciel n'est pas ouvert.
 - [ ] « Délier » : l'entrée disparaît de Claude après redémarrage de Claude.
 
+## Clips sur l'écran : l'écran suit (logiciel, écran 0.5.x)
+- [ ] Installer, puis « Envoyer sur l'écran » une fois.
+- [ ] Espace Clips, case « RETOUR EN ARRIÈRE » : chaque appui passe à la durée suivante (15 s, 30 s, 1 min, 2 min, 3 min, 5 min, puis 15 s) ; le nombre change sur l'écran et un message « Retour en arrière : … » s'affiche environ 3 s.
+- [ ] Case « ON FILME » : passe de « LE JEU » à « L'ÉCRAN » ; message « On filme le jeu » / « On filme l'écran entier ».
+- [ ] Case « MA VOIX » et « MÉMOIRE » : l'écran change et un message le dit.
+- [ ] Case CLIP (dans l'espace Clips, puis une case Clip dans un autre espace, ex. Star Citizen) : message « Clip en cours… · on filme … » puis « Clip enregistré » sur l'écran.
+

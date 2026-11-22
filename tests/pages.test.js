@@ -20,7 +20,7 @@ function loadPack(extra) {
   }, extra || {});
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'src', 'deckpack.js'), 'utf8') +
-    '\nObject.assign(this, { keyCombo, pgZone, pgCellAction, pgBuildPack, crc32, pgList, pgNav, pgLinkCounters, Z, MODE });', ctx);
+    '\nObject.assign(this, { keyCombo, pgZone, pgCellAction, pgBuildPack, crc32, pgList, pgNav, pgLinkCounters, pgLiveable, Z, MODE });', ctx);
   return ctx;
 }
 
@@ -171,4 +171,15 @@ test('stock : les − / + savent quel nombre changer tout de suite sur l’écra
   assert.strictEqual(pack.readUInt16LE(z0 + 18), 2, 'compteur n° 2');
   assert.strictEqual(pack[z0 + 28 * 2 + 11], 1, 'pas +1');
   assert.strictEqual(pack.readUInt16LE(z0 + 28 + 14), 85, 'valeur du compteur');
+});
+
+test('direct : l’espace Clips et les pages avec une case Clips sont redessinés sur l’écran', () => {
+  const c = loadPack();
+  c.isClips = (s) => s.layout === 'clips';
+  const sp = (cells, layout) => ({ layout, pages: [{ cells }] });
+  assert.strictEqual(c.pgLiveable({ stock: { cat: 0 } }), true);
+  assert.strictEqual(c.pgLiveable({ space: sp([], 'clips'), page: 0 }), true);
+  assert.strictEqual(c.pgLiveable({ space: sp([null, { action: { type: 'clip', op: 'clip' } }]), page: 0 }), true);
+  assert.strictEqual(c.pgLiveable({ space: sp([{ action: { type: 'key' } }]), page: 0 }), false);
+  assert.strictEqual(c.pgLiveable({ kind: 'home', page: 0 }), false);
 });
