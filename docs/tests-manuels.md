@@ -78,6 +78,7 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Avec une version plus récente du logiciel : le bouton devient « Mettre à jour l'écran par le câble USB » (0.3.0 → nouvelle version) et l'écran redémarre sur la nouvelle version.
 
 ## Pages en images (0.4.0)
+- [ ] (0.4.1) Mettre à jour l'écran par le câble, puis « Envoyer sur l'écran ». Accueil : glisser vers la gauche → 2e page de l'accueil, vers la droite → retour. Dans un espace à plusieurs pages : gauche/droite change de page ; haut/bas change d'espace. Lecteur : gauche/droite change de morceau. Un glissement qui commence sur une case ne déclenche pas la case.
 - [ ] Accueil de l'écran : plus de vignette « Réglages », 6 espaces par page (Aperçu de l'écran et vrai écran après « Envoyer sur l'écran »).
 - [ ] Page Appareil, écran relié : « Mettre à jour l'écran par le câble USB » (0.3.0 → 0.4.0) ; l'écran redémarre, toujours sur l'écran de test.
 - [ ] « Envoyer sur l'écran » : l'écran affiche « Reception des pages : N % », la barre avance dans la page Appareil, puis l'écran montre l'accueil, identique à l'Aperçu de l'écran ; message « Envoyé sur l'écran », sauvegarde créée.

@@ -13,14 +13,14 @@ const ROOT = path.join(__dirname, '..');
 function loadPack(extra) {
   const ctx = Object.assign({
     ui: {}, cfg: { look: { accent: '#FFB547' } }, console, TextEncoder,
-    isSoundboard: (s) => s && s.layout === 'soundboard',
+    isSoundboard: (s) => s && s.layout === 'soundboard', isPlayer: (s) => s && s.layout === 'player',
     shortcutById: (id) => id === 'sc1' ? { id: 'sc1', keys: 'Ctrl+Shift+M' } : null,
     homePages: () => 1, homeSpaces: () => [], lookFor: () => ({ accent: '#00FF00' }),
     render() {}, toast() {}
   }, extra || {});
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'src', 'deckpack.js'), 'utf8') +
-    '\nObject.assign(this, { keyCombo, pgZone, pgCellAction, pgBuildPack, crc32, pgList, Z, MODE });', ctx);
+    '\nObject.assign(this, { keyCombo, pgZone, pgCellAction, pgBuildPack, crc32, pgList, pgNav, Z, MODE });', ctx);
   return ctx;
 }
 
@@ -86,14 +86,14 @@ test('paquet : en-tête, pages, zones, textes et images à la bonne place', () =
   ]);
   const b = Buffer.from(pack);
   assert.strictEqual(b.toString('latin1', 0, 4), 'DECK');
-  assert.strictEqual(b.readUInt16LE(4), 1);
+  assert.strictEqual(b.readUInt16LE(4), 2);
   assert.strictEqual(b.readUInt16LE(6), 2);
   const strOff = b.readUInt32LE(8), strLen = b.readUInt32LE(12), total = b.readUInt32LE(16);
   assert.strictEqual(total, b.length);
-  assert.strictEqual(strOff, 24 + 2 * 20 + 3 * 28);
+  assert.strictEqual(strOff, 24 + 2 * 28 + 3 * 28);
   assert.strictEqual(strLen, Buffer.byteLength(msg) + 1, 'texte identique gardé une seule fois');
   // page 2 : 2 zones à partir de la zone n° 1, couleur, image
-  const p2 = 24 + 20;
+  const p2 = 24 + 28;
   const jo = b.readUInt32LE(p2), jl = b.readUInt32LE(p2 + 4);
   assert.strictEqual(b.readUInt32LE(p2 + 8), 1);
   assert.strictEqual(b.readUInt16LE(p2 + 12), 2);
@@ -101,7 +101,7 @@ test('paquet : en-tête, pages, zones, textes et images à la bonne place', () =
   assert.deepStrictEqual([...b.subarray(jo, jo + jl)], [...j2]);
   assert.strictEqual(jo % 4, 0);
   // zone n° 1
-  const z1 = 24 + 40 + 28;
+  const z1 = 24 + 56 + 28;
   assert.deepStrictEqual([b.readUInt16LE(z1), b.readUInt16LE(z1 + 2), b.readUInt16LE(z1 + 4), b.readUInt16LE(z1 + 6)], [10, 20, 30, 40]);
   assert.strictEqual(b[z1 + 8], 5);
   assert.strictEqual(b.readUInt32LE(z1 + 20), 0);
@@ -130,11 +130,31 @@ test('liste des pages : accueil d’abord, puis chaque page des espaces de l’a
 test('programme de l’écran : format du paquet identique des deux côtés', () => {
   const src = fs.readFileSync(path.join(ROOT, 'firmware', 'main', 'pages.c'), 'utf8');
   assert.match(src, /sizeof\(pack_hdr_t\) == 24/);
-  assert.match(src, /sizeof\(pack_page_t\) == 20/);
+  assert.match(src, /sizeof\(pack_page_t\) == 28/);
+  assert.match(src, /#define NAV_NONE 0xFFFF/); assert.match(src, /#define NAV_MEDIA 0xF000/);
   assert.match(src, /sizeof\(pack_zone_t\) == 28/);
   assert.match(src, /enum \{ Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE \}/);
   assert.match(src, /enum \{ M_APPUI, M_MAINTENIR, M_BASCULE \}/);
   const c = loadPack();
   assert.deepStrictEqual({ ...c.Z }, { rien: 0, touche: 1, manette: 2, media: 3, page: 4, message: 5 });
   assert.deepStrictEqual({ ...c.MODE }, { tap: 0, hold: 1, toggle: 2 });
+});
+
+test('glisser le doigt : où mène chaque glissement, et rangé dans le paquet', () => {
+  const a = { id: 'a', pages: [{}, {}, {}] }, b = { id: 'b', pages: [{}] }, m = { id: 'm', layout: 'player', pages: [{}] };
+  const mk = (device) => loadPack({ cfg: { look: {}, device }, homePages: () => 2, homeSpaces: () => [a, b, m] });
+  let c = mk({ swipe: true, swipeV: true, loop: false });
+  const ki = {}; c.pgList().forEach((x, i) => { ki[x.key] = i; });   // home:0 home:1 a:0 a:1 a:2 b:0 m:0
+  const nav = (it) => ({ ...c.pgNav(it, ki) });
+  assert.deepStrictEqual(nav({ kind: 'home', page: 0 }), { next: 1, prev: null, up: null, down: null });
+  assert.deepStrictEqual(nav({ kind: 'space', space: a, page: 1 }), { next: 4, prev: 2, up: 5, down: null });
+  assert.deepStrictEqual(nav({ kind: 'space', space: a, page: 2 }), { next: null, prev: 3, up: 5, down: null });
+  assert.deepStrictEqual(nav({ kind: 'space', space: m, page: 0 }), { next: 0xF000 | 0xB5, prev: 0xF000 | 0xB6, up: null, down: 5 });
+  c = mk({ swipe: true, swipeV: false, loop: true });
+  assert.deepStrictEqual({ ...c.pgNav({ kind: 'space', space: a, page: 2 }, ki) }, { next: 2, prev: 3, up: null, down: null });
+  c = mk({ swipe: false, swipeV: false });
+  assert.deepStrictEqual({ ...c.pgNav({ kind: 'home', page: 0 }, ki) }, { next: null, prev: null, up: null, down: null });
+  // dans le paquet : 4 nombres après la couleur, 0xFFFF = rien
+  const pack = Buffer.from(c.pgBuildPack([{ jpeg: new Uint8Array([1]), zones: [], nav: { next: 3, prev: null, up: 7, down: null } }]));
+  assert.deepStrictEqual([20, 22, 24, 26].map(o => pack.readUInt16LE(24 + o)), [3, 0xFFFF, 7, 0xFFFF]);
 });

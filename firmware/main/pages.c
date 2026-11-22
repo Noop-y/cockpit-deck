@@ -41,6 +41,8 @@ typedef struct __attribute__((packed)) {
     uint32_t jpeg_off, jpeg_len, zone_first;
     uint16_t zone_count, rsv;
     uint32_t accent;                      // couleur d'appui (0xRRGGBB)
+    uint16_t nav[4];                      // glisser vers la gauche, la droite, le haut, le bas : n° de page,
+                                          // NAV_MEDIA | touche multimédia, ou NAV_NONE (version 2 du paquet)
 } pack_page_t;
 
 typedef struct __attribute__((packed)) {
@@ -51,7 +53,9 @@ typedef struct __attribute__((packed)) {
 } pack_zone_t;
 
 _Static_assert(sizeof(pack_hdr_t) == 24, "en-tete");
-_Static_assert(sizeof(pack_page_t) == 20, "page");
+_Static_assert(sizeof(pack_page_t) == 28, "page");
+#define NAV_NONE 0xFFFF
+#define NAV_MEDIA 0xF000
 _Static_assert(sizeof(pack_zone_t) == 28, "zone");
 
 enum { Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE };
@@ -120,7 +124,7 @@ static bool meta_load(void)
     if (!s_part) return false;
     pack_hdr_t h;
     if (esp_partition_read(s_part, 0, &h, sizeof h) != ESP_OK) return false;
-    if (memcmp(h.magic, "DECK", 4) != 0 || h.version != 1 || h.count == 0) return false;
+    if (memcmp(h.magic, "DECK", 4) != 0 || h.version != 2 || h.count == 0) return false;
     size_t meta_len = (size_t)h.str_off + h.str_len;
     if (h.total > s_part->size || meta_len > h.total || meta_len > 4 * 1024 * 1024) return false;
     s_meta = heap_caps_malloc(meta_len + 1, MALLOC_CAP_SPIRAM);
@@ -281,16 +285,54 @@ static int zone_at(int x, int y)
     return -1;
 }
 
+// ---------- glisser le doigt ----------
+#define SWIPE_START 30                    // au-delà, le doigt glisse : la case touchée est annulée
+#define SWIPE_H 60                        // glissement gauche / droite qui change de page
+#define SWIPE_V 50                        // glissement haut / bas qui change d'espace
+static lv_point_t s_p0;
+static char s_swipe;                      // 0, 'h' ou 'v'
+
+static void nav_go(uint16_t v)
+{
+    if (v == NAV_NONE) return;
+    if ((v & 0xF000) == NAV_MEDIA) {      // lecteur : morceau suivant / précédent
+        static pack_zone_t mz;
+        mz.kind = Z_MEDIA; mz.v1 = v & 0x0FFF;
+        if (s_pulse_zone) fire(s_pulse_zone, false);
+        fire(&mz, true);
+        s_pulse_zone = &mz;
+        lv_timer_t *t = lv_timer_create(pulse_end, 80, NULL);
+        lv_timer_set_repeat_count(t, 1);
+        return;
+    }
+    if (v < s_count) show_page(v);
+}
+
+// la case touchée est abandonnée (le doigt glisse, ou il a quitté l'écran)
+static void press_cancel(void)
+{
+    int zi = s_active;
+    if (zi < 0) return;
+    const pack_zone_t *z = &s_zones[zi];
+    if (z->mode == M_APPUI && z->kind != Z_PAGE) fire(z, false);   // relâche la touche enfoncée
+    if (s_hit) { lv_obj_delete(s_hit); s_hit = NULL; }
+    if (s_bar) { lv_obj_delete(s_bar); s_bar = NULL; }
+    if (s_hold_timer) { lv_timer_delete(s_hold_timer); s_hold_timer = NULL; }
+    s_active = -1;
+}
+
 static void touch_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if (s_rx || s_count == 0) return;
     lv_indev_t *indev = lv_indev_active();
     if (!indev) return;
+    lv_point_t pt;
+    lv_indev_get_point(indev, &pt);
     if (code == LV_EVENT_PRESSED) {
-        lv_point_t pt;
-        lv_indev_get_point(indev, &pt);
         press_reset();
+        s_p0 = pt;
+        s_swipe = 0;
         int zi = zone_at(pt.x, pt.y);
         if (zi < 0) return;
         const pack_zone_t *z = &s_zones[zi];
@@ -310,7 +352,26 @@ static void touch_cb(lv_event_t *e)
         } else if (z->mode == M_APPUI && z->kind != Z_PAGE) {
             fire(z, true);   // tant que le doigt reste posé, la touche reste enfoncée
         }
+    } else if (code == LV_EVENT_PRESSING) {
+        if (s_swipe) return;
+        int dx = pt.x - s_p0.x, dy = pt.y - s_p0.y;
+        int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
+        const pack_page_t *p = &s_pages[s_page];
+        bool h = ax > SWIPE_START && ax > ay && (p->nav[0] != NAV_NONE || p->nav[1] != NAV_NONE);
+        bool v = ay > SWIPE_START && ay > ax && (p->nav[2] != NAV_NONE || p->nav[3] != NAV_NONE);
+        if (h || v) { s_swipe = h ? 'h' : 'v'; press_cancel(); }
     } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        if (s_swipe) {
+            char sw = s_swipe;
+            s_swipe = 0;
+            if (code == LV_EVENT_PRESS_LOST) return;
+            int dx = pt.x - s_p0.x, dy = pt.y - s_p0.y;
+            const pack_page_t *p = &s_pages[s_page];
+            // vers la gauche = page suivante ; vers le haut = espace suivant (comme dans l'aperçu)
+            if (sw == 'h' && (dx > SWIPE_H || dx < -SWIPE_H)) nav_go(p->nav[dx < 0 ? 0 : 1]);
+            else if (sw == 'v' && (dy > SWIPE_V || dy < -SWIPE_V)) nav_go(p->nav[dy < 0 ? 2 : 3]);
+            return;
+        }
         int zi = s_active;
         if (zi < 0) return;
         const pack_zone_t *z = &s_zones[zi];

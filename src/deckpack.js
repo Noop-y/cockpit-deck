@@ -8,9 +8,10 @@
 // 3. Le tout part dans un seul paquet binaire, envoyé par morceaux (pg-begin, pg-data, pg-end).
 'use strict';
 
-const PG_VERSION_MIN = '0.4.0';           // programme de l'écran qui sait recevoir les pages
+const PG_VERSION_MIN = '0.4.1';           // 0.4.1 : glisser le doigt (paquet version 2)           // programme de l'écran qui sait recevoir les pages
 const PG_CHUNK = 8192;
 const PG_W = 1024, PG_H = 600;
+const PG_PAGE = 28;                        // taille d'une page dans le paquet (version 2)
 
 // ---------- touches ----------
 const HID_MODS = { Ctrl: 1, Control: 1, Shift: 2, Alt: 4, Win: 8 };
@@ -102,6 +103,35 @@ function pgZone(item, r, keyIndex, warn) {
   });
 }
 
+// ---------- glisser le doigt ----------
+// Pour chaque page : où mène un glissement vers la gauche (page suivante), la droite (précédente), le haut (espace
+// suivant) et le bas (espace précédent). Valeur : n° de page du paquet, NAV_MEDIA | code d'une touche multimédia
+// (lecteur : changer de morceau), ou NAV_NONE. Mêmes règles que l'aperçu (simSwipe, simSwipeV).
+const NAV_NONE = 0xFFFF, NAV_MEDIA = 0xF000;
+function pgNav(item, keyIndex) {
+  const d = cfg.device || {}, loop = !!d.loop;
+  const step = (cur, n, dir) => { let k = cur + dir; if (k < 0 || k >= n) k = loop && n > 1 ? (k + n) % n : cur; return k === cur ? null : k; };
+  const nav = { next: null, prev: null, up: null, down: null };
+  if (d.swipe !== false) {
+    if (item.kind === 'home') {
+      const n = homePages();
+      for (const [k, dir] of [['next', 1], ['prev', -1]]) { const j = step(item.page, n, dir); if (j != null) nav[k] = keyIndex['home:' + j]; }
+    } else if (isPlayer(item.space)) {
+      const c = Object.assign({ swipeLeft: 'suivante', swipeRight: 'precedente' }, (item.space.player || {}).controls);
+      if (MEDIA_USAGE[c.swipeLeft]) nav.next = NAV_MEDIA | MEDIA_USAGE[c.swipeLeft];
+      if (MEDIA_USAGE[c.swipeRight]) nav.prev = NAV_MEDIA | MEDIA_USAGE[c.swipeRight];
+    } else {
+      const n = item.space.pages.length;
+      for (const [k, dir] of [['next', 1], ['prev', -1]]) { const j = step(item.page, n, dir); if (j != null) nav[k] = keyIndex[`space:${item.space.id}:${j}`]; }
+    }
+  }
+  if (d.swipeV !== false && item.kind === 'space') {
+    const list = homeSpaces(), cur = list.findIndex(s => s.id === item.space.id);
+    if (cur >= 0) for (const [k, dir] of [['up', 1], ['down', -1]]) { const j = step(cur, list.length, dir); if (j != null) nav[k] = keyIndex[`space:${list[j].id}:0`]; }
+  }
+  return nav;
+}
+
 // HTML d'une page, dessinée comme dans l'aperçu (sans animation ni bandeau de clip)
 function pgHtml(item) {
   const sim = { screen: item.kind, spaceId: item.space ? item.space.id : null, page: item.page, homePage: item.page, cells: {}, render: true };
@@ -132,7 +162,7 @@ function pgBuildPack(pages) {
   };
   const zones = [];
   pages.forEach(p => p.zones.forEach(z => zones.push(z)));
-  const zOff = 24 + 20 * pages.length;
+  const zOff = 24 + PG_PAGE * pages.length;
   const sOff = zOff + 28 * zones.length;
   zones.forEach(z => { z._d = str(z.down); z._u = str(z.up); });
   let jOff = (sOff + strLen + 3) & ~3;
@@ -141,13 +171,15 @@ function pgBuildPack(pages) {
   const buf = new Uint8Array(total);
   const dv = new DataView(buf.buffer);
   buf.set(enc.encode('DECK'), 0);
-  dv.setUint16(4, 1, true); dv.setUint16(6, pages.length, true);
+  dv.setUint16(4, 2, true); dv.setUint16(6, pages.length, true);
   dv.setUint32(8, sOff, true); dv.setUint32(12, strLen, true); dv.setUint32(16, total, true); dv.setUint32(20, 0, true);
   let zi = 0;
   pages.forEach((p, i) => {
-    const o = 24 + 20 * i;
+    const o = 24 + PG_PAGE * i;
     dv.setUint32(o, jpegAt[i], true); dv.setUint32(o + 4, p.jpeg.length, true); dv.setUint32(o + 8, zi, true);
     dv.setUint16(o + 12, p.zones.length, true); dv.setUint16(o + 14, 0, true); dv.setUint32(o + 16, hexColor(p.accent), true);
+    const nav = p.nav || {};
+    ['next', 'prev', 'up', 'down'].forEach((k, j) => dv.setUint16(o + 20 + 2 * j, nav[k] == null ? NAV_NONE : nav[k], true));
     buf.set(p.jpeg, jpegAt[i]);
     zi += p.zones.length;
   });
@@ -177,6 +209,7 @@ async function pgPrepare() {
   const pages = list.map((it, i) => ({
     jpeg: new Uint8Array(shots[i].jpeg),
     accent: (it.kind === 'home' ? cfg.look : lookFor(it.space)).accent,
+    nav: pgNav(it, keyIndex),
     zones: shots[i].zones.map(r => pgZone(it, r, keyIndex, warn)).filter(Boolean)
   }));
   return { pack: pgBuildPack(pages), count: pages.length, warn };

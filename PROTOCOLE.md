@@ -32,8 +32,8 @@ Paquet (nombres en petit-boutiste) :
 
 | Partie | Taille | Contenu |
 |---|---|---|
-| En-tête | 24 | `DECK`, version (1), nombre de pages, début des textes, taille des textes, taille totale, 0 |
-| Pages | 20 × pages | début du JPEG, taille du JPEG, première zone, nombre de zones, 0, couleur d'appui `0xRRGGBB` |
+| En-tête | 24 | `DECK`, version (2 depuis l'écran 0.4.1), nombre de pages, début des textes, taille des textes, taille totale, 0 |
+| Pages | 28 × pages | début du JPEG, taille du JPEG, première zone, nombre de zones, 0, couleur d'appui `0xRRGGBB`, puis 4 × 16 bits : glisser vers la gauche, la droite, le haut, le bas → n° de page du paquet, `0xF000` + code d'une touche multimédia (lecteur : morceau suivant/précédent), ou `0xFFFF` (rien) |
 | Zones | 28 × zones | x, y, largeur, hauteur (16 bits) ; sorte, comportement, arrondi, 0 (8 bits) ; maintien en ms, v1, v2, 0 (16 bits) ; message à l'appui, message au relâchement (32 bits, position dans les textes, `0xFFFFFFFF` = aucun) |
 | Textes | | messages JSON terminés par un 0 |
 | Images | | JPEG 1024 × 600 (début aligné sur 4 octets) |
