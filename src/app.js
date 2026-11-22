@@ -803,9 +803,12 @@ function viewAudio() {
       ${destRow(D.discord, 'Passe par le micro virtuel ' + CABLE, cable && discordOk, cable ? (discordOk ? 'Entrée réglée' : (dstate.status === 'on' ? 'Entrée à changer dans Discord' : 'À choisir dans Discord')) : 'Micro virtuel à installer', '')}
       ${destRow(D.jeu, 'Passe par le même micro virtuel (chat vocal du jeu)', false, cable ? 'Entrée à changer dans le jeu' : 'Micro virtuel à installer',
         `<div class="row" style="gap:10px;flex-wrap:nowrap">${vol('aud-volmic', A.volMic).replace('class="row"', 'class="row grow"')}<button class="btn sm" data-act="aud-test" data-k="micro" ${cable ? '' : 'disabled'}>Tester</button></div><div class="small muted">Discord et le jeu reçoivent les mêmes sons : ce volume vaut pour les deux.</div>
-        <label class="chk" style="margin-top:6px"><input type="checkbox" data-act="aud-ptt" ${A.ptt ? 'checked' : ''}>Le jeu est en push-to-talk : appuyer tout seul sur la touche pendant les sons</label>
-        <div class="row" style="gap:10px;flex-wrap:nowrap"><span class="small muted">Touche du push-to-talk</span><input class="inp mono" style="width:120px" value="${esc(A.pttKey || 'V')}" data-field="aud-pttkey" maxlength="20" ${A.ptt ? '' : 'disabled'}>${A.ptt && !keyCombo(A.pttKey) ? '<span class="small" style="color:#FF8A95">Touche inconnue (ex. V, B, F1, Ctrl+V)</span>' : ''}</div>
-        <div class="small muted">L’écran appuie sur la touche juste avant le son et la relâche juste après, comme si vous la teniez. Évitez de lancer un son quand la fenêtre de discussion du jeu est ouverte : la lettre s’y écrirait. Écran 0.5.5 nécessaire.</div>`)}
+        <div style="margin-top:6px"><span class="lab">Votre micro dans le jeu</span>${seg('aud-ptt-mode', [['voix', 'Détection de la voix'], ['ptt', 'Push-to-talk (touche)']], A.ptt ? 'ptt' : 'voix')}</div>
+        ${A.ptt ? `<div class="row" style="gap:10px"><span class="small muted">Touche enregistrée :</span><span class="tag mono">${esc(A.pttKey || 'V')}</span></div>
+        <div class="row" style="gap:10px;flex-wrap:nowrap"><input class="inp mono" style="width:280px" id="f-pttcap" data-field="keycap" data-ptt="1" value="${esc(ui.pttPending || '')}" placeholder="Cliquez ici, puis tapez la touche" readonly>
+          <button class="btn sm pri" id="f-pttsave" data-act="aud-ptt-save" ${ui.pttPending && keyCombo(ui.pttPending) ? '' : 'disabled'}>Enregistrer</button></div>
+        <div class="small muted">L’écran appuie sur cette touche juste avant le son et la relâche juste après, comme si vous la teniez. Évitez de lancer un son quand la fenêtre de discussion du jeu est ouverte : la lettre s’y écrirait. Écran 0.5.5 nécessaire.</div>`
+        : '<div class="small muted">Rien à régler : le jeu entend les sons dès qu’ils passent dans le micro virtuel.</div>'}`)}
       ${destRow(D.stream, 'Une source « ' + OBS.SOUND_INPUT + ' » ajoutée toute seule dans OBS, à la scène en cours', OBS.state.status === 'on', OBS.state.status === 'on' ? 'OBS connecté' : 'OBS non connecté', vol('aud-volstream', A.volStream))}
     </div>
     <div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:12px">
@@ -1558,7 +1561,8 @@ const ACTIONS = {
   'bg-color': (d) => { editLook().bgColor = d.v; commit(); },
   'bg-photo': () => { ui.pickFor = 'bg'; $('#file-image').click(); },
   'bg-dim': (d) => { editLook().bgDim = +d.v; commit(); },
-  'aud-ptt': () => { cfg.audio.ptt = !cfg.audio.ptt; if (!cfg.audio.ptt) pttRelease(); commit(); },
+  'aud-ptt-mode': (d) => { cfg.audio.ptt = d.v === 'ptt'; ui.pttPending = ''; if (!cfg.audio.ptt) pttRelease(); commit(); },
+  'aud-ptt-save': () => { const k = ui.pttPending; if (!k || !keyCombo(k)) return; pttRelease(); cfg.audio.pttKey = k; ui.pttPending = ''; commit(); toast('Touche du push-to-talk enregistrée : ' + k, 'ok'); },
   'home-glass': (d) => { cfg.look.homeGlass = +d.v; commit(); },
   'edge-color': (d) => { editLook().idleEdge = d.v; commit(); },
   'acc-color': (d) => { editLook().accent = d.v; commit(); },
@@ -1704,7 +1708,6 @@ function onField(el, isChange) {
     case 'snd-retrig': c.action.retrig = v; commit(); break;
     case 'aud-me': cfg.audio.meOut = v; commit(true); ensureAudio(); break;
     case 'aud-mic': cfg.audio.micIn = v; commit(true); ensureAudio(); break;
-    case 'aud-pttkey': { pttRelease(); cfg.audio.pttKey = String(v || '').toUpperCase().replace(/\s+/g, '').replace(/CTRL/g, 'Ctrl').replace(/ALT/g, 'Alt').replace(/MAJ|SHIFT/g, 'Shift').replace(/WIN/g, 'Win').slice(0, 20); commit(true); break; }
     case 'aud-volme': case 'aud-volmic': case 'aud-volstream': case 'aud-master': {
       const key = { 'aud-volme': 'volMe', 'aud-volmic': 'volMic', 'aud-volstream': 'volStream', 'aud-master': 'master' }[f];
       cfg.audio[key] = +v; commit(true); SOUND.setup(cfg.audio);
@@ -1740,6 +1743,11 @@ document.addEventListener('keydown', (ev) => {
   if (names[ev.key] === null) return; // modificateur seul
   let key = names[ev.key] || (ev.code.startsWith('Key') ? ev.code.slice(3) : (ev.code.startsWith('Digit') ? ev.code.slice(5) : (ev.code.startsWith('Numpad') ? 'Pavé' + ev.code.slice(6) : ev.key.length === 1 ? ev.key.toUpperCase() : ev.key)));
   const combo = [ev.ctrlKey && 'Ctrl', ev.altKey && 'Alt', ev.shiftKey && 'Shift', ev.metaKey && 'Win', key].filter(Boolean).join('+');
+  if (el.dataset.ptt) {   // touche du push-to-talk : on la montre, elle s'enregistre avec le bouton
+    ui.pttPending = combo; el.value = combo;
+    const b = document.getElementById('f-pttsave'); if (b) b.disabled = !keyCombo(combo);
+    return;
+  }
   if (el.dataset.sc) { const sc = shortcutById(el.dataset.sc); if (sc) { sc.keys = combo; el.value = combo; commit(true); } return; }
   curCell().action.keys = combo; el.value = combo; commit(true); refreshGridOnly();
 });

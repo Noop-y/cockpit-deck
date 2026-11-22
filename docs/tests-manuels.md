@@ -172,7 +172,7 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 
 ## Soundboard : push-to-talk du jeu (écran 0.5.5)
 - [ ] Page Appareil : écran en 0.5.5, puis « Envoyer sur l'écran ».
-- [ ] Sorties audio › Jeu : cocher « Le jeu est en push-to-talk », touche V.
+- [ ] Sorties audio › Jeu › « Votre micro dans le jeu » : Push-to-talk ; cliquer dans le champ, taper V, « Enregistrer » → « Touche enregistrée : V ». Détection de la voix : plus de champ de touche, l'écran n'appuie sur rien.
 - [ ] En jeu (Star Citizen, push-to-talk sur V), soundboard avec JEU coché : toucher un son sans appuyer sur V → les autres joueurs l'entendent ; l'icône de micro du jeu s'allume pendant le son et s'éteint après.
 - [ ] « Stop tout » pendant un long son : le micro du jeu s'éteint.
 - [ ] Débrancher le câble pendant un son : la touche V n'est pas bloquée (relâchée au bout de 2,5 s au plus).
