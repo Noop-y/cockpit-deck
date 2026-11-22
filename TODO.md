@@ -31,6 +31,8 @@ Relu au début de chaque session, mis à jour à la fin.
 
 ## À faire
 
+- Idée (22/11/2026) : gestion du stock d'électronique (onglet Stock dans le logiciel, espace Stock sur l'écran avec −1/+1, projets, liste de courses) — à préciser avec l'utilisateur, a besoin de l'étape 4 (affichage en direct).
+
 - Programme de l'écran : étapes 2 à 4 (voir En cours) et nouveau message `config` en images dans `PROTOCOLE.md`.
 - Twitch : marqueurs, clips, pub, titre du live.
 - Boîtier : cotes validées sur l'écran reçu (pièce de test 0f) ; reste à imprimer et monter, vérifier la longueur de la nappe et la façade allumée.

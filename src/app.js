@@ -164,7 +164,7 @@ const catOf = (k) => CATEGORIES[k] || ((cfg && cfg.cats) || []).find(c => c.id =
 const catKeys = () => Object.keys(CATEGORIES).concat(((cfg && cfg.cats) || []).map(c => c.id));
 const isCustomCat = (k) => !CATEGORIES[k];
 const tplsOf = (k) => TEMPLATES[k] || [{ key: 'vide', name: 'Grille vide', desc: 'Une page vide à remplir comme vous voulez', icon: catOf(k).icon, exe: '', pages: () => [{ name: 'PAGE 1', cells: pad([]) }] }];
-const HOME_PER_PAGE = 5;
+const HOME_PER_PAGE = 6;   // plus de vignette Réglages (22/11/2026) : 6 espaces par page
 const homeSpaces = () => cfg.homeOrder.map(spaceById).filter(s => s && s.onHome);
 const homePages = () => Math.max(1, Math.ceil(homeSpaces().length / HOME_PER_PAGE));
 const shortcutById = (id) => (cfg.discord.shortcuts || []).find(x => x.id === id);
@@ -407,7 +407,6 @@ function deckHome(sim, pageArg) {
     return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isClips(s) ? 'Clips' : isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
   });
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
-  cards.push(`<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}">${svg('reglages', 40, '#9FB0C0', 1.6)}<div><div class="t disp">Réglages</div><div class="s">Luminosité · veille</div></div></div>`);
   const dots = nPages > 1 ? `<div class="ddots">${Array.from({ length: nPages }, (_, k) => `<i style="${k === pg ? `background:${look.accent}` : ''}"></i>`).join('')}</div>` : `<div style="color:#C9D6E2;font-size:1.5cqw">Choisissez un espace</div>`;
   return deckFrame(look, `<div class="dtop"><div style="display:flex;align-items:center;gap:1cqw;font-size:2.6cqw">${logoMark(36, '#E6EDF3', look.accent, true).replace('width="36" height="36"', 'style="width:4.2cqw;height:4.2cqw"')}<span class="disp" style="letter-spacing:.2cqw"><span style="color:${look.accent}">THE</span> DECK</span></div>${dots}</div><div class="dhome${sim && sim.anim ? ' ' + sim.anim : ''}">${cards.join('')}</div>`);
 }
@@ -681,7 +680,7 @@ function viewAccueil() {
       <button class="btn sm" data-act="home-toggle" data-id="${s.id}" style="min-width:96px;color:${s.onHome ? '#9ADCFF' : 'var(--dim)'}">${s.onHome ? 'Affiché' : 'Masqué'}</button></div>`;
   }).join('');
   const shown = cfg.spaces.filter(s => s.onHome).length;
-  return `<div class="head"><div><h1 class="disp">Écran d\u2019accueil</h1><div class="muted" style="margin-top:4px">Choisissez les espaces affichés et leur ordre. La vignette Réglages reste toujours en dernier.</div></div></div>
+  return `<div class="head"><div><h1 class="disp">Écran d\u2019accueil</h1><div class="muted" style="margin-top:4px">Choisissez les espaces affichés et leur ordre (6 par page). Les réglages de l\u2019écran se font ici, dans la page Appareil.</div></div></div>
     <div class="editor"><div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:10px">${rows}
       ${shown > HOME_PER_PAGE ? `<div class="note">L\u2019accueil montre ${HOME_PER_PAGE} espaces par page. Avec ${shown} espaces, il a ${homePages()} pages : sur l\u2019écran, glissez le doigt vers la gauche ou la droite pour passer de l\u2019une à l\u2019autre.</div>` : ''}</div>
       <div style="flex:1 1 460px;min-width:0;display:flex;flex-direction:column;gap:10px"><span class="lab" style="margin:0">Aperçu${homePages() > 1 ? ` · page ${(ui.homePv || 0) + 1} sur ${homePages()}` : ''}</span>${deckHome(null, ui.homePv || 0)}
