@@ -34,7 +34,8 @@ Relu au début de chaque session, mis à jour à la fin.
 - Stock d'électronique (22/11/2026, maquettes : artefact « The Deck · Stock ») — choix de l'utilisateur :
   - écran : maquette 5 « par rangement » (rangements renommables à gauche, tiroirs à droite) ; appui sur un tiroir → fenêtre −/+ pour corriger la quantité ;
   - logiciel : onglet Stock, renommer les rangements, nombre de tiroirs, pièces (quantité, seuil stock bas, lien d'achat) ;
-  - Claude a accès au stock (lecture ; retrait seulement à la phrase de fin de projet, après confirmation) — moyen à valider (proposé : petit serveur MCP local fourni par le logiciel) ;
+  - Claude a accès au stock par un petit connecteur (MCP local) fourni par le logiciel, avec seulement deux fonctions : lire le stock, et proposer un retrait/ajout. Une proposition s'affiche sur l'écran (VALIDER / REFUSER) et ne s'applique qu'après VALIDER ; historique + Annuler dans le logiciel ;
+  - phrases convenues : « Projet terminé : <nom> », « Commande reçue : … », « Annule la dernière validation », « Qu'est-ce que je dois commander ? » ; une case « Aide » sur l'écran du stock les rappelle (skill the-deck-stock proposé le 22/11/2026) ;
   - a besoin de l'étape 4 (affichage en direct) pour que la quantité change sur l'écran.
 
 - Programme de l'écran : étapes 2 à 4 (voir En cours) et nouveau message `config` en images dans `PROTOCOLE.md`.
