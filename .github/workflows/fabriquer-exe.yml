@@ -73,6 +73,12 @@ jobs:
           $has = @('gfxcapture','ddagrab','h264_nvenc','h264_amf','h264_qsv') | ForEach-Object { "$_=" + ([bool](($f + $e) -match "\b$_\b")) }
           Write-Output "::notice title=FFmpeg::$($has -join ' ')"
 
+      - name: Tester l'enregistreur de clips avec ce FFmpeg (mémoire, clip, vidéo)
+        shell: pwsh
+        env:
+          FFMPEG: vendor/ffmpeg.exe
+        run: node --test tests/clips.test.js
+
       - name: Ajouter le programme de l'écran au logiciel
         uses: actions/download-artifact@v4
         with:

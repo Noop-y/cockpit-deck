@@ -202,7 +202,7 @@ class ClipRecorder extends EventEmitter {
         `[0:a]asetpts='(STARTT-${t0s})/TB+NB_CONSUMED_SAMPLES/(SR*TB)',asplit=2[p1][p2];` +
         `[1:a]asetpts='(STARTT-${t0s})/TB+NB_CONSUMED_SAMPLES/(SR*TB)',asplit=2[m1][m2];` +
         '[p1][m1]amix=inputs=2:normalize=0:duration=longest[mix]';
-      const audioIn = (p) => ['-thread_queue_size', '4096', '-use_wallclock_as_timestamps', '1', '-f', 'f32le', '-ar', '48000', '-ac', '2', '-i', p.input];
+      const audioIn = (p) => ['-use_wallclock_as_timestamps', '1', '-f', 'f32le', '-ar', '48000', '-ac', '2', '-i', p.input];
       const args = ['-hide_banner', '-loglevel', 'warning', ...audioIn(pa), ...audioIn(pb), '-copyts', '-filter_complex', fc,
         '-map', '[v]', '-map', '[mix]', '-map', '[m2]', '-map', '[p2]', ...this.encArgs(c.enc), '-force_key_frames', 'expr:gte(t,n_forced*1)',
         '-c:a', 'aac', '-b:a', '160k', '-ar', '48000',
