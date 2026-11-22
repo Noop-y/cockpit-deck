@@ -334,13 +334,13 @@ function deckSound(space, pageIdx, sim) {
   const sel = sbSel(space, sim);
   const none = !SOUND_DESTS.some(d => sel[d.k]);
   const R = !!(sim && sim.render);   // dessin pour l'écran (image) : zones liées, et pas d'état « en train de jouer »
-  const volMic = Math.max(0, Math.min(100, Math.round((cfg.audio.volMic == null ? 80 : cfg.audio.volMic) / 10) * 10));
+  const volAll = Math.max(0, Math.min(100, Math.round((cfg.audio.master == null ? 100 : cfg.audio.master) / 10) * 10));   // volume général : toi, Discord, jeu, stream
   const VOLS = Array.from({ length: 11 }, (_, k) => k * 10 + ' %').join('|');
   const OK = '\uF00C';   // coche de la police de l'écran (LV_SYMBOL_OK)
   const tabs = `<div class="dtabs">${homeBtn(look, sim)}` +
     space.pages.map((p, i) => `<div class="dtab disp" ${sim ? `data-sim="page" data-i="${i}"` : ''} style="${i === pageIdx ? `border-color:${look.accent};color:${look.accent}` : ''}">${esc(p.name)}</div>`).join('') + '</div>';
-  // volume des sons envoyés dans le micro (Discord, jeu) : − / + changent le nombre tout de suite sur l'écran
-  const top = `<div class="dtop">${tabs}<div class="sbtop"><div class="sbbtn vol sbpm" ${sim ? 'data-simsb="vol-" data-cid="sb:vol"' : ''}>−</div><div class="sbbtn vol">${svg('micro', 20, '#9ADCFF')}<span class="sbvl">SONS DANS LE MICRO</span><span class="sbvn" ${R ? `data-simtext="sb:vol" data-opts="${VOLS}" data-i="${volMic / 10}" data-color="#9ADCFF" data-bg="#0B1B2E" data-clamp="1"` : ''}>${volMic} %</span></div><div class="sbbtn vol sbpm" ${sim ? 'data-simsb="vol+" data-cid="sb:vol"' : ''}>+</div><div class="sbbtn stop" ${sim ? 'data-simsb="stop"' : ''}><i></i>Stop tout</div></div></div>`;
+  // volume général des sons (le même pour toi, Discord, le jeu et le stream) : − / + changent le nombre tout de suite
+  const top = `<div class="dtop">${tabs}<div class="sbtop"><div class="sbbtn vol sbpm" ${sim ? 'data-simsb="vol-" data-cid="sb:vol"' : ''}>−</div><div class="sbbtn vol">${svg('son', 20, '#9ADCFF')}<span class="sbvl">VOLUME DES SONS</span><span class="sbvn" ${R ? `data-simtext="sb:vol" data-opts="${VOLS}" data-i="${volAll / 10}" data-color="#9ADCFF" data-bg="#0B1B2E" data-clamp="1"` : ''}>${volAll} %</span></div><div class="sbbtn vol sbpm" ${sim ? 'data-simsb="vol+" data-cid="sb:vol"' : ''}>+</div><div class="sbbtn stop" ${sim ? 'data-simsb="stop"' : ''}><i></i>Stop tout</div></div></div>`;
   const dests = SOUND_DESTS.map(d => {
     const on = !!sel[d.k];
     const cid = `sb:${space.id}:${d.k}`;
@@ -359,10 +359,10 @@ function deckSound(space, pageIdx, sim) {
   const inner = `${top}<div class="sbbody"><div class="sbdests"><div class="sblab disp">ENVOYER SUR</div>${dests}</div><div class="sbgrid${none ? ' dim' : ''}${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div></div>`;
   return deckFrame(look, inner, '', spaceOverlay(space, sim));
 }
-// volume des sons dans le micro (Discord, jeu), de 10 en 10
+// volume général des sons (toi, Discord, jeu, stream en même temps), de 10 en 10
 function sbVolStep(d) {
-  const v = Math.round((cfg.audio.volMic == null ? 80 : cfg.audio.volMic) / 10) * 10;
-  cfg.audio.volMic = Math.max(0, Math.min(100, v + 10 * d));
+  const v = Math.round((cfg.audio.master == null ? 100 : cfg.audio.master) / 10) * 10;
+  cfg.audio.master = Math.max(0, Math.min(100, v + 10 * d));
   commit(ui.view !== 'audio'); if (ui.view === 'audio') render();
   if (SOUND.state.ready) SOUND.setup(cfg.audio);
   if (typeof pgLiveRefresh === 'function') pgLiveRefresh();

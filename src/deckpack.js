@@ -361,7 +361,7 @@ async function pgLiveRun() {
 // valeur actuelle d'un compteur (pièce du stock) ou d'un choix (« clip:dur »…)
 function pgCounterValue(id) {
   if (String(id).startsWith('clip:') && typeof clipChoice === 'function') return clipChoice(String(id).slice(5)).i;
-  if (id === 'sb:vol') return Math.round((cfg.audio.volMic == null ? 80 : cfg.audio.volMic) / 10);
+  if (id === 'sb:vol') return Math.round((cfg.audio.master == null ? 100 : cfg.audio.master) / 10);
   if (String(id).startsWith('sb:')) { const [, sid, k] = String(id).split(':'); const s = typeof spaceById === 'function' ? spaceById(sid) : null; return s && s.sound && s.sound.sel[k] ? 1 : 0; }
   const x = typeof stockFindItem === 'function' ? stockFindItem(id) : null;
   return x ? x.item.q : 0;

@@ -166,7 +166,7 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Page Appareil : mettre l'écran à jour (0.5.4), puis « Envoyer sur l'écran ».
 - [ ] Soundboard : toucher JEU → la coche se remplit tout de suite, puis la case s'allume. Retoucher → décoché. Pareil pour MOI, DISCORD, STREAM.
 - [ ] Un son avec DISCORD coché : un ami l'entend ; décoché : il ne l'entend plus.
-- [ ] En haut, − / + : « SONS DANS LE MICRO » change tout de suite (de 10 en 10, s'arrête à 0 % et 100 %) ; dans Discord, le son est plus faible / plus fort. La page Sorties audio montre le même volume.
+- [ ] En haut, − / + : « VOLUME DES SONS » change tout de suite (de 10 en 10, s'arrête à 0 % et 100 %) ; le son suivant est plus faible / plus fort pour toi ET dans Discord. La page Sorties audio montre le même « Volume général des sons ».
 - [ ] « Stop tout » coupe les sons en cours.
 - [ ] Apparence › « Écran d'accueil · cases » : Transparentes / Un peu / Opaques ; après « Envoyer sur l'écran », l'accueil suit le choix. Le choix reste après avoir fermé et rouvert le logiciel.
 

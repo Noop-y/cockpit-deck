@@ -60,7 +60,7 @@ Les images en direct sont oubliées au redémarrage ou au prochain paquet comple
 
 `{"t":"stock","id":"<id de la pièce>","d":-1}` (ou `1`) : appui sur − ou + d'une pièce de l'espace Stock. Le logiciel change la quantité, l'enregistre et renvoie la page.
 
-`{"t":"sb-dest","space":"<id>","k":"discord"}` : coche Moi / Discord / Jeu / Stream touchée sur la soundboard. `{"t":"sb-vol","d":1}` (ou `-1`) : volume des sons dans le micro, de 10 en 10. `{"t":"sound-stop"}` : « Stop tout ».
+`{"t":"sb-dest","space":"<id>","k":"discord"}` : coche Moi / Discord / Jeu / Stream touchée sur la soundboard. `{"t":"sb-vol","d":1}` (ou `-1`) : volume général des sons (toi, Discord, jeu, stream), de 10 en 10. `{"t":"sound-stop"}` : « Stop tout ».
 
 `{"t":"stock-prop","op":"ok","id":"<id de la proposition>"}` (ou `"op":"non"`) : appui sur VALIDER (ou REFUSER) dans la fenêtre « Proposition de Claude ».
 
