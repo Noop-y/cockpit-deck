@@ -410,7 +410,7 @@ function deckHome(sim, pageArg) {
   const spaces = all.slice(pg * HOME_PER_PAGE, pg * HOME_PER_PAGE + HOME_PER_PAGE);
   const cards = spaces.map(s => {
     const cat = catOf(s.category);
-    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isClips(s) ? 'Clips' : isStock(s) ? 'Composants' : isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
+    return `<div class="dhcard" style="border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isClips(s) ? 'Clips' : isStock(s) ? 'Composants' : isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
   });
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   const dots = nPages > 1 ? `<div class="ddots">${Array.from({ length: nPages }, (_, k) => `<i style="${k === pg ? `background:${look.accent}` : ''}"></i>`).join('')}</div>` : `<div style="color:#C9D6E2;font-size:1.5cqw">Choisissez un espace</div>`;

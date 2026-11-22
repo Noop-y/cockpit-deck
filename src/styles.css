@@ -132,9 +132,11 @@ body.celldragging, body.celldragging * { cursor: grabbing !important; }
 .dcell .ph { position: absolute; inset: 0; background-size: cover; background-position: center; }
 .dcell .shade { position: absolute; inset: 0; background: linear-gradient(transparent 30%, #000); }
 .dcell .bar { position: absolute; left: 0; bottom: 0; height: calc(var(--u) * .5); }
-.deck .dhcard { border-radius: 1.6cqw; padding: 2cqw; display: flex; flex-direction: column; justify-content: space-between; text-align: left; color: var(--fg); }
+.deck .dhcard { border-radius: 1.6cqw; padding: 2cqw; display: flex; flex-direction: column; justify-content: space-between; text-align: left; color: var(--fg);
+  background: rgba(10, 13, 18, .35); text-shadow: 0 .15cqw .5cqw rgba(0, 0, 0, .85); }   /* en transparence : on voit le fond d'écran */
+.deck .dhcard svg { filter: drop-shadow(0 .15cqw .4cqw rgba(0, 0, 0, .7)); }
 .deck .dhcard .t { font-size: 2.7cqw; text-transform: uppercase; line-height: 1; }
-.deck .dhcard .s { font-size: 1.4cqw; color: var(--dim); margin-top: .5cqw; }
+.deck .dhcard .s { font-size: 1.4cqw; color: #C9D6E2; margin-top: .5cqw; }
 .deck .dhcard svg { width: 4.3cqw; height: 4.3cqw; }
 .deck .dempty { border-radius: 1.2cqw; border: 1px dashed rgba(201,214,226,.12); }
 

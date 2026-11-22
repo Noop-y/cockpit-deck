@@ -159,3 +159,6 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Repasser « ON FILME » sur LE JEU sans jeu lancé : la mémoire attend de nouveau un jeu.
 - [ ] Clips › Réglages : plus de message « L'enregistreur ne démarre pas : Error opening input files » ; l'état passe à « Mémoire en marche ». Si Windows demande l'autorisation du pare-feu pour The Deck, accepter (liaison interne au PC seulement).
 
+## Accueil : cases en transparence
+- [ ] Apparence : mettre une photo en fond. « Envoyer sur l'écran ». Sur l'accueil de l'écran, le fond se voit à travers les cases (Favoris, Soundboard, Clips…), et les noms restent lisibles.
+
