@@ -141,7 +141,8 @@ function defaultConfig() {
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
     discord: { clientId: '', clientSecret: '', autoConnect: false, shortcuts: [] },
     device: { brightness: 80, sleepMin: 10, swipe: true, swipeV: true, loop: false },
-    settings: { startWithWindows: true }
+    settings: { startWithWindows: true },
+    stock: { cats: [], history: [] }
   };
 }
 
@@ -415,7 +416,7 @@ function deckHome(sim, pageArg) {
 // Rendu : logiciel
 // ---------------------------------------------------------------------------
 function sidebar() {
-  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['connexions', 'Connexions'], ['audio', 'Sorties audio'], ['clips', 'Clips'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
+  const items = [['espaces', 'Mes espaces'], ['accueil', 'Écran d\u2019accueil'], ['apparence', 'Apparence'], ['connexions', 'Connexions'], ['audio', 'Sorties audio'], ['clips', 'Clips'], ['stock', 'Stock'], ['appareil', 'Appareil'], ['parametres', 'Paramètres']];
   const v = ui.view === 'editeur' ? 'espaces' : ui.view;
   const obsDot = OBS.state.status === 'on' ? 'ok' : (OBS.state.status === 'error' ? 'err' : '');
   return `<nav class="side" aria-label="Menu">
@@ -966,9 +967,10 @@ function modalHTML() {
 // Rendu global
 // ---------------------------------------------------------------------------
 function render() {
-  const views = { clips: viewClips, audio: viewAudio, espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
+  const views = { stock: typeof viewStock === 'function' ? viewStock : viewEspaces, clips: viewClips, audio: viewAudio, espaces: viewEspaces, editeur: viewEditeur, accueil: viewAccueil, apparence: viewApparence, connexions: viewConnexions, appareil: viewAppareil, parametres: viewParametres };
   const focusId = document.activeElement && document.activeElement.id;
   const selStart = document.activeElement && document.activeElement.selectionStart;
+  const selEnd = document.activeElement && document.activeElement.selectionEnd;
   const mainScroll = $('.main') ? $('.main').scrollTop : 0;
   $('#app').innerHTML = `<div class="layout">${sidebar()}<main class="main">${(views[ui.view] || viewEspaces)()}</main></div>`;
   $('.main').scrollTop = mainScroll;
@@ -976,7 +978,7 @@ function render() {
   drawSoundWave();
   if (focusId) {
     const el = document.getElementById(focusId);
-    if (el) { el.focus(); try { if (selStart != null && el.setSelectionRange) el.setSelectionRange(selStart, selStart); } catch (e) { /* ignoré */ } }
+    if (el) { el.focus(); try { if (selStart != null && el.setSelectionRange) el.setSelectionRange(selStart, selEnd != null ? selEnd : selStart); } catch (e) { /* ignoré */ } }
   }
 }
 function renderModal() {
@@ -1861,6 +1863,7 @@ function migrate(c) {
   if (!Array.isArray(out.discord.shortcuts)) out.discord.shortcuts = [];
   out.device = Object.assign({}, d.device, c.device || {});
   out.settings = Object.assign({}, d.settings, c.settings || {});
+  out.stock = typeof stockNorm === 'function' ? stockNorm(c.stock) : (c.stock || d.stock);   // stock d'électronique (stock.js)
   out.spaces = (c.spaces || []).filter(s => s && s.pages);
   out.spaces.forEach(s => s.pages.forEach(p => p.cells.forEach(normImg)));
   out.homeOrder = (c.homeOrder || []).filter(id => out.spaces.some(s => s.id === id));

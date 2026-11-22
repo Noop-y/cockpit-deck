@@ -353,3 +353,33 @@ body.celldragging, body.celldragging * { cursor: grabbing !important; }
 .clprev > span { width: 58px; height: 58px; border-radius: 50%; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
 .clacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .clacts .btn { white-space: normal; line-height: 1.15; padding: 0 10px; }
+
+/* ---------- Stock (stock.js) ---------- */
+.stwrap { display: flex; gap: 16px; align-items: flex-start; margin-top: 18px; flex-wrap: wrap; }
+.stcol1 { width: 240px; display: flex; flex-direction: column; gap: 8px; }
+.stcol2 { width: 320px; flex-shrink: 0; }
+.stcol3 { flex: 1 1 520px; min-width: 0; }
+.stcol2 label { display: flex; flex-direction: column; gap: 6px; }
+.stcat { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 12px; border-radius: 12px; border: 1.5px solid var(--line2); background: var(--panel); color: var(--fg); text-align: left; }
+.stcat b { display: block; font-size: 15px; } .stcat .small { display: block; }
+.stcat.on { border-color: var(--amber); background: #2A2113; }
+.stdot { width: 10px; height: 30px; border-radius: 5px; flex-shrink: 0; }
+.stbadge { min-width: 22px; height: 22px; border-radius: 11px; background: var(--amber); color: #07090C; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.stbadge.out { background: var(--red); }
+.stadd { border-style: dashed; color: var(--muted, #8E9BA8); }
+.stsw { width: 32px; height: 32px; border-radius: 16px; border: 3px solid transparent; padding: 0; }
+.stsw.on { border-color: var(--fg); }
+.sttoggle { display: flex; gap: 12px; align-items: center; text-align: left; padding: 12px; border-radius: 12px; border: 1.5px solid var(--line2); background: var(--field); color: var(--fg); }
+.sttoggle b, .sttoggle .small { display: block; }
+.sttoggle .sw { width: 46px; height: 26px; border-radius: 13px; background: var(--line2); position: relative; flex-shrink: 0; }
+.sttoggle .sw span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 10px; background: var(--fg); transition: left .15s; }
+.sttoggle.on { border-color: var(--amber); } .sttoggle.on .sw { background: var(--amber); } .sttoggle.on .sw span { left: 23px; }
+.stsub { display: flex; align-items: center; gap: 6px; padding: 4px; border-radius: 10px; border: 1.5px solid transparent; }
+.stsub.on { border-color: var(--amber); background: #2A2113; }
+.stsub .inp { height: 34px; }
+.stsubpick { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line2); background: var(--field); color: var(--fg); font-family: var(--f-mono, monospace); flex-shrink: 0; }
+.strow { display: grid; grid-template-columns: minmax(0, 1.3fr) 140px 64px minmax(0, 1fr) 36px; gap: 8px; align-items: center; }
+.strow .inp { height: 36px; }
+.sthead { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
+.stq { display: flex; gap: 4px; align-items: center; } .stq .inp { width: 60px; text-align: center; padding: 0 4px; } .stq .btn { width: 36px; padding: 0; font-size: 18px; }
+.sthead span:nth-child(2), .sthead span:nth-child(3) { text-align: center; }

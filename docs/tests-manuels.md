@@ -102,3 +102,11 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Les messages `media`, `clips` arrivent ; les appuis envoient `sound`, `clip`.
 
 - Note 13/11/2026 : « Touche F13 » sur l'écran a déclenché une case du logiciel réglée sur F13 (message « le programme ne s'est pas ouvert à temps ») : la touche réservée arrive bien au PC.
+
+## Stock (étape 1 : logiciel)
+- [ ] Menu « Stock » : page vide avec « + Ajouter une catégorie ».
+- [ ] Créer « Composants électroniques », allumer « Diviser en sous-catégories », renommer le tiroir en « Résistances », ajouter 3 pièces (220 Ω, 10 kΩ, 47 kΩ) avec quantités et seuils ; −/+ change la quantité ; orange sous le seuil, rouge à 0.
+- [ ] Taper un nom puis cliquer directement sur un bouton (ex. « + Ajouter une pièce ») : le clic marche du premier coup, le nom est gardé.
+- [ ] Éteindre l'interrupteur : confirmation si plusieurs tiroirs, puis toutes les pièces sont dans la catégorie. Le rallumer : elles vont dans « Tiroir 1 ».
+- [ ] Supprimer une pièce / un tiroir / une catégorie : confirmation, puis disparaît.
+- [ ] Fermer et rouvrir le logiciel : tout est encore là. Paramètres › sauvegardes : le stock revient avec une sauvegarde.
