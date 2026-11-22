@@ -141,7 +141,7 @@ const SOUND = (() => {
     if (dests.stream && OBS.state.status === 'on') {
       try { await OBS.playSound(file, vol * conf.volStream / 100, a.mode === 'loop'); stream = true; used.push('stream'); } catch (e) { state.error = 'OBS : ' + e.message; }
     }
-    const entry = { voices, t0: performance.now(), dur: end - start, loop: a.mode === 'loop', stream };
+    const entry = { voices, t0: performance.now(), dur: end - start, loop: a.mode === 'loop', stream, jeu: !!(dests.jeu && ctxMic) };
     if (!entry.loop) entry.timer = setTimeout(() => { const l = (playing.get(id) || []).filter(x => x !== entry); if (l.length) playing.set(id, l); else playing.delete(id); emit(); }, (end - start) * 1000 + 60);
     playing.set(id, (playing.get(id) || []).concat([entry]));
     emit();
@@ -171,5 +171,6 @@ const SOUND = (() => {
   function setTap(ctx, node) { tap = ctx && node ? { ctx, node } : null; }
 
   return { state, setup, setTap, refreshDevices, defaultMic, load, peaks, play, stop, stopAll, release, progress, preview, forget, beep,
-    isPlaying: (id) => playing.has(id), onChange: (fn) => listeners.push(fn) };
+    isPlaying: (id) => playing.has(id), onChange: (fn) => listeners.push(fn),
+    playingToGame: () => Array.from(playing.values()).some(l => l.some(e => e.jeu)) };
 })();

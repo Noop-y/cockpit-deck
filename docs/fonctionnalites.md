@@ -134,3 +134,8 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 - **Ce que ça fait** : Apparence › « Écran d'accueil · cases » : Transparentes (par défaut), Un peu, Opaques.
 - **Comment** : `cfg.look.homeGlass` (0,3 / 0,6 / 1 ; `DEFAULT_LOOK` dans `data.js`), lu par `homeGlass()` dans `deckHome` (`app.js`).
 
+## Soundboard : push-to-talk du jeu (22/11/2026, écran 0.5.5)
+- **Ce que ça fait** : Sorties audio › Jeu › « Le jeu est en push-to-talk » + la touche (V par défaut). Quand un son part sur « Jeu », l'écran appuie sur la touche 150 ms avant le son, la tient pendant le son, et la relâche 300 ms après la fin (ou à « Stop tout »).
+- **Comment** : l'écran est un vrai clavier USB, donc le jeu voit un vrai appui. Logiciel : `pttEnsure`, `pttSync`, `pttRelease` (`app.js`), `SOUND.playingToGame()` (`sound.js`), message `kb`. Écran : `kb_line` (`usb_deck.c`) avec un minuteur qui relâche la touche si le logiciel ne redit rien pendant 2,5 s.
+- **Attention** : si la fenêtre de discussion du jeu est ouverte, la lettre s'y écrit.
+

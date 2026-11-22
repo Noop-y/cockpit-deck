@@ -52,6 +52,10 @@ Pour le stock : après un − / +, le logiciel redessine seulement la page qui a
 
 Les images en direct sont oubliées au redémarrage ou au prochain paquet complet : le logiciel note qu'il faut tout renvoyer (`device.pgStale`) et le fait tout seul quand l'écran se rebranche.
 
+### Tenir une touche (écran 0.5.5)
+
+`{"t":"kb","mods":0,"code":25,"down":1}` : l'écran appuie (down 1) ou relâche (down 0) une touche de son clavier USB (code USB, ex. 25 = V). Sert au push-to-talk du jeu pendant un son de la soundboard. Le logiciel redit `down:1` chaque seconde ; sans nouvelle pendant 2,5 s, l'écran relâche tout seul.
+
 ### Montrer une page (écran 0.5.2)
 
 `{"t":"pg-show","page":<n° de page du paquet>}` : l'écran affiche cette page tout de suite (pas de réponse). Sert à montrer une proposition de Claude. Les écrans plus anciens l'ignorent.

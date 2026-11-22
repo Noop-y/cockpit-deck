@@ -228,3 +228,11 @@ test('soundboard : coches et volume du micro reliés, choix qui s’arrête aux 
   const src = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'main', 'pages.c'), 'utf8');
   assert.match(src, /s_zones\[ci\]\.mode == 1/, 'l’écran sait s’arrêter aux bouts');
 });
+
+test('push-to-talk : l’écran sait tenir une touche à la demande et la relâche tout seul', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'main', 'usb_deck.c'), 'utf8');
+  assert.match(src, /strcmp\(t, "kb"\) == 0\)\s*\{\s*kb_line\(line\)/);
+  assert.match(src, /esp_timer_start_once\(s_kb_timer, 2500000\)/, 'relâchée sans nouvelle du logiciel');
+  const c = loadPack();
+  assert.deepStrictEqual({ ...c.keyCombo('V') }, { mods: 0, code: 0x19 });
+});

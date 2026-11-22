@@ -139,7 +139,7 @@ function defaultConfig() {
     soundboardAdded: true,
     clipsAdded: true,
     clips: { when: 'jeu', paused: false, src: 'jeu', monitor: 0, res: 1080, fps: 60, dur: 60, pc: true, mic: true, sb: true, pcDev: '', folder: '' },
-    audio: { meOut: '', micIn: '', passMic: true, volMe: 80, volMic: 80, volStream: 80, master: 100, solo: false, cutOnAdd: true },
+    audio: { meOut: '', micIn: '', passMic: true, volMe: 80, volMic: 80, volStream: 80, master: 100, solo: false, cutOnAdd: true, ptt: false, pttKey: 'V' },
     cats: [],
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
@@ -367,6 +367,31 @@ function sbVolStep(d) {
   if (SOUND.state.ready) SOUND.setup(cfg.audio);
   if (typeof pgLiveRefresh === 'function') pgLiveRefresh();
 }
+// ---------- push-to-talk du jeu ----------
+// Pendant un son envoyé sur « Jeu », l'écran (vu par Windows comme un vrai clavier USB) tient la touche du
+// push-to-talk (ex. V), puis la relâche juste après. Programme de l'écran 0.5.5 (message « kb »).
+const PTT = { held: false, beat: null, rel: null };
+function pttCombo() { const a = cfg.audio; return a.ptt && ui.deckLinked && ui.deckFw && !fwOlder(ui.deckFw, '0.5.5') ? keyCombo(a.pttKey) : null; }
+function pttSend(k, down) { deckWrite({ t: 'kb', mods: k.mods, code: k.code, down: down ? 1 : 0 }); }
+async function pttEnsure() {
+  const k = pttCombo(); if (!k) return;
+  clearTimeout(PTT.rel); PTT.rel = null;
+  if (PTT.held) return;
+  PTT.held = k; pttSend(k, true);
+  clearInterval(PTT.beat); PTT.beat = setInterval(() => { if (PTT.held) pttSend(PTT.held, true); }, 1000);   // « toujours appuyé »
+  await new Promise(r => setTimeout(r, 150));   // le jeu ouvre le micro avant le début du son
+}
+function pttRelease() {
+  clearInterval(PTT.beat); PTT.beat = null; clearTimeout(PTT.rel); PTT.rel = null;
+  if (PTT.held) { const k = PTT.held; PTT.held = false; pttSend(k, false); }
+}
+// à chaque changement des sons en cours : plus rien vers le jeu → on relâche (un peu après, pour la fin du son)
+function pttSync() {
+  if (!PTT.held) return;
+  if (SOUND.playingToGame()) { clearTimeout(PTT.rel); PTT.rel = null; return; }
+  if (!PTT.rel) PTT.rel = setTimeout(pttRelease, 300);
+}
+SOUND.onChange(() => pttSync());
 async function ensureAudio() {
   if (!SOUND.state.ready) await SOUND.refreshDevices();
   await SOUND.setup(cfg.audio);
@@ -381,7 +406,9 @@ async function sbPlay(space, pi, ci, dests) {
   if (api.browser) { toast('Les sons se jouent dans le logiciel installé sur Windows.'); return; }
   try {
     await ensureAudio();
+    if (want.jeu) await pttEnsure();   // push-to-talk du jeu : on appuie un peu avant le son
     await SOUND.play(`${space.id}|${pi}|${ci}`, a.file, a, want);
+    pttSync();
     if ((want.discord || want.jeu) && !SOUND.state.cableOut && !warned.cable) { warned.cable = true; toast('Discord et Jeu : le micro virtuel n\u2019est pas installé (menu Sorties audio).', 'err', 7000); }
     if (want.stream && OBS.state.status !== 'on' && !warned.obs) { warned.obs = true; toast('Stream : OBS n\u2019est pas connecté (menu Connexions).', 'err', 7000); }
   } catch (e) { toast(e.message, 'err'); }
@@ -775,7 +802,10 @@ function viewAudio() {
         <div class="small muted">Avec SteelSeries Sonar : choisissez par exemple « Sonar – Aux ». En mode streamer, ce canal ne doit pas aller dans le mix Stream, sinon les sons arriveraient deux fois sur le stream.</div>`)}
       ${destRow(D.discord, 'Passe par le micro virtuel ' + CABLE, cable && discordOk, cable ? (discordOk ? 'Entrée réglée' : (dstate.status === 'on' ? 'Entrée à changer dans Discord' : 'À choisir dans Discord')) : 'Micro virtuel à installer', '')}
       ${destRow(D.jeu, 'Passe par le même micro virtuel (chat vocal du jeu)', false, cable ? 'Entrée à changer dans le jeu' : 'Micro virtuel à installer',
-        `<div class="row" style="gap:10px;flex-wrap:nowrap">${vol('aud-volmic', A.volMic).replace('class="row"', 'class="row grow"')}<button class="btn sm" data-act="aud-test" data-k="micro" ${cable ? '' : 'disabled'}>Tester</button></div><div class="small muted">Discord et le jeu reçoivent les mêmes sons : ce volume vaut pour les deux.</div>`)}
+        `<div class="row" style="gap:10px;flex-wrap:nowrap">${vol('aud-volmic', A.volMic).replace('class="row"', 'class="row grow"')}<button class="btn sm" data-act="aud-test" data-k="micro" ${cable ? '' : 'disabled'}>Tester</button></div><div class="small muted">Discord et le jeu reçoivent les mêmes sons : ce volume vaut pour les deux.</div>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" data-act="aud-ptt" ${A.ptt ? 'checked' : ''}>Le jeu est en push-to-talk : appuyer tout seul sur la touche pendant les sons</label>
+        <div class="row" style="gap:10px;flex-wrap:nowrap"><span class="small muted">Touche du push-to-talk</span><input class="inp mono" style="width:120px" value="${esc(A.pttKey || 'V')}" data-field="aud-pttkey" maxlength="20" ${A.ptt ? '' : 'disabled'}>${A.ptt && !keyCombo(A.pttKey) ? '<span class="small" style="color:#FF8A95">Touche inconnue (ex. V, B, F1, Ctrl+V)</span>' : ''}</div>
+        <div class="small muted">L’écran appuie sur la touche juste avant le son et la relâche juste après, comme si vous la teniez. Évitez de lancer un son quand la fenêtre de discussion du jeu est ouverte : la lettre s’y écrirait. Écran 0.5.5 nécessaire.</div>`)}
       ${destRow(D.stream, 'Une source « ' + OBS.SOUND_INPUT + ' » ajoutée toute seule dans OBS, à la scène en cours', OBS.state.status === 'on', OBS.state.status === 'on' ? 'OBS connecté' : 'OBS non connecté', vol('aud-volstream', A.volStream))}
     </div>
     <div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:12px">
@@ -1528,6 +1558,7 @@ const ACTIONS = {
   'bg-color': (d) => { editLook().bgColor = d.v; commit(); },
   'bg-photo': () => { ui.pickFor = 'bg'; $('#file-image').click(); },
   'bg-dim': (d) => { editLook().bgDim = +d.v; commit(); },
+  'aud-ptt': () => { cfg.audio.ptt = !cfg.audio.ptt; if (!cfg.audio.ptt) pttRelease(); commit(); },
   'home-glass': (d) => { cfg.look.homeGlass = +d.v; commit(); },
   'edge-color': (d) => { editLook().idleEdge = d.v; commit(); },
   'acc-color': (d) => { editLook().accent = d.v; commit(); },
@@ -1673,6 +1704,7 @@ function onField(el, isChange) {
     case 'snd-retrig': c.action.retrig = v; commit(); break;
     case 'aud-me': cfg.audio.meOut = v; commit(true); ensureAudio(); break;
     case 'aud-mic': cfg.audio.micIn = v; commit(true); ensureAudio(); break;
+    case 'aud-pttkey': { pttRelease(); cfg.audio.pttKey = String(v || '').toUpperCase().replace(/\s+/g, '').replace(/CTRL/g, 'Ctrl').replace(/ALT/g, 'Alt').replace(/MAJ|SHIFT/g, 'Shift').replace(/WIN/g, 'Win').slice(0, 20); commit(true); break; }
     case 'aud-volme': case 'aud-volmic': case 'aud-volstream': case 'aud-master': {
       const key = { 'aud-volme': 'volMe', 'aud-volmic': 'volMic', 'aud-volstream': 'volStream', 'aud-master': 'master' }[f];
       cfg.audio[key] = +v; commit(true); SOUND.setup(cfg.audio);

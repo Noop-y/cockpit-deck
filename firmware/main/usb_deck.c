@@ -330,6 +330,37 @@ static void ota_line(const char *t, const char *line)
     }
 }
 
+// ---------- touche tenue à la demande du logiciel (push-to-talk du jeu pendant un son) ----------
+// Le logiciel redit « appuyé » chaque seconde ; sans nouvelle pendant 2,5 s (logiciel fermé, câble débranché),
+// l'écran relâche tout seul : la touche ne reste jamais bloquée.
+static esp_timer_handle_t s_kb_timer;
+static uint8_t s_kb_code, s_kb_mods;
+static void kb_release(void *arg)
+{
+    if (s_kb_code) { usb_deck_combo(s_kb_mods, s_kb_code, false); s_kb_code = 0; }
+}
+static void kb_line(const char *line)
+{
+    long code = 0, mods = 0, down = 0;
+    json_num(line, "code", &code);
+    json_num(line, "mods", &mods);
+    json_num(line, "down", &down);
+    if (code <= 0 || code > 0xFF) return;
+    if (!s_kb_timer) {
+        const esp_timer_create_args_t a = { .callback = kb_release, .name = "kb" };
+        if (esp_timer_create(&a, &s_kb_timer) != ESP_OK) return;
+    }
+    esp_timer_stop(s_kb_timer);
+    if (down) {
+        if (s_kb_code != (uint8_t)code || s_kb_mods != (uint8_t)mods) {
+            kb_release(NULL);
+            usb_deck_combo((uint8_t)mods, (uint8_t)code, true);
+            s_kb_code = (uint8_t)code; s_kb_mods = (uint8_t)mods;
+        }
+        esp_timer_start_once(s_kb_timer, 2500000);
+    } else kb_release(NULL);
+}
+
 static void on_line(const char *line)
 {
     char t[16] = "";
@@ -338,6 +369,8 @@ static void on_line(const char *line)
         ota_line(t, line);
     } else if (strncmp(t, "pg-", 3) == 0 || strncmp(t, "pi-", 3) == 0) {   // pages, et une page remplacée en direct
         pages_line(t, line);
+    } else if (strcmp(t, "kb") == 0) {
+        kb_line(line);
     } else if (strcmp(t, "hello") == 0) {
         s_hello_us = esp_timer_get_time();
         json_str(line, "app", s_app_version, sizeof s_app_version);
