@@ -15,16 +15,11 @@ try { execFileSync(ffmpeg, ['-version'], { stdio: 'ignore' }); } catch (e) { ffm
 
 test('enregistreur de clips : mémoire, clip, vidéo, liste, découpe', { skip: !ffmpeg && 'FFmpeg absent', timeout: 90000 }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'deck-'));
-  const sockDir = process.platform === 'win32' ? null : fs.mkdtempSync('/tmp/cd-');
   class T extends ClipRecorder {
     available() { return true; }
     async probe() { this.probed = { gfx: false, dda: false, enc: { id: 'x264', codec: 'libx264', label: '' } }; return this.probed; }
     cands() { return [{ cap: 'test', enc: this.probed.enc, mode: 'down' }]; }
     videoChain() { return 'testsrc2=size=1280x720:rate=30,realtime,format=nv12'; }
-    pipePath(tag, id) {
-      if (!sockDir) return super.pipePath(tag, id);
-      const p = path.join(sockDir, tag + '.sock'); return { listen: p, input: 'unix:' + p };
-    }
     startScan() {}
   }
   const r = new T({ ffmpeg, temp: path.join(dir, 'tmp'), data: path.join(dir, 'data'), videos: path.join(dir, 'videos'), scanScript: '', shell: { trashItem: async (f) => fs.unlinkSync(f) }, nativeImage: null });
@@ -59,7 +54,6 @@ test('enregistreur de clips : mémoire, clip, vidéo, liste, découpe', { skip: 
     clearInterval(feed);
     await r.shutdown();
     fs.rmSync(dir, { recursive: true, force: true });
-    if (sockDir) fs.rmSync(sockDir, { recursive: true, force: true });
   }
 });
 

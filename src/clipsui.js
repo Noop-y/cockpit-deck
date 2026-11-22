@@ -69,6 +69,7 @@ function clipStatusText() {
   if (c.when === 'jamais') return 'Mémoire éteinte : seule ENREGISTRER filme';
   if (st.waiting) return 'Mémoire en attente d’un jeu · ' + clipDurLabel();
   if (st.starting) return 'Mémoire en route…';
+  if (st.error && !st.running) return 'Mémoire en panne : voir Clips › Réglages sur le PC';
   if (st.running) return `Mémoire en marche · ${clipDurLabel()} · ${st.game && st.target === st.game ? st.game : 'écran entier'}`;
   return 'Mémoire arrêtée';
 }

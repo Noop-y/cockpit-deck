@@ -195,9 +195,8 @@ class ClipRecorder extends EventEmitter {
       this.segs = new Map(); this.listSeen = '';
       this.t0us = Date.now() * 1000;
       const t0s = (this.t0us / 1e6).toFixed(6);
-      const id = `${process.pid}-${Date.now()}`;
-      const pa = this.pipePath('pc', id), pb = this.pipePath('voix', id);
-      await this.openPipe('a', pa.listen); await this.openPipe('b', pb.listen);
+      const pa = await this.openPipe('a'), pb = await this.openPipe('b');
+      if (!pa || !pb) throw new Error('liaison du son impossible');
       const fc = `${this.videoChain(c, target)},setpts='(RTCTIME-${this.t0us})/(TB*1000000)'[v];` +
         // son : calé sur l'heure du premier paquet, puis compté échantillon par échantillon (régulier)
         `[0:a]asetpts='(STARTT-${t0s})/TB+NB_CONSUMED_SAMPLES/(SR*TB)',asplit=2[p1][p2];` +
@@ -225,17 +224,20 @@ class ClipRecorder extends EventEmitter {
       this.retryAt = Date.now() + 10000;
     } finally { this.starting = false; this.pushState(); }
   }
-  // tuyau nommé de Windows : le logiciel écoute, FFmpeg le lit comme un fichier
-  pipePath(tag, id) { const n = `\\\\.\\pipe\\thedeck-${tag}-${id}`; return { listen: n, input: n }; }
-  openPipe(k, name) {
+  // le son va du logiciel à FFmpeg par une liaison locale (127.0.0.1, port choisi par Windows) : le logiciel écoute,
+  // FFmpeg s'y connecte (« tcp://… »). Les tuyaux nommés de Windows refusaient de s'ouvrir dans FFmpeg
+  // (« Error opening input files: Invalid argument »).
+  openPipe(k) {
     return new Promise((resolve) => {
       const srv = net.createServer((sock) => {
+        if (this.pipes[k] && !this.pipes[k].destroyed) { sock.destroy(); return; }   // une seule connexion : FFmpeg
         this.pipes[k] = sock;
+        sock.setNoDelay(true);
         sock.on('error', () => { /* FFmpeg arrêté */ });
         sock.on('close', () => { if (this.pipes[k] === sock) this.pipes[k] = null; });
       });
-      srv.on('error', () => resolve(false));
-      srv.listen(name, () => resolve(true));
+      srv.on('error', () => resolve(null));
+      srv.listen(0, '127.0.0.1', () => resolve({ input: `tcp://127.0.0.1:${srv.address().port}` }));
       this.servers.push(srv);
     });
   }
