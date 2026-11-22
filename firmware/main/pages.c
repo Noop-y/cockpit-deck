@@ -63,7 +63,8 @@ enum { Z_RIEN, Z_TOUCHE, Z_MANETTE, Z_MEDIA, Z_PAGE, Z_MESSAGE, Z_COMPTE, Z_TEXT
 // rsv = pas, -1 ou +1) le change tout de suite sur l'écran, sans attendre la nouvelle image du logiciel.
 // Z_TEXTE : un choix parmi plusieurs (ex. durée des clips « 15 s|30 s|1 min… ») : s_down = les choix séparés par « | »,
 // v1 = n° du choix montré, v2 = couleur du texte (RGB565), hold_ms = couleur du fond (RGB565). Un bouton lié passe
-// au choix suivant tout de suite sur l'écran.
+// au choix suivant tout de suite sur l'écran. mode = 1 : on s'arrête au premier et au dernier (volume) au lieu de
+// reboucler. s_up (facultatif) = couleur du fond pour chaque choix, « RRGGBB|RRGGBB » (ex. coche vide / pleine).
 enum { M_APPUI, M_MAINTENIR, M_BASCULE };
 #define AUCUN 0xFFFFFFFFu
 
@@ -247,6 +248,20 @@ static void choix_get(const pack_zone_t *z, int i, char *out, size_t len)
     while (*s && *s != '|' && k + 1 < len) out[k++] = *s++;
     out[k] = 0;
 }
+// couleur du fond du choix n° i (s_up), ou -1
+static int32_t choix_bg(const pack_zone_t *z, int i)
+{
+    if (z->s_up == 0xFFFFFFFF) return -1;
+    char c[12];
+    const char *s = str_at(z->s_up);
+    if (!s) return -1;
+    while (i > 0 && *s) { if (*s++ == '|') i--; }
+    size_t k = 0;
+    while (*s && *s != '|' && k + 1 < sizeof c) c[k++] = *s++;
+    c[k] = 0;
+    if (k != 6) return -1;
+    return (int32_t)strtoul(c, NULL, 16);
+}
 static void draw_counters(void)
 {
     if (!s_cntl) return;
@@ -262,8 +277,10 @@ static void draw_counters(void)
         lv_obj_set_pos(o, z->x - 2, z->y - 2);
         lv_obj_set_size(o, z->w + 4, z->h + 4);
         if (z->kind == Z_TEXTE) {   // un choix : texte à gauche, sur la couleur de la case
-            lv_obj_set_style_bg_color(o, lv_color_hex(rgb565(z->hold_ms)), 0);
+            int32_t bg = choix_bg(z, (int)s_cnt[zi]);
+            lv_obj_set_style_bg_color(o, lv_color_hex(bg >= 0 ? (uint32_t)bg : rgb565(z->hold_ms)), 0);
             lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+            if (z->radius) lv_obj_set_style_radius(o, z->radius, 0);
             lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
             char txt[40];
             choix_get(z, (int)s_cnt[zi], txt, sizeof txt);
@@ -273,7 +290,7 @@ static void draw_counters(void)
             if (f == &lv_font_montserrat_32 && (int)strlen(txt) * 22 > z->w) f = &lv_font_montserrat_24;   // trop long : plus petit (≈ 22 px par lettre)
             lv_obj_set_style_text_font(l, f, 0);
             lv_obj_set_style_text_color(l, lv_color_hex(rgb565(z->v2)), 0);
-            lv_obj_align(l, LV_ALIGN_LEFT_MID, 2, 0);
+            if (z->w < 48) lv_obj_center(l); else lv_obj_align(l, LV_ALIGN_LEFT_MID, 2, 0);   // petite case (coche) : au milieu
             continue;
         }
         lv_obj_set_style_bg_color(o, lv_color_hex(0x0D1116), 0);
@@ -329,7 +346,8 @@ static void fire(const pack_zone_t *z, bool down)
                 int32_t v = s_cnt[ci] + (int8_t)z->rsv;
                 if (s_zones[ci].kind == Z_TEXTE) {   // choix suivant (on revient au premier après le dernier)
                     int n = choix_count(&s_zones[ci]);
-                    s_cnt[ci] = n > 0 ? ((v % n) + n) % n : 0;
+                    if (s_zones[ci].mode == 1) s_cnt[ci] = v < 0 ? 0 : (v >= n ? (n > 0 ? n - 1 : 0) : v);   // s'arrête aux bouts
+                    else s_cnt[ci] = n > 0 ? ((v % n) + n) % n : 0;
                 } else s_cnt[ci] = v < 0 ? 0 : v;
                 draw_counters();
             }

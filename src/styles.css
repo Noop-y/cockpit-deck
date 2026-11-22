@@ -226,6 +226,9 @@ body.celldragging, body.celldragging * { cursor: grabbing !important; }
 .deck .sbbtn { height: 4.4cqw; padding: 0 1.4cqw; border-radius: 1cqw; display: flex; align-items: center; gap: .6cqw; font-size: 1.45cqw; font-weight: 600; white-space: nowrap; }
 .deck .sbbtn svg { width: 2cqw; height: 2cqw; }
 .deck .sbbtn.vol { border: 1px solid #1F4A61; background: rgba(11,27,46,.85); color: #9ADCFF; }
+.deck .sbbtn.sbpm { width: 4.4cqw; padding: 0; justify-content: center; font-size: 2.6cqw; }
+.deck .sbvl { font-size: 1.1cqw; color: #6FA9C9; letter-spacing: .05cqw; }
+.deck .sbvn { min-width: 7.6cqw; font-size: 1.9cqw; }
 .deck .sbbtn.stop { border: 1px solid #7A3A33; background: rgba(28,17,19,.88); color: #FF8A7A; }
 .deck .sbbtn.stop i { width: 1.2cqw; height: 1.2cqw; background: #FF8A7A; border-radius: .2cqw; }
 .deck .sbbody { flex: 1; min-height: 0; display: flex; gap: 1.2cqw; }

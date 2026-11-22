@@ -162,3 +162,10 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 ## Accueil : cases en transparence
 - [ ] Apparence : mettre une photo en fond. « Envoyer sur l'écran ». Sur l'accueil de l'écran, le fond se voit à travers les cases (Favoris, Soundboard, Clips…), et les noms restent lisibles.
 
+## Soundboard sur l'écran (écran 0.5.4)
+- [ ] Page Appareil : mettre l'écran à jour (0.5.4), puis « Envoyer sur l'écran ».
+- [ ] Soundboard : toucher JEU → la coche se remplit tout de suite, puis la case s'allume. Retoucher → décoché. Pareil pour MOI, DISCORD, STREAM.
+- [ ] Un son avec DISCORD coché : un ami l'entend ; décoché : il ne l'entend plus.
+- [ ] En haut, − / + : « SONS DANS LE MICRO » change tout de suite (de 10 en 10, s'arrête à 0 % et 100 %) ; dans Discord, le son est plus faible / plus fort. La page Sorties audio montre le même volume.
+- [ ] « Stop tout » coupe les sons en cours.
+

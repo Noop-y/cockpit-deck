@@ -207,3 +207,24 @@ test('clips : la durée et « on filme » changent tout de suite sur l’écran 
   assert.strictEqual(pack.readUInt16LE(24 + 28 + 18), 2);
   assert.ok(pack.includes(Buffer.from('15 s|30 s|1 min|2 min|3 min|5 min')));
 });
+
+test('soundboard : coches et volume du micro reliés, choix qui s’arrête aux bouts', () => {
+  const c = loadPack();
+  const r = (data) => ({ x: 0, y: 0, w: 40, h: 24, radius: 7, data });
+  const item = { kind: 'space', space: { id: 'sb1', layout: 'soundboard', pages: [] }, page: 0 };
+  const zones = c.pgLinkCounters([
+    c.pgZone(item, r({ simdest: 'jeu', cid: 'sb:sb1:jeu' }), {}, []),
+    c.pgZone(item, r({ simtext: 'sb:sb1:jeu', opts: '|', i: '0', color: '#07090C', bg: '#161D25', bgs: '#161D25|#FFB547' }), {}, []),
+    c.pgZone(item, r({ simsb: 'vol-', cid: 'sb:vol' }), {}, []),
+    c.pgZone(item, r({ simtext: 'sb:vol', opts: '0 %|10 %', i: '1', color: '#9ADCFF', bg: '#0B1B2E', clamp: '1' }), {}, []),
+    c.pgZone(item, r({ simsb: 'stop' }), {}, [])]);
+  assert.deepStrictEqual(JSON.parse(zones[0].down), { t: 'sb-dest', space: 'sb1', k: 'jeu' });
+  assert.strictEqual(zones[0].link, 2);
+  assert.strictEqual(zones[1].up, '161D25|FFB547', 'fond de chaque choix');
+  assert.strictEqual(zones[2].link, 4);
+  assert.strictEqual(zones[2].delta, -1);
+  assert.strictEqual(zones[3].mode, 1, 'le volume ne reboucle pas');
+  assert.deepStrictEqual(JSON.parse(zones[4].down), { t: 'sound-stop' });
+  const src = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'main', 'pages.c'), 'utf8');
+  assert.match(src, /s_zones\[ci\]\.mode == 1/, 'l’écran sait s’arrêter aux bouts');
+});

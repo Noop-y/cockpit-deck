@@ -333,24 +333,39 @@ function deckSound(space, pageIdx, sim) {
   const page = space.pages[pageIdx] || space.pages[0];
   const sel = sbSel(space, sim);
   const none = !SOUND_DESTS.some(d => sel[d.k]);
-  const vol = sim && sim.sbVol != null ? sim.sbVol : cfg.audio.master;
+  const R = !!(sim && sim.render);   // dessin pour l'écran (image) : zones liées, et pas d'état « en train de jouer »
+  const volMic = Math.max(0, Math.min(100, Math.round((cfg.audio.volMic == null ? 80 : cfg.audio.volMic) / 10) * 10));
+  const VOLS = Array.from({ length: 11 }, (_, k) => k * 10 + ' %').join('|');
+  const OK = '\uF00C';   // coche de la police de l'écran (LV_SYMBOL_OK)
   const tabs = `<div class="dtabs">${homeBtn(look, sim)}` +
     space.pages.map((p, i) => `<div class="dtab disp" ${sim ? `data-sim="page" data-i="${i}"` : ''} style="${i === pageIdx ? `border-color:${look.accent};color:${look.accent}` : ''}">${esc(p.name)}</div>`).join('') + '</div>';
-  const top = `<div class="dtop">${tabs}<div class="sbtop"><div class="sbbtn vol" ${sim ? 'data-simsb="vol"' : ''}>${pIcon('vplus')}${vol} %</div><div class="sbbtn stop" ${sim ? 'data-simsb="stop"' : ''}><i></i>Stop tout</div></div></div>`;
+  // volume des sons envoyés dans le micro (Discord, jeu) : − / + changent le nombre tout de suite sur l'écran
+  const top = `<div class="dtop">${tabs}<div class="sbtop"><div class="sbbtn vol sbpm" ${sim ? 'data-simsb="vol-" data-cid="sb:vol"' : ''}>−</div><div class="sbbtn vol">${svg('micro', 20, '#9ADCFF')}<span class="sbvl">SONS DANS LE MICRO</span><span class="sbvn" ${R ? `data-simtext="sb:vol" data-opts="${VOLS}" data-i="${volMic / 10}" data-color="#9ADCFF" data-bg="#0B1B2E" data-clamp="1"` : ''}>${volMic} %</span></div><div class="sbbtn vol sbpm" ${sim ? 'data-simsb="vol+" data-cid="sb:vol"' : ''}>+</div><div class="sbbtn stop" ${sim ? 'data-simsb="stop"' : ''}><i></i>Stop tout</div></div></div>`;
   const dests = SOUND_DESTS.map(d => {
     const on = !!sel[d.k];
-    return `<div class="sbdest${on ? ' on' : ''}" style="${on ? `border-color:${d.color}` : ''}" ${sim ? `data-simdest="${d.k}"` : ''}>
-      <div class="sbdtop"><svg viewBox="0 0 24 24" fill="none" stroke="${on ? d.color : '#5B6875'}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d.icon}"/></svg><span class="sbchk" style="${on ? `background:${d.color};border-color:${d.color}` : ''}">${on ? '✓' : ''}</span></div>
+    const cid = `sb:${space.id}:${d.k}`;
+    // la coche change tout de suite sur l'écran (fond et ✓), l'image du logiciel suit
+    const chk = R ? `data-simtext="${cid}" data-opts="|${OK}" data-i="${on ? 1 : 0}" data-color="#07090C" data-bg="#161D25" data-bgs="#161D25|${d.color}"` : '';
+    return `<div class="sbdest${on ? ' on' : ''}" style="${on ? `border-color:${d.color}` : ''}" ${sim ? `data-simdest="${d.k}" data-cid="${cid}"` : ''}>
+      <div class="sbdtop"><svg viewBox="0 0 24 24" fill="none" stroke="${on ? d.color : '#5B6875'}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d.icon}"/></svg><span class="sbchk" style="${on ? `background:${d.color};border-color:${d.color}` : ''}" ${chk}>${on ? '✓' : ''}</span></div>
       <div class="disp sbdname">${d.label}</div></div>`;
   }).join('');
   const cells = page.cells.slice(0, 12).map((c, i) => {
     const id = `${space.id}|${pageIdx}|${i}`;
-    const playingNow = c && SOUND.isPlaying(id);
+    const playingNow = c && !R && SOUND.isPlaying(id);
     const a = (c && c.action) || {};
     return deckCell(c, look, { on: playingNow, prog: playingNow ? SOUND.progress(id) : null, sub: c && a.type === 'sound' && a.file ? (a.mode === 'loop' ? 'en boucle' : fmtDur(a.dur != null ? (a.end || a.dur) - (a.start || 0) : null)) : '', attrs: sim && c ? `data-simcell="${i}"` : '' });
   }).join('');
   const inner = `${top}<div class="sbbody"><div class="sbdests"><div class="sblab disp">ENVOYER SUR</div>${dests}</div><div class="sbgrid${none ? ' dim' : ''}${sim && sim.anim ? ' ' + sim.anim : ''}">${cells}</div></div>`;
   return deckFrame(look, inner, '', spaceOverlay(space, sim));
+}
+// volume des sons dans le micro (Discord, jeu), de 10 en 10
+function sbVolStep(d) {
+  const v = Math.round((cfg.audio.volMic == null ? 80 : cfg.audio.volMic) / 10) * 10;
+  cfg.audio.volMic = Math.max(0, Math.min(100, v + 10 * d));
+  commit(ui.view !== 'audio'); if (ui.view === 'audio') render();
+  if (SOUND.state.ready) SOUND.setup(cfg.audio);
+  if (typeof pgLiveRefresh === 'function') pgLiveRefresh();
 }
 async function ensureAudio() {
   if (!SOUND.state.ready) await SOUND.refreshDevices();
@@ -1146,6 +1161,11 @@ function onDeckMessage(m) {
     sbPlay(s, m.page, m.cell, m.dests || sbSel(s));
   }
   if (m.t === 'sound-stop') SOUND.stopAll();
+  if (m.t === 'sb-vol') sbVolStep(+m.d || 0);
+  if (m.t === 'sb-dest') {   // coche Moi / Discord / Jeu / Stream touchée sur l'écran
+    const s = spaceById(m.space); const k = String(m.k || '');
+    if (s && SOUND_DESTS.some(d => d.k === k)) { const sel = sbSel(s); sel[k] = !sel[k]; commit(true); if (typeof pgLiveRefresh === 'function') pgLiveRefresh(); }
+  }
   if (m.t === 'clip' && m.op) runClip(String(m.op));
   if (m.t === 'stock' && typeof stockFromDeck === 'function') stockFromDeck(m);
   if (m.t === 'stock-prop' && typeof stockPropAnswer === 'function') stockPropAnswer(m.op === 'ok', String(m.id || ''));
@@ -1804,7 +1824,7 @@ document.addEventListener('pointerdown', (ev) => {
   const sbb = ev.target.closest('[data-simsb]');
   if (sbb) {
     if (sbb.dataset.simsb === 'stop') SOUND.stopAll();
-    if (sbb.dataset.simsb === 'vol') { const steps = [100, 75, 50, 25]; const cur = m.sbVol != null ? m.sbVol : cfg.audio.master; m.sbVol = steps[(steps.indexOf(cur) + 1) % steps.length] || 100; cfg.audio.master = m.sbVol; commit(true); SOUND.setup(cfg.audio); }
+    if (sbb.dataset.simsb === 'vol-' || sbb.dataset.simsb === 'vol+') sbVolStep(sbb.dataset.simsb === 'vol+' ? 1 : -1);
     simRender(); return;
   }
   const sc = ev.target.closest('[data-simcell]');

@@ -38,7 +38,7 @@ Paquet (nombres en petit-boutiste) :
 | Textes | | messages JSON terminés par un 0 |
 | Images | | JPEG 1024 × 600 (début aligné sur 4 octets) |
 
-Sortes de zones : 0 rien, 1 touche clavier (v1 = Ctrl 1 / Maj 2 / Alt 4 / Windows 8, v2 = code USB de la touche), 2 bouton de manette (v1 = 1 à 32), 3 touche multimédia (v1 = code USB), 4 aller à la page n° v1 du paquet (0 = accueil), 5 message au logiciel (par exemple `{"t":"sound",…}` ou `{"t":"clip","op":"rec"}`), 6 compteur du stock (v1 = nombre, v2 = stock bas ; écran 0.5.1), 7 choix (texte = les choix séparés par « | », v1 = n° du choix montré, v2 = couleur du texte et hold = couleur du fond en RGB565 ; écran 0.5.3 ; ex. durée des clips, « on filme »). Un message lié à un compteur ou à un choix porte dans l'octet 11 son pas (−1 ou +1, signé) et dans les 16 bits 18–19 le n° du compteur dans la page + 1 : l'écran change le nombre tout de suite, sans attendre l'image. Comportements : 0 appui (enfoncé tant que le doigt est posé), 1 maintenir (déclenche après le temps de maintien), 2 bascule (contour allumé ou éteint à chaque appui).
+Sortes de zones : 0 rien, 1 touche clavier (v1 = Ctrl 1 / Maj 2 / Alt 4 / Windows 8, v2 = code USB de la touche), 2 bouton de manette (v1 = 1 à 32), 3 touche multimédia (v1 = code USB), 4 aller à la page n° v1 du paquet (0 = accueil), 5 message au logiciel (par exemple `{"t":"sound",…}` ou `{"t":"clip","op":"rec"}`), 6 compteur du stock (v1 = nombre, v2 = stock bas ; écran 0.5.1), 7 choix (texte = les choix séparés par « | », v1 = n° du choix montré, v2 = couleur du texte et hold = couleur du fond en RGB565 ; écran 0.5.3 ; ex. durée des clips, « on filme ». Écran 0.5.4 : mode 1 = s'arrête au premier et au dernier choix au lieu de reboucler ; texte du relâché = couleur du fond de chaque choix « RRGGBB|RRGGBB », ex. coche vide / pleine). Un message lié à un compteur ou à un choix porte dans l'octet 11 son pas (−1 ou +1, signé) et dans les 16 bits 18–19 le n° du compteur dans la page + 1 : l'écran change le nombre tout de suite, sans attendre l'image. Comportements : 0 appui (enfoncé tant que le doigt est posé), 1 maintenir (déclenche après le temps de maintien), 2 bascule (contour allumé ou éteint à chaque appui).
 
 L'ancien message `config` (ci-dessous) est remplacé par ces pages ; l'écran y répond `ERR`.
 
@@ -59,6 +59,8 @@ Les images en direct sont oubliées au redémarrage ou au prochain paquet comple
 ### Écran → PC : stock
 
 `{"t":"stock","id":"<id de la pièce>","d":-1}` (ou `1`) : appui sur − ou + d'une pièce de l'espace Stock. Le logiciel change la quantité, l'enregistre et renvoie la page.
+
+`{"t":"sb-dest","space":"<id>","k":"discord"}` : coche Moi / Discord / Jeu / Stream touchée sur la soundboard. `{"t":"sb-vol","d":1}` (ou `-1`) : volume des sons dans le micro, de 10 en 10. `{"t":"sound-stop"}` : « Stop tout ».
 
 `{"t":"stock-prop","op":"ok","id":"<id de la proposition>"}` (ou `"op":"non"`) : appui sur VALIDER (ou REFUSER) dans la fenêtre « Proposition de Claude ».
 

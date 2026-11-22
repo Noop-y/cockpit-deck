@@ -102,7 +102,10 @@ function pgZone(item, r, keyIndex, warn) {
   else if (d.sim === 'space') z = go(`space:${d.id}:0`);
   else if (d.simbtn && PLAYER_MEDIA[d.simbtn]) z = { kind: Z.media, mode: MODE.tap, v1: MEDIA_USAGE[PLAYER_MEDIA[d.simbtn]] };
   else if (d.simclip) z = Object.assign({ kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'clip', op: d.simclip }) }, d.cid ? { cid: d.cid, delta: 1 } : {});
-  else if (d.simtext) z = { kind: Z.texte, mode: MODE.tap, v1: +d.i || 0, v2: rgb565(d.color), hold: rgb565(d.bg), down: d.opts || '', cid: d.simtext };
+  else if (d.simtext) z = { kind: Z.texte, mode: d.clamp ? 1 : 0, v1: +d.i || 0, v2: rgb565(d.color), hold: rgb565(d.bg), down: d.opts || '', up: d.bgs ? d.bgs.split('|').map(c => c.replace('#', '')).join('|') : null, cid: d.simtext };
+  else if (d.simdest && item.space) z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'sb-dest', space: item.space.id, k: d.simdest }), cid: d.cid, delta: 1 };
+  else if (d.simsb === 'stop') z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'sound-stop' }) };
+  else if (d.simsb === 'vol-' || d.simsb === 'vol+') z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'sb-vol', d: d.simsb === 'vol+' ? 1 : -1 }), cid: d.cid, delta: d.simsb === 'vol+' ? 1 : -1 };
   else if (d.simstock && item.stock) {   // espace Stock : catégories, tiroirs, suite, − / +
     const v = item.stock, sid = item.space.id;
     const to = (cat, sub, part) => go(stockViewKey(sid, { cat, sub, part }));
@@ -316,6 +319,7 @@ function pgLiveable(it) {
   if (it.stock) return true;
   if (!it.space) return false;
   if (typeof isClips === 'function' && isClips(it.space)) return true;
+  if (typeof isSoundboard === 'function' && isSoundboard(it.space)) return true;
   const p = it.space.pages && it.space.pages[it.page];
   return !!(p && p.cells && p.cells.some(c => c && c.action && c.action.type === 'clip'));
 }
@@ -357,6 +361,8 @@ async function pgLiveRun() {
 // valeur actuelle d'un compteur (pièce du stock) ou d'un choix (« clip:dur »…)
 function pgCounterValue(id) {
   if (String(id).startsWith('clip:') && typeof clipChoice === 'function') return clipChoice(String(id).slice(5)).i;
+  if (id === 'sb:vol') return Math.round((cfg.audio.volMic == null ? 80 : cfg.audio.volMic) / 10);
+  if (String(id).startsWith('sb:')) { const [, sid, k] = String(id).split(':'); const s = typeof spaceById === 'function' ? spaceById(sid) : null; return s && s.sound && s.sound.sel[k] ? 1 : 0; }
   const x = typeof stockFindItem === 'function' ? stockFindItem(id) : null;
   return x ? x.item.q : 0;
 }

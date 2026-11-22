@@ -17,7 +17,7 @@
 <script>
 // Fenêtre invisible du logiciel : on y pose une page (HTML de l'aperçu), on attend que les images soient prêtes,
 // puis on renvoie la place de chaque zone à toucher. Le logiciel prend ensuite la photo de la fenêtre.
-const ZONES = '[data-simcell],[data-sim],[data-simbtn],[data-simclip],[data-simstock],[data-simtext]';
+const ZONES = '[data-simcell],[data-sim],[data-simbtn],[data-simclip],[data-simstock],[data-simtext],[data-simdest],[data-simsb]';
 async function deckRender(html) {
   const root = document.getElementById('page');
   root.innerHTML = html;
