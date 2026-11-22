@@ -110,8 +110,19 @@ static uint32_t crc32_upd(uint32_t c, const uint8_t *p, size_t n)
 }
 
 // ---------- lecture des pages gardées ----------
+// images remplacées en direct (pi-*), gardées en mémoire vive jusqu'au prochain paquet ou redémarrage
+static uint8_t **s_ovr;
+static uint32_t *s_ovr_len;
+static void ovr_free(void)
+{
+    if (s_ovr) for (int i = 0; i < s_count; i++) if (s_ovr[i]) free(s_ovr[i]);
+    free(s_ovr); s_ovr = NULL;
+    free(s_ovr_len); s_ovr_len = NULL;
+}
+
 static void meta_free(void)
 {
+    ovr_free();
     free(s_meta); s_meta = NULL;
     free(s_on); s_on = NULL;
     s_hdr = NULL; s_pages = NULL; s_zones = NULL; s_str = NULL;
@@ -142,6 +153,8 @@ static bool meta_load(void)
     if ((const uint8_t *)(s_zones + nz) > s_meta + h.str_off) { meta_free(); return false; }
     s_str = (const char *)(s_meta + h.str_off);
     s_on = calloc(nz ? nz : 1, 1);
+    s_ovr = calloc(h.count, sizeof(uint8_t *));
+    s_ovr_len = calloc(h.count, sizeof(uint32_t));
     s_count = h.count;
     ESP_LOGI(TAG, "%d pages, %u zones", s_count, (unsigned)nz);
     return true;
@@ -157,20 +170,23 @@ static const char *str_at(uint32_t off)
 static bool decode_page(int i, uint8_t *out)
 {
     const pack_page_t *p = &s_pages[i];
-    if (p->jpeg_len > s_in_size) {
-        if (s_in) free(s_in);
-        jpeg_decode_memory_alloc_cfg_t mi = { .buffer_direction = JPEG_DEC_ALLOC_INPUT_BUFFER };
-        s_in = (uint8_t *)jpeg_alloc_decoder_mem(p->jpeg_len, &mi, &s_in_size);
-        if (!s_in) { s_in_size = 0; return false; }
-    }
-    if (esp_partition_read(s_part, p->jpeg_off, s_in, p->jpeg_len) != ESP_OK) return false;
-    jpeg_decode_cfg_t cfg = {
+    jpeg_decode_cfg_t dcfg = {
         .output_format = JPEG_DECODE_OUT_FORMAT_RGB565,
         .rgb_order = JPEG_DEC_RGB_ELEMENT_ORDER_BGR,
         .conv_std = JPEG_YUV_RGB_CONV_STD_BT601,
     };
+    bool live = s_ovr && s_ovr[i];   // image remplacée en direct (pi-*) : elle passe avant celle de la mémoire flash
+    uint32_t len = live ? s_ovr_len[i] : p->jpeg_len;
+    if (len > s_in_size) {
+        if (s_in) free(s_in);
+        jpeg_decode_memory_alloc_cfg_t mi = { .buffer_direction = JPEG_DEC_ALLOC_INPUT_BUFFER };
+        s_in = (uint8_t *)jpeg_alloc_decoder_mem(len, &mi, &s_in_size);
+        if (!s_in) { s_in_size = 0; return false; }
+    }
+    if (live) memcpy(s_in, s_ovr[i], len);
+    else if (esp_partition_read(s_part, p->jpeg_off, s_in, p->jpeg_len) != ESP_OK) return false;
     uint32_t n = 0;
-    esp_err_t err = jpeg_decoder_process(s_dec, &cfg, s_in, p->jpeg_len, out, s_out_size, &n);
+    esp_err_t err = jpeg_decoder_process(s_dec, &dcfg, s_in, len, out, s_out_size, &n);
     if (err != ESP_OK) ESP_LOGW(TAG, "page %d : image illisible (%s)", i, esp_err_to_name(err));
     return err == ESP_OK;
 }
@@ -486,8 +502,76 @@ static void ack(void)
     usb_deck_send_line(rep);
 }
 
+// ---------- une seule image remplacée en direct (pi-begin, pi-data, pi-end) ----------
+static uint8_t *s_pi_buf;
+static size_t s_pi_size, s_pi_done, s_pi_cap;
+static uint32_t s_pi_crc, s_pi_want;
+static int s_pi_page = -1;
+
+static void pi_fail(const char *why)
+{
+    char rep[128];
+    snprintf(rep, sizeof rep, "{\"t\":\"pi-err\",\"msg\":\"%s\"}", why);
+    usb_deck_send_line(rep);
+    s_pi_page = -1;
+}
+
+static void pi_line(const char *t, const char *line)
+{
+    char rep[64];
+    if (strcmp(t, "pi-begin") == 0) {
+        long page = -1, size = 0;
+        json_num(line, "page", &page);
+        json_num(line, "size", &size);
+        const char *pc = strstr(line, "\"crc\":");
+        s_pi_want = pc ? (uint32_t)strtoul(pc + 6, NULL, 10) : 0;
+        if (s_rx || page < 0 || page >= s_count) { pi_fail("page inconnue"); return; }
+        if (size <= 0 || size > 2 * 1024 * 1024) { pi_fail("image trop grande"); return; }
+        if ((size_t)size > s_pi_cap) {   // mémoire du décodeur JPEG (lisible par lui directement)
+            if (s_pi_buf) free(s_pi_buf);
+            jpeg_decode_memory_alloc_cfg_t mi = { .buffer_direction = JPEG_DEC_ALLOC_INPUT_BUFFER };
+            s_pi_buf = (uint8_t *)jpeg_alloc_decoder_mem((size_t)size, &mi, &s_pi_cap);
+            if (!s_pi_buf) { s_pi_cap = 0; pi_fail("pas assez de memoire"); return; }
+        }
+        s_pi_page = (int)page; s_pi_size = (size_t)size; s_pi_done = 0; s_pi_crc = 0;
+        snprintf(rep, sizeof rep, "{\"t\":\"pi-ack\",\"off\":0}");
+        usb_deck_send_line(rep);
+    } else if (strcmp(t, "pi-data") == 0) {
+        if (s_pi_page < 0) { pi_fail("pas d'envoi en cours"); return; }
+        long off = -1;
+        json_num(line, "off", &off);
+        if (off == (long)s_pi_done) {
+            const char *p = strstr(line, "\"b64\":\"");
+            const char *q = p ? strchr(p + 7, '"') : NULL;
+            size_t n = 0;
+            if (!q || mbedtls_base64_decode(s_pi_buf + s_pi_done, s_pi_size - s_pi_done, &n, (const unsigned char *)(p + 7), (size_t)(q - p - 7)) != 0 || n == 0) { pi_fail("morceau abime"); return; }
+            s_pi_crc = crc32_upd(s_pi_crc, s_pi_buf + s_pi_done, n);
+            s_pi_done += n;
+        }
+        snprintf(rep, sizeof rep, "{\"t\":\"pi-ack\",\"off\":%u}", (unsigned)s_pi_done);
+        usb_deck_send_line(rep);
+    } else if (strcmp(t, "pi-end") == 0) {
+        if (s_pi_page < 0 || s_pi_done != s_pi_size) { pi_fail("image incomplete"); return; }
+        if (s_pi_crc != s_pi_want) { pi_fail("image abimee pendant l'envoi"); return; }
+        uint8_t *img = heap_caps_malloc(s_pi_size, MALLOC_CAP_SPIRAM);   // copie gardée, le tampon resservira
+        if (!img) { pi_fail("pas assez de memoire"); return; }
+        bsp_display_lock(-1);
+        if (s_ovr && s_pi_page < s_count) {
+            // le décodeur lit depuis sa propre mémoire : on garde l'image dans le tampon et on range la copie
+            memcpy(img, s_pi_buf, s_pi_size);
+            if (s_ovr[s_pi_page]) free(s_ovr[s_pi_page]);
+            s_ovr[s_pi_page] = img; s_ovr_len[s_pi_page] = (uint32_t)s_pi_size;
+            if (s_pi_page == s_page && lv_screen_active() == s_scr) show_page(s_page);
+        } else free(img);
+        bsp_display_unlock();
+        s_pi_page = -1;
+        usb_deck_send_line("{\"t\":\"pi-done\"}");
+    }
+}
+
 void pages_line(const char *t, const char *line)
 {
+    if (strncmp(t, "pi-", 3) == 0) { if (s_ready) pi_line(t, line); else usb_deck_send_line("{\"t\":\"pi-err\",\"msg\":\"pages pas pretes\"}"); return; }
     if (!s_part || !s_ready) { usb_deck_send_line("{\"t\":\"pg-err\",\"msg\":\"memoire des pages introuvable\"}"); return; }
     if (strcmp(t, "pg-begin") == 0) {
         long size = 0;

@@ -14,6 +14,7 @@ const PICTOS = {
   rampe: ['Rampe', 'Vol', 'rampe soute', 'M3 18h18 M3 18l12-8h6'],
   croisiere: ['Croisière', 'Vol', 'vitesse croisière compteur', 'M4 17a8 8 0 0 1 16 0 M12 17l4-5'],
   alimentation: ['Alimentation', 'Vol', 'alimentation marche arrêt power', 'M12 3v8 M6.3 7.3a8 8 0 1 0 11.4 0'],
+  tiroirs: ['Stock', 'Bureau', 'stock tiroirs rangement composants', 'M3 4h18v16H3z M3 12h18 M10 8h4 M10 16h4'],
   carte: ['Carte', 'Vol', 'carte stellaire map', 'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z M9 4v14 M15 6v14'],
   atterrissage: ['Atterrissage', 'Vol', 'atterrir demande tour', 'M4 19h16 M12 4v11 M8 11l4 4 4-4'],
   decouple: ['Découplé', 'Vol', 'découplé mode', 'M8 8a4 4 0 0 0 0 8h2 M14 8h2a4 4 0 0 1 0 8 M4 4l16 16'],
@@ -115,7 +116,8 @@ const CATEGORIES = {
   discord: { label: 'Discord', color: '#8E9BFF', icon: 'discussion' },
   spotify: { label: 'Spotify', color: '#3FB97A', icon: 'musique' },
   soundboard: { label: 'Soundboard', color: '#FF7EB6', icon: 'son' },
-  clips: { label: 'Clips', color: '#FF6B79', icon: 'retour' }
+  clips: { label: 'Clips', color: '#FF6B79', icon: 'retour' },
+  stock: { label: 'Stock', color: '#3FB97A', icon: 'tiroirs' }
 };
 
 const MEDIA_KEYS = [['volplus', 'Volume +'], ['volmoins', 'Volume −'], ['muet', 'Muet'], ['lecture', 'Lecture / pause'], ['suivante', 'Piste suivante'], ['precedente', 'Piste précédente']];
@@ -229,6 +231,10 @@ const TEMPLATES = {
   clips: [
     { key: 'clips', name: 'Clips', desc: 'CLIP, enregistrer, capture, durée du retour en arrière et derniers clips', icon: 'retour', layout: 'clips',
       pages: () => [{ name: 'CLIPS', cells: pad([]) }] }
+  ],
+  stock: [
+    { key: 'stock', name: 'Stock', desc: 'Vos composants : catégories, tiroirs, − / + pour chaque pièce (réglés dans le menu Stock)', icon: 'tiroirs', layout: 'stock',
+      pages: () => [{ name: 'STOCK', cells: pad([]) }] }
   ],
   soundboard: [
     { key: 'sons', name: 'Soundboard', desc: 'Vos sons, envoyés sur Discord, le jeu, le stream ou pour vous', icon: 'son', layout: 'soundboard',

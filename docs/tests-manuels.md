@@ -110,3 +110,12 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Éteindre l'interrupteur : confirmation si plusieurs tiroirs, puis toutes les pièces sont dans la catégorie. Le rallumer : elles vont dans « Tiroir 1 ».
 - [ ] Supprimer une pièce / un tiroir / une catégorie : confirmation, puis disparaît.
 - [ ] Fermer et rouvrir le logiciel : tout est encore là. Paramètres › sauvegardes : le stock revient avec une sauvegarde.
+
+## Stock (étape 2 : écran, programme 0.5.0)
+- [ ] Page Appareil : « Mettre à jour l'écran par le câble USB » (0.5.0), puis « Envoyer sur l'écran ».
+- [ ] Accueil de l'écran : une carte « Stock ». Elle ouvre les catégories à gauche et les tiroirs à droite (ou les pièces si pas de sous-catégorie).
+- [ ] Toucher un tiroir : il s'ouvre en grand ; ✕ ou toucher à côté le referme. Plus de 12 pièces : ‹ › en bas (ou glisser).
+- [ ] Toucher − sur une pièce : moins d'une seconde après, le nombre change sur l'écran ; dans le logiciel (onglet Stock), la quantité a changé aussi.
+- [ ] Changer une quantité ou un nom dans le logiciel : l'écran suit (environ 2 s).
+- [ ] Ajouter une catégorie ou un tiroir dans le logiciel : l'écran reçoit tout de nouveau tout seul (bandeau « Réception des pages »).
+- [ ] Débrancher / rebrancher l'écran après des − / + : il reçoit tout de nouveau tout seul, les bons nombres s'affichent.

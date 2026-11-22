@@ -112,6 +112,7 @@ function newSpace(category, tpl, name, exe, scenes) {
   const sp = { id: uid(), name: name || tpl.name, category, icon: tpl.icon || catOf(category).icon, onHome: true, autoExe: exe || '', look: null, pages };
   if (tpl.layout === 'player') { sp.layout = 'player'; sp.player = { volume: true, coverBg: true }; }
   if (tpl.layout === 'clips') sp.layout = 'clips';
+  if (tpl.layout === 'stock') sp.layout = 'stock';
   if (tpl.layout === 'soundboard') { sp.layout = 'soundboard'; sp.sound = { sel: { moi: true, discord: true, jeu: false, stream: false } }; }
   return sp;
 }
@@ -125,10 +126,12 @@ function defaultConfig() {
   const sb = newSpace('soundboard', TEMPLATES.soundboard[0], 'Soundboard', '');
   const cl = newSpace('clips', TEMPLATES.clips[0], 'Clips', '');
   const fv = newSpace('favoris', tplsOf('favoris')[0], 'Favoris', '');
+  const sk = newSpace('stock', TEMPLATES.stock[0], 'Stock', '');
   return {
     format: 'cockpit-deck', version: 1,
-    spaces: [fv, sc, bu, st, dc, sp, sb, cl],
-    homeOrder: [fv.id, sc.id, bu.id, st.id, dc.id, sp.id, sb.id, cl.id],
+    spaces: [fv, sc, bu, st, dc, sp, sb, cl, sk],
+    homeOrder: [fv.id, sc.id, bu.id, st.id, dc.id, sp.id, sb.id, cl.id, sk.id],
+    stockSpaceAdded: true,
     favorisAdded: true,
     discordSpaceAdded: true,
     spotifySpaceAdded: true,
@@ -140,7 +143,7 @@ function defaultConfig() {
     look: clone(DEFAULT_LOOK),
     obs: { host: '127.0.0.1', port: 4455, password: '', autoConnect: false },
     discord: { clientId: '', clientSecret: '', autoConnect: false, shortcuts: [] },
-    device: { brightness: 80, sleepMin: 10, swipe: true, swipeV: true, loop: false },
+    device: { brightness: 80, sleepMin: 10, swipe: true, swipeV: true, loop: false, pgStale: false },
     settings: { startWithWindows: true },
     stock: { cats: [], history: [] }
   };
@@ -387,6 +390,7 @@ function deckPage(space, pageIdx, sim) {
   if (isPlayer(space)) return deckPlayer(space, sim);
   if (isSoundboard(space)) return deckSound(space, pageIdx, sim);
   if (isClips(space)) return deckClips(space, sim);
+  if (isStock(space)) return deckStock(space, sim, sim && sim.stock);
   const look = lookFor(space);
   const page = space.pages[pageIdx] || space.pages[0];
   const tabs = `<div class="dtabs">${homeBtn(look, sim)}` +
@@ -405,7 +409,7 @@ function deckHome(sim, pageArg) {
   const spaces = all.slice(pg * HOME_PER_PAGE, pg * HOME_PER_PAGE + HOME_PER_PAGE);
   const cards = spaces.map(s => {
     const cat = catOf(s.category);
-    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isClips(s) ? 'Clips' : isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
+    return `<div class="dhcard" style="background:#11161C;border:1.5px solid ${look.idleEdge}" ${sim ? `data-sim="space" data-id="${s.id}"` : ''}>${svg(s.icon, 40, cat.color, 1.6)}<div><div class="t disp">${esc(s.name)}</div><div class="s">${isPlayer(s) ? 'Lecteur' : (isClips(s) ? 'Clips' : isStock(s) ? 'Composants' : isSoundboard(s) ? 'Soundboard' : `${s.pages.length} page${s.pages.length > 1 ? 's' : ''}`)}</div></div></div>`;
   });
   while (cards.length < HOME_PER_PAGE) cards.push('<div class="dempty"></div>');
   const dots = nPages > 1 ? `<div class="ddots">${Array.from({ length: nPages }, (_, k) => `<i style="${k === pg ? `background:${look.accent}` : ''}"></i>`).join('')}</div>` : `<div style="color:#C9D6E2;font-size:1.5cqw">Choisissez un espace</div>`;
@@ -1119,7 +1123,7 @@ async function deckClose() {
 // Ce que l'écran envoie au logiciel (voir PROTOCOLE.md)
 function onDeckMessage(m) {
   if (!m || !m.t) return;
-  if (m.t === 'hello') { const v = String(m.fw || ''); if (typeof m.rev === 'number') ui.deckRev = m.rev; if (v !== ui.deckFw) { ui.deckFw = v; render(); } return; }
+  if (m.t === 'hello') { const v = String(m.fw || ''); if (typeof m.rev === 'number') ui.deckRev = m.rev; if (v !== ui.deckFw) { const first = !ui.deckFw; ui.deckFw = v; render(); if (first && typeof pgOnHello === 'function') pgOnHello(); } return; }
   if (m.t === 'sound') {
     const s = spaceById(m.space); if (!s) return;
     const c = s.pages[m.page] && s.pages[m.page].cells[m.cell];
@@ -1129,6 +1133,7 @@ function onDeckMessage(m) {
   }
   if (m.t === 'sound-stop') SOUND.stopAll();
   if (m.t === 'clip' && m.op) runClip(String(m.op));
+  if (m.t === 'stock' && typeof stockFromDeck === 'function') stockFromDeck(m);
   if (m.t === 'volume' && typeof m.value === 'number') { cfg.audio.master = Math.max(0, Math.min(100, m.value)); commit(true); SOUND.setup(cfg.audio); }
 }
 async function deckReadLoop(port) {
@@ -1773,6 +1778,8 @@ document.addEventListener('pointerdown', (ev) => {
   if (sd) { const sp = spaceById(m.spaceId); const sel = sbSel(sp, m); sel[sd.dataset.simdest] = !sel[sd.dataset.simdest]; simRender(); return; }
   const scl = ev.target.closest('[data-simclip]');
   if (scl) { runClip(scl.dataset.simclip); simRender(); return; }
+  const sst = ev.target.closest('[data-simstock]');
+  if (sst) { simStock(m, sst.dataset); simRender(); return; }
   const sbb = ev.target.closest('[data-simsb]');
   if (sbb) {
     if (sbb.dataset.simsb === 'stop') SOUND.stopAll();
@@ -1887,6 +1894,11 @@ function migrate(c) {
   out.clips = Object.assign({}, d.clips, c.clips || {});
   if (![1080, 1440, 1800, 2160].includes(+out.clips.res)) out.clips.res = 1080;   // 720p retiré (version 1.1.1)
   if (![60, 120, 144].includes(+out.clips.fps)) out.clips.fps = 60;               // 30 images/s retiré (version 1.1.1)
+  // 22/11/2026 : espace Stock (stock.js), à la fin de l'accueil
+  if (!c.stockSpaceAdded) {
+    out.stockSpaceAdded = true;
+    if (!out.spaces.some(s => s.layout === 'stock')) { const sk = newSpace('stock', TEMPLATES.stock[0], 'Stock', ''); out.spaces.push(sk); if (out.homeOrder.length) out.homeOrder.push(sk.id); }
+  }
   if (!c.clipsAdded) {
     out.clipsAdded = true;
     if (!out.spaces.some(s => s.layout === 'clips')) out.spaces.push(newSpace('clips', TEMPLATES.clips[0], 'Clips', ''));

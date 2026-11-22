@@ -64,3 +64,16 @@ test('stock : où vont les pièces, et la liste complète avec le chemin', () =>
   assert.strictEqual(c.stockItemsOf(st.cats[1], null), st.cats[1].items);
   assert.deepStrictEqual(J(c.stockAll(st).map(x => [x.path, x.item.name])), [['Composants › Résistances', '220 Ω'], ['Alimentation', 'LiPo']]);
 });
+
+test('écran : une page par vue (catégorie, tiroir ouvert, suite de 12)', () => {
+  const c = load();
+  c.cfg = { stock: c.stockNorm({ cats: [
+    { name: 'Composants', sub: true, subs: [{ name: 'Résistances', items: Array.from({ length: 13 }, (_, i) => ({ name: 'R' + i, q: 1 })) }, { name: 'Vide', items: [] }] },
+    { name: 'Alimentation', sub: false, items: [{ name: 'LiPo', q: 0 }] }] }) };
+  vm.runInContext('this.stockViews = stockViews; this.stockViewKey = stockViewKey; this.stockClampView = stockClampView;', c);
+  const keys = c.stockViews().map(v => c.stockViewKey('S', v));
+  assert.deepStrictEqual([...keys], ['stock:S:0:-:0', 'stock:S:0:0:0', 'stock:S:0:0:1', 'stock:S:0:1:0', 'stock:S:1:-:0']);
+  assert.deepStrictEqual(J(c.stockClampView({ cat: 9, sub: 5, part: 7 })), { cat: 1, sub: null, part: 0, parts: 1 });
+  c.cfg.stock = c.stockNorm({});
+  assert.deepStrictEqual([...c.stockViews().map(v => c.stockViewKey('S', v))], ['stock:S:0:-:0'], 'stock vide : une page qui explique quoi faire');
+});

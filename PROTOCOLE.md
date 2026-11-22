@@ -42,6 +42,20 @@ Sortes de zones : 0 rien, 1 touche clavier (v1 = Ctrl 1 / Maj 2 / Alt 4 / Window
 
 L'ancien message `config` (ci-dessous) est remplacé par ces pages ; l'écran y répond `ERR`.
 
+### Une page remplacée en direct (écran 0.5.0)
+
+Pour le stock : après un − / +, le logiciel redessine seulement la page qui a changé et l'envoie, sans tout renvoyer.
+
+1. `{"t":"pi-begin","page":<n° de page du paquet>,"size":<octets>,"crc":<CRC-32>}` → `{"t":"pi-ack","off":0}`.
+2. `{"t":"pi-data","off":<position>,"b64":"<8 Ko>"}` → `{"t":"pi-ack","off":<nouvelle position>}`.
+3. `{"t":"pi-end"}` → l'écran garde l'image en mémoire vive (elle passe avant celle de la mémoire flash) et la réaffiche si c'est la page montrée : `{"t":"pi-done"}`. Erreur : `{"t":"pi-err","msg":"…"}`.
+
+Les images en direct sont oubliées au redémarrage ou au prochain paquet complet : le logiciel note qu'il faut tout renvoyer (`device.pgStale`) et le fait tout seul quand l'écran se rebranche.
+
+### Écran → PC : stock
+
+`{"t":"stock","id":"<id de la pièce>","d":-1}` (ou `1`) : appui sur − ou + d'une pièce de l'espace Stock. Le logiciel change la quantité, l'enregistre et renvoie la page.
+
 ## Du logiciel vers l'écran
 
 ### `config` — la configuration complète (bouton « Envoyer sur l'écran »)

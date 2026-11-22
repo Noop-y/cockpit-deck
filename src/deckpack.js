@@ -49,7 +49,11 @@ const MODE = { tap: 0, hold: 1, toggle: 2 };
 function pgList() {
   const list = [];
   for (let h = 0; h < homePages(); h++) list.push({ key: 'home:' + h, kind: 'home', page: h });
-  homeSpaces().forEach(s => s.pages.forEach((p, i) => list.push({ key: `space:${s.id}:${i}`, kind: 'space', space: s, page: i })));
+  homeSpaces().forEach(s => {
+    if (typeof isStock === 'function' && isStock(s)) {   // espace Stock : une page par vue (catégorie, tiroir ouvert, suite)
+      stockViews().forEach((v, i) => list.push({ key: stockViewKey(s.id, v), alias: i === 0 ? `space:${s.id}:0` : null, kind: 'space', space: s, page: 0, stock: v }));
+    } else s.pages.forEach((p, i) => list.push({ key: `space:${s.id}:${i}`, kind: 'space', space: s, page: i }));
+  });
   return list;
 }
 
@@ -97,6 +101,15 @@ function pgZone(item, r, keyIndex, warn) {
   else if (d.sim === 'space') z = go(`space:${d.id}:0`);
   else if (d.simbtn && PLAYER_MEDIA[d.simbtn]) z = { kind: Z.media, mode: MODE.tap, v1: MEDIA_USAGE[PLAYER_MEDIA[d.simbtn]] };
   else if (d.simclip) z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'clip', op: d.simclip }) };
+  else if (d.simstock && item.stock) {   // espace Stock : catégories, tiroirs, suite, − / +
+    const v = item.stock, sid = item.space.id;
+    const to = (cat, sub, part) => go(stockViewKey(sid, { cat, sub, part }));
+    if (d.simstock === 'cat') z = to(+d.i, null, 0);
+    else if (d.simstock === 'sub') z = to(v.cat, +d.j, 0);
+    else if (d.simstock === 'close') z = to(v.cat, null, 0);
+    else if (d.simstock === 'part') z = to(v.cat, v.sub, +d.p);
+    else if (d.simstock === 'q') z = { kind: Z.message, mode: MODE.tap, down: JSON.stringify({ t: 'stock', id: d.id, d: +d.d }) };
+  }
   if (!z) return null;
   return Object.assign({ hold: 1500, v1: 0, v2: 0, down: null, up: null }, z, {
     x: r.x, y: r.y, w: r.w, h: r.h, radius: Math.max(0, Math.min(255, Math.round(r.radius || 0), Math.floor(Math.min(r.w, r.h) / 2)))
@@ -116,6 +129,9 @@ function pgNav(item, keyIndex) {
     if (item.kind === 'home') {
       const n = homePages();
       for (const [k, dir] of [['next', 1], ['prev', -1]]) { const j = step(item.page, n, dir); if (j != null) nav[k] = keyIndex['home:' + j]; }
+    } else if (item.stock) {   // stock : glisser = suite des tiroirs ou des pièces
+      const v = item.stock, sid = item.space.id;
+      for (const [k, dir] of [['next', 1], ['prev', -1]]) { const t = keyIndex[stockViewKey(sid, { cat: v.cat, sub: v.sub, part: (v.part || 0) + dir })]; if (t != null) nav[k] = t; }
     } else if (isPlayer(item.space)) {
       const c = Object.assign({ swipeLeft: 'suivante', swipeRight: 'precedente' }, (item.space.player || {}).controls);
       if (MEDIA_USAGE[c.swipeLeft]) nav.next = NAV_MEDIA | MEDIA_USAGE[c.swipeLeft];
@@ -134,7 +150,7 @@ function pgNav(item, keyIndex) {
 
 // HTML d'une page, dessinée comme dans l'aperçu (sans animation ni bandeau de clip)
 function pgHtml(item) {
-  const sim = { screen: item.kind, spaceId: item.space ? item.space.id : null, page: item.page, homePage: item.page, cells: {}, render: true };
+  const sim = { screen: item.kind, spaceId: item.space ? item.space.id : null, page: item.page, homePage: item.page, cells: {}, render: true, stock: item.stock || null };
   const toast = ui.clipToast; ui.clipToast = null;
   try { return item.kind === 'home' ? deckHome(sim, item.page) : deckPage(item.space, item.page, sim); }
   finally { ui.clipToast = toast; }
@@ -202,8 +218,9 @@ const pgSet = (state, msg, pct) => { ui.pg = { state, msg: msg || '', pct: pct |
 async function pgPrepare() {
   const list = pgList();
   const keyIndex = {};
-  list.forEach((it, i) => { keyIndex[it.key] = i; });
-  const shots = await api.deckRender(list.map(pgHtml));
+  list.forEach((it, i) => { keyIndex[it.key] = i; if (it.alias) keyIndex[it.alias] = i; });
+  const htmls = list.map(pgHtml);
+  const shots = await api.deckRender(htmls);
   if (!shots || shots.length !== list.length) throw new Error('impossible de dessiner les pages');
   const warn = [];
   const pages = list.map((it, i) => ({
@@ -212,7 +229,7 @@ async function pgPrepare() {
     nav: pgNav(it, keyIndex),
     zones: shots[i].zones.map(r => pgZone(it, r, keyIndex, warn)).filter(Boolean)
   }));
-  return { pack: pgBuildPack(pages), count: pages.length, warn };
+  return { pack: pgBuildPack(pages), count: pages.length, warn, sent: { keys: list.map(it => it.key), html: htmls } };
 }
 
 async function pgSend(pack) {
@@ -250,9 +267,11 @@ async function deckSendPages() {
   try {
     pgSet('draw', 'Préparation des pages…', 0);
     toast('Préparation des pages…');
-    const { pack, count, warn } = await pgPrepare();
+    const { pack, count, warn, sent } = await pgPrepare();
     pgSet('send', 'Envoi des pages…', 0);
     await pgSend(pack);
+    ui.pgSent = sent;
+    if (cfg.device.pgStale) { cfg.device.pgStale = false; commit(true); }
     pgSet('done', `${count} page${count > 1 ? 's' : ''} envoyée${count > 1 ? 's' : ''} (${Math.round(pack.length / 1024)} Ko).`, 100);
     if (warn.length) toast('Envoyé, mais certaines cases ne feront rien : ' + warn.slice(0, 3).join(' ; ') + (warn.length > 3 ? '…' : ''), 'err', 9000);
     return true;
@@ -262,4 +281,61 @@ async function deckSendPages() {
     toast('L’envoi n’a pas abouti : ' + (e && e.message ? e.message : e) + '.', 'err', 8000);
     return false;
   }
+}
+
+// ---------- mise à jour en direct d'une page (stock ; programme de l'écran 0.5.0) ----------
+// Après un − / + (sur l'écran ou dans le logiciel), on redessine seulement les pages du stock qui ont changé et on
+// envoie leur image (pi-begin / pi-data / pi-end). L'écran la garde en mémoire vive ; « pgStale » note qu'il faudra
+// renvoyer toutes les pages au prochain branchement (après un redémarrage, l'écran relit les anciennes).
+const PI_VERSION_MIN = '0.5.0';
+const pgLive = { busy: false, again: false, timer: null, structTimer: null };
+function pgLiveRefresh(delay) { clearTimeout(pgLive.timer); pgLive.timer = setTimeout(pgLiveRun, delay == null ? 120 : delay); }
+async function pgLiveRun() {
+  if (pgLive.busy) { pgLive.again = true; return; }
+  const sent = ui.pgSent;
+  if (!sent || !ui.deckLinked || !ui.deckFw || fwOlder(ui.deckFw, PI_VERSION_MIN)) return;
+  if (ui.pg && (ui.pg.state === 'draw' || ui.pg.state === 'send')) { pgLive.again = true; return; }
+  const list = pgList();
+  if (list.map(it => it.key).join('|') !== sent.keys.join('|')) {   // pages ajoutées ou retirées : tout renvoyer
+    clearTimeout(pgLive.structTimer);
+    pgLive.structTimer = setTimeout(() => { if (ui.deckLinked) deckSendPages(); }, 3000);
+    return;
+  }
+  const changed = [];
+  list.forEach((it, i) => { if (!it.stock) return; const h = pgHtml(it); if (h !== sent.html[i]) changed.push({ i, h }); });
+  if (!changed.length) return;
+  pgLive.busy = true;
+  try {
+    const shots = await api.deckRender(changed.map(c => c.h));
+    if (!shots) return;
+    for (let k = 0; k < changed.length; k++) {
+      await pgSendPage(changed[k].i, new Uint8Array(shots[k].jpeg));
+      sent.html[changed[k].i] = changed[k].h;
+    }
+    if (!cfg.device.pgStale) { cfg.device.pgStale = true; commit(true); }
+  } catch (e) { console.error(e); }
+  finally { pgLive.busy = false; if (pgLive.again) { pgLive.again = false; pgLiveRefresh(); } }
+}
+async function pgSendPage(index, jpeg) {
+  const isPi = (t) => (m) => m.t === t || m.t === 'pi-err';
+  const fail = (m) => { throw new Error(m && m.msg ? m.msg : 'l’écran ne répond pas'); };
+  deckWrite({ t: 'pi-begin', page: index, size: jpeg.length, crc: crc32(jpeg) });
+  let m = await fwWaitMsg(isPi('pi-ack'), 4000);
+  if (!m || m.t === 'pi-err') fail(m);
+  let off = m.off || 0, tries = 0;
+  while (off < jpeg.length) {
+    deckWrite({ t: 'pi-data', off, b64: fwB64(jpeg.subarray(off, Math.min(off + PG_CHUNK, jpeg.length))) });
+    m = await fwWaitMsg(isPi('pi-ack'), 4000);
+    if (!m) { if (++tries > 3) fail(null); continue; }
+    if (m.t === 'pi-err') fail(m);
+    tries = 0; off = m.off;
+  }
+  deckWrite({ t: 'pi-end' });
+  m = await fwWaitMsg(isPi('pi-done'), 4000);
+  if (!m || m.t === 'pi-err') fail(m);
+}
+// l'écran vient de se brancher : s'il a raté des mises à jour en direct, on lui renvoie tout
+function pgOnHello() {
+  if (cfg && cfg.device.pgStale && ui.deckFw && !fwOlder(ui.deckFw, PI_VERSION_MIN) && !(ui.pg && (ui.pg.state === 'draw' || ui.pg.state === 'send')))
+    setTimeout(() => { if (ui.deckLinked) deckSendPages(); }, 1500);
 }

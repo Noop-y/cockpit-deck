@@ -383,3 +383,41 @@ body.celldragging, body.celldragging * { cursor: grabbing !important; }
 .sthead { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
 .stq { display: flex; gap: 4px; align-items: center; } .stq .inp { width: 60px; text-align: center; padding: 0 4px; } .stq .btn { width: 36px; padding: 0; font-size: 18px; }
 .sthead span:nth-child(2), .sthead span:nth-child(3) { text-align: center; }
+
+/* ---------- Stock sur l'écran du Deck (stock.js, deckStock) ---------- */
+.dstsum { font-size: 1.4cqw; color: #8E9BA8; }
+.dstbody { flex: 1; display: flex; gap: 1.4cqw; min-height: 0; }
+.dstleft { width: 22.5cqw; display: flex; flex-direction: column; gap: 1cqw; }
+.dstcat { flex: 1 1 0; max-height: 9cqw; display: flex; align-items: center; gap: 1.2cqw; padding: 0 1.4cqw; border-radius: 1.2cqw; border: 1.5px solid #26303A; background: #11161C; color: #E6EDF3; min-height: 0; }
+.dstcat.on { background: #2A2113; }
+.dstbar { width: 0.9cqw; height: 3.2cqw; border-radius: 0.5cqw; flex-shrink: 0; }
+.dstcn { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dstcn .disp { font-size: 1.7cqw; line-height: 1.05; text-transform: uppercase; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.dstcs { font-size: 1.15cqw; color: #8E9BA8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dstbadge { min-width: 2.4cqw; height: 2.4cqw; border-radius: 1.2cqw; color: #07090C; font-weight: 700; font-size: 1.3cqw; display: inline-flex; align-items: center; justify-content: center; }
+.dstright { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1cqw; }
+.dstgrid { flex: 1; border-radius: 1.4cqw; background: #0D1116; border: 1.5px solid #26303A; padding: 1.4cqw; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 1cqw; }
+.dsttile { border-radius: 1cqw; background: #11161C; border: 1.5px solid #26303A; padding: 1cqw 1.2cqw; display: flex; flex-direction: column; gap: 0.3cqw; min-height: 0; overflow: hidden; }
+.dsttile.empty { background: transparent; border-color: #1A222B; }
+.dstid { font-size: 1.25cqw; color: #8E9BA8; }
+.dsttn { font-size: 1.7cqw; font-weight: 600; line-height: 1.15; color: #E6EDF3; }
+.dstts { font-size: 1.25cqw; color: #8E9BA8; flex: 1; }
+.dstst { font-size: 1.25cqw; font-weight: 600; }
+.dsthead { font-size: 2.4cqw; color: #E6EDF3; text-transform: uppercase; }
+.dstrows { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 5.6cqw; gap: 0.7cqw 1.4cqw; align-content: start; min-height: 0; }
+.dstrow { display: flex; align-items: center; gap: 1cqw; padding: 0 0.8cqw 0 1.4cqw; border-radius: 1.2cqw; background: #0D1116; border: 1.5px solid #26303A; min-width: 0; }
+.dstrn { flex: 1; min-width: 0; font-size: 1.85cqw; font-weight: 600; color: #E6EDF3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dstbtn { width: 5cqw; height: 4.4cqw; border-radius: 1cqw; border: 1.5px solid #26303A; background: #1A222B; color: #E6EDF3; font-size: 2.8cqw; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dstbtn.m { background: #2A2113; }
+.dstq { width: 5.4cqw; text-align: center; font-size: 2.4cqw; font-weight: 600; flex-shrink: 0; }
+.dstdim { position: absolute; inset: 0; background: rgba(4, 6, 8, .75); }
+.dstpop { position: absolute; left: 2.3cqw; right: 2.3cqw; top: 2.3cqw; bottom: 2.3cqw; border-radius: 1.8cqw; background: #11161C; border: 1.5px solid; padding: 1.8cqw 2cqw; display: flex; flex-direction: column; gap: 1.2cqw; }
+.dstph { display: flex; align-items: center; gap: 1.2cqw; }
+.dstph > div:first-child { flex: 1; }
+.dstpw { font-size: 1.3cqw; color: #8E9BA8; }
+.dstpt { font-size: 2.8cqw; text-transform: uppercase; color: #E6EDF3; line-height: 1.1; }
+.dstx { width: 5.2cqw; height: 5.2cqw; border-radius: 1.2cqw; border: 1.5px solid #26303A; background: #0D1116; color: #E6EDF3; font-size: 2.2cqw; display: flex; align-items: center; justify-content: center; }
+.dstpager { display: flex; align-items: center; justify-content: center; gap: 1.6cqw; color: #8E9BA8; font-size: 1.4cqw; }
+.dstpg { width: 6cqw; height: 4.4cqw; border-radius: 1cqw; border: 1.5px solid #26303A; background: #1A222B; color: #E6EDF3; font-size: 2.6cqw; display: flex; align-items: center; justify-content: center; }
+.dstpg.off { opacity: .3; }
+.dstempty { color: #8E9BA8; font-size: 1.6cqw; padding: 2cqw; }

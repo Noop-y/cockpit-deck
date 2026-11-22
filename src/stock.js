@@ -113,6 +113,8 @@ function viewStock() {
 }
 
 // ---------- actions ----------
+// après un changement dans le logiciel : l'écran suit (pages du stock redessinées, voir deckpack.js)
+const stockSaved = () => { if (typeof pgLiveRefresh === 'function') pgLiveRefresh(1200); };
 const stockCur = () => stockSel().c;
 function stockFindItem(id) {
   for (const x of stockAll(cfg.stock)) if (x.item.id === id) return x;
@@ -129,20 +131,20 @@ Object.assign(ACTIONS, {
   'stock-cat': (d) => { ui.stock.cat = d.id; ui.stock.sub = null; render(); },
   'stock-cat-add': () => {
     const c = { id: stockId(), name: 'Nouvelle catégorie', place: '', color: STOCK_COLORS[cfg.stock.cats.length % STOCK_COLORS.length][1], sub: false, subs: [], items: [] };
-    cfg.stock.cats.push(c); ui.stock = { cat: c.id, sub: null }; commit();
+    cfg.stock.cats.push(c); ui.stock = { cat: c.id, sub: null }; commit(); stockSaved();
     setTimeout(() => { const el = document.getElementById('st-cat-name'); if (el) { el.focus(); el.select(); } }, 0);
   },
   'stock-cat-del': () => {
     const c = stockCur(); if (!c) return;
     const n = c.sub ? c.subs.reduce((a, s) => a + s.items.length, 0) : c.items.length;
     confirmBox('Supprimer « ' + c.name + ' » ?', n ? `Ses ${n} pièce${n > 1 ? 's' : ''} seront supprimées aussi.` : 'Elle est vide.', 'Supprimer', true, () => {
-      cfg.stock.cats = cfg.stock.cats.filter(x => x !== c); ui.stock.cat = null; commit();
+      cfg.stock.cats = cfg.stock.cats.filter(x => x !== c); ui.stock.cat = null; commit(); stockSaved();
     });
   },
-  'stock-color': (d) => { const c = stockCur(); if (c) { c.color = d.color; commit(); } },
+  'stock-color': (d) => { const c = stockCur(); if (c) { c.color = d.color; commit(); stockSaved(); } },
   'stock-sub-toggle': () => {
     const c = stockCur(); if (!c) return;
-    const go = () => { stockToggleSub(c); ui.stock.sub = null; commit(); };
+    const go = () => { stockToggleSub(c); ui.stock.sub = null; commit(); stockSaved(); };
     if (c.sub && c.subs.length > 1) confirmBox('Ne plus utiliser de sous-catégories ?', `Les pièces de vos ${c.subs.length} sous-catégories seront rangées directement dans « ${c.name} ». Aucune pièce n’est perdue.`, 'D’accord', false, go);
     else go();
   },
@@ -150,26 +152,26 @@ Object.assign(ACTIONS, {
   'stock-sub-add': () => {
     const c = stockCur(); if (!c) return;
     const s = { id: stockId(), name: 'Tiroir ' + (c.subs.length + 1), items: [] };
-    c.subs.push(s); ui.stock.sub = s.id; commit();
+    c.subs.push(s); ui.stock.sub = s.id; commit(); stockSaved();
     setTimeout(() => { const el = document.querySelector(`[data-stock="sub-name"][data-id="${s.id}"]`); if (el) { el.focus(); el.select(); } }, 0);
   },
   'stock-sub-del': (d) => {
     const c = stockCur(); const s = c && c.subs.find(x => x.id === d.id); if (!s) return;
-    const del = () => { c.subs = c.subs.filter(x => x !== s); if (ui.stock.sub === s.id) ui.stock.sub = null; commit(); };
+    const del = () => { c.subs = c.subs.filter(x => x !== s); if (ui.stock.sub === s.id) ui.stock.sub = null; commit(); stockSaved(); };
     if (s.items.length) confirmBox('Supprimer « ' + s.name + ' » ?', `Ses ${s.items.length} pièce${s.items.length > 1 ? 's' : ''} seront supprimées aussi.`, 'Supprimer', true, del);
     else del();
   },
   'stock-item-add': () => {
     const { c, s } = stockSel(); const list = stockItemsOf(c, s && s.id); if (!list) return;
-    const it = stockNormItem({ name: 'Nouvelle pièce', q: 0 }); list.push(it); commit();
+    const it = stockNormItem({ name: 'Nouvelle pièce', q: 0 }); list.push(it); commit(); stockSaved();
     setTimeout(() => { const el = document.querySelector(`[data-stock="item-name"][data-id="${it.id}"]`); if (el) { el.focus(); el.select(); } }, 0);
   },
   'stock-item-del': (d) => {
     const list = stockListOf(d.id); if (!list) return;
     const it = list.find(i => i.id === d.id);
-    confirmBox('Supprimer « ' + it.name + ' » ?', 'Elle disparaît du stock.', 'Supprimer', true, () => { list.splice(list.indexOf(it), 1); commit(); });
+    confirmBox('Supprimer « ' + it.name + ' » ?', 'Elle disparaît du stock.', 'Supprimer', true, () => { list.splice(list.indexOf(it), 1); commit(); stockSaved(); });
   },
-  'stock-q': (d) => { const x = stockFindItem(d.id); if (!x) return; x.item.q = stockInt(x.item.q + +d.d); commit(); }
+  'stock-q': (d) => { const x = stockFindItem(d.id); if (!x) return; x.item.q = stockInt(x.item.q + +d.d); commit(); stockSaved(); }
 });
 
 // champs : enregistrés au fil de la frappe, sans redessiner (le curseur reste en place)
@@ -187,7 +189,7 @@ document.addEventListener('input', (ev) => {
     else if (k === 'item-low') x.item.low = stockInt(v);
     else if (k === 'item-link') x.item.link = /^https?:\/\//i.test(v.trim()) ? v.trim().slice(0, 500) : '';
   }
-  commit(true);
+  commit(true); stockSaved();
 });
 // en quittant un champ : on redessine (couleurs, compteurs, noms dans la liste). Si on quitte le champ en cliquant
 // sur un bouton, on attend la fin du clic : redessiner pendant le clic le ferait disparaître sous le doigt.
@@ -196,3 +198,100 @@ const stockFlush = () => { if (stockPending && !stockPointer && ui.view === 'sto
 document.addEventListener('change', (ev) => { if (ev.target && ev.target.dataset && ev.target.dataset.stock) { stockPending = true; setTimeout(stockFlush, 0); } });
 document.addEventListener('pointerdown', () => { stockPointer = true; }, true);
 document.addEventListener('pointerup', () => { stockPointer = false; setTimeout(stockFlush, 30); }, true);
+
+// ---------- sur l'écran : espace « Stock » ----------
+// Une vue = { cat, sub, part } : catégorie n° cat ; sub = n° du tiroir ouvert (ou null) ; part = morceau de 12 (tiroirs ou pièces)
+const isStock = (s) => !!s && s.layout === 'stock';
+const STOCK_PER = 12;
+function stockClampView(v) {
+  const cats = cfg.stock.cats;
+  const cat = Math.max(0, Math.min((v && v.cat) || 0, cats.length - 1));
+  const c = cats[cat];
+  let sub = v && v.sub != null && c && c.sub && c.subs[v.sub] ? v.sub : null;
+  const n = !c ? 0 : c.sub ? (sub != null ? c.subs[sub].items.length : c.subs.length) : c.items.length;
+  const parts = Math.max(1, Math.ceil(n / STOCK_PER));
+  const part = Math.max(0, Math.min((v && v.part) || 0, parts - 1));
+  return { cat, sub, part, parts };
+}
+// toutes les vues d'un espace Stock (une page d'image chacune sur l'écran)
+function stockViews() {
+  const out = [];
+  const cats = cfg.stock.cats;
+  if (!cats.length) return [{ cat: 0, sub: null, part: 0 }];
+  cats.forEach((c, i) => {
+    const n0 = c.sub ? c.subs.length : c.items.length;
+    for (let p = 0; p < Math.max(1, Math.ceil(n0 / STOCK_PER)); p++) out.push({ cat: i, sub: null, part: p });
+    if (c.sub) c.subs.forEach((s, j) => { for (let p = 0; p < Math.max(1, Math.ceil(s.items.length / STOCK_PER)); p++) out.push({ cat: i, sub: j, part: p }); });
+  });
+  return out;
+}
+const stockViewKey = (spaceId, v) => `stock:${spaceId}:${v.cat}:${v.sub == null ? '-' : v.sub}:${v.part || 0}`;
+
+function deckStock(space, sim, view) {
+  const look = lookFor(space);
+  const cats = cfg.stock.cats;
+  const v = stockClampView(view || {});
+  const popOpen = !!(cats[v.cat] && cats[v.cat].sub && v.sub != null);
+  const S = (attrs) => sim && !popOpen ? attrs : '';   // tiroir ouvert : seules ses lignes se touchent
+  const P = (attrs) => sim ? attrs : '';
+  const all = stockAll(cfg.stock).map(x => x.item), tot = stockCounts(all);
+  const sum = !cats.length ? '' : tot.out || tot.low ? `<span style="color:${tot.out ? '#FF8A95' : '#FFB547'}">${tot.out ? tot.out + ' épuisée' + (tot.out > 1 ? 's' : '') : ''}${tot.out && tot.low ? ' · ' : ''}${tot.low ? tot.low + ' en stock bas' : ''}</span>` : `${all.length} pièce${all.length > 1 ? 's' : ''}`;
+  const top = `<div class="dtop"><div class="dtabs">${homeBtn(look, sim)}<div class="dtab disp" style="border-color:${look.accent};color:${look.accent}">${esc(space.name).toUpperCase()}</div></div><div class="dstsum">${sum}</div></div>`;
+  if (!cats.length) return deckFrame(look, top + '<div class="dstempty">Ajoutez vos catégories et vos pièces dans le logiciel, menu « Stock ».</div>', '', spaceOverlay(space, sim));
+  const c = cats[v.cat];
+  const color = (st) => st === 'out' ? '#FF8A95' : st === 'low' ? '#FFB547' : '#3FB97A';
+  const left = cats.slice(0, 7).map((x, i) => {
+    const k = stockCounts(x.sub ? [].concat(...x.subs.map(y => y.items)) : x.items);
+    const on = i === v.cat;
+    return `<div class="dstcat${on ? ' on' : ''}" style="${on ? `border-color:${look.accent};color:${look.accent}` : ''}" ${S(`data-simstock="cat" data-i="${i}"`)}><span class="dstbar" style="background:${x.color}"></span><span class="dstcn"><span class="disp">${esc(x.name)}</span><span class="dstcs">${esc(x.place || (x.sub ? x.subs.length + ' tiroir' + (x.subs.length > 1 ? 's' : '') : x.items.length + ' pièce' + (x.items.length > 1 ? 's' : '')))}</span></span>${k.out + k.low ? `<span class="dstbadge" style="background:${k.out ? '#FF6B78' : '#FFB547'}">${k.out + k.low}</span>` : ''}</div>`;
+  }).join('');
+  const pager = (parts, part, A) => (A = A || S, parts > 1) ? `<div class="dstpager"><div class="dstpg${part > 0 ? '' : ' off'}" ${part > 0 ? A(`data-simstock="part" data-p="${part - 1}"`) : ''}>‹</div><span>${part + 1} / ${parts}</span><div class="dstpg${part < parts - 1 ? '' : ' off'}" ${part < parts - 1 ? A(`data-simstock="part" data-p="${part + 1}"`) : ''}>›</div></div>` : '';
+  const rowsOf = (items, part, A) => (A = A || S, items).slice(part * STOCK_PER, part * STOCK_PER + STOCK_PER).map(it => {
+    const st = stockState(it);
+    return `<div class="dstrow" style="${st === 'out' ? 'border-color:#FF4D5E' : ''}"><span class="dstrn">${esc(it.name)}</span><div class="dstbtn m" style="border-color:${look.accent};color:${look.accent}" ${A(`data-simstock="q" data-id="${esc(it.id)}" data-d="-1"`)}>−</div><span class="dstq mono" style="color:${st === 'ok' ? '#E6EDF3' : color(st)}">${it.q}</span><div class="dstbtn" ${A(`data-simstock="q" data-id="${esc(it.id)}" data-d="1"`)}>+</div></div>`;
+  }).join('');
+  let right;
+  if (c.sub) {
+    const tiles = c.subs.slice(v.part * STOCK_PER, v.part * STOCK_PER + STOCK_PER).map((s, k) => {
+      const j = v.part * STOCK_PER + k, n = stockCounts(s.items);
+      const st = n.out ? 'out' : n.low ? 'low' : 'ok';
+      const txt = !s.items.length ? 'vide' : n.out ? `${n.out} épuisée${n.out > 1 ? 's' : ''}` : n.low ? `${n.low} en stock bas` : 'tout va bien';
+      return `<div class="dsttile" style="border-color:${st === 'out' ? '#FF4D5E' : st === 'low' ? '#7A5A2A' : '#26303A'}" ${S(`data-simstock="sub" data-j="${j}"`)}><span class="dstid mono">Tiroir ${String.fromCharCode(65 + (j % 26))}</span><span class="dsttn">${esc(s.name)}</span><span class="dstts">${s.items.length > 1 ? s.items.length + ' sortes' : s.items.length ? esc(s.items[0].name) : ''}</span><span class="dstst" style="color:${s.items.length ? color(st) : '#8E9BA8'}">${txt}</span></div>`;
+    });
+    while (tiles.length < STOCK_PER) tiles.push('<div class="dsttile empty"></div>');
+    const drawerParts = Math.max(1, Math.ceil(c.subs.length / STOCK_PER));
+    right = `<div class="dstright"><div class="dstgrid">${c.subs.length ? tiles.join('') : '<div class="dstempty">Aucun tiroir : ajoutez-en dans le logiciel.</div>'}</div>${v.sub == null ? pager(drawerParts, v.part) : ''}</div>`;
+  } else {
+    right = `<div class="dstright"><div class="dsthead disp">${esc(c.name)}</div><div class="dstrows">${c.items.length ? rowsOf(c.items, v.part) : '<div class="dstempty">Aucune pièce : ajoutez-en dans le logiciel.</div>'}</div>${pager(v.parts, v.part)}</div>`;
+  }
+  let pop = '';
+  if (c.sub && v.sub != null) {
+    const s = c.subs[v.sub];
+    pop = `<div class="dstdim" ${P('data-simstock="close"')}></div><div class="dstpop" style="border-color:${look.accent}"><div class="dstph"><div><div class="dstpw">${esc(c.name)} · Tiroir ${String.fromCharCode(65 + (v.sub % 26))}</div><div class="disp dstpt">${esc(s.name)}</div></div><div class="dstx" ${P('data-simstock="close"')}>✕</div></div><div class="dstrows">${s.items.length ? rowsOf(s.items, v.part, P) : '<div class="dstempty">Tiroir vide.</div>'}</div>${pager(v.parts, v.part, P)}</div>`;
+  }
+  return deckFrame(look, `${top}<div class="dstbody"><div class="dstleft">${left}</div>${right}</div>${pop}`, '', spaceOverlay(space, sim));
+}
+
+// ---------- quantités changées depuis l'écran (ou l'aperçu) ----------
+function stockDelta(id, d) {
+  const x = stockFindItem(String(id)); if (!x) return null;
+  const before = x.item.q;
+  x.item.q = stockInt(before + (+d || 0));
+  return x.item.q !== before ? x : null;
+}
+function stockFromDeck(m) {
+  const x = stockDelta(m.id, m.d);
+  if (!x) return;
+  commit(ui.view !== 'stock');   // l'onglet Stock ouvert : on le redessine pour voir le nouveau nombre
+  if (ui.view === 'stock') render();
+  if (typeof pgLiveRefresh === 'function') pgLiveRefresh();
+}
+// aperçu de l'écran : mêmes gestes
+function simStock(m, d) {
+  const v = stockClampView(m.stock || {});
+  if (d.simstock === 'cat') m.stock = { cat: +d.i, sub: null, part: 0 };
+  else if (d.simstock === 'sub') m.stock = { cat: v.cat, sub: +d.j, part: 0 };
+  else if (d.simstock === 'close') m.stock = { cat: v.cat, sub: null, part: 0 };
+  else if (d.simstock === 'part') m.stock = { cat: v.cat, sub: v.sub, part: +d.p };
+  else if (d.simstock === 'q') { if (stockDelta(d.id, d.d)) { commit(true); if (typeof pgLiveRefresh === 'function') pgLiveRefresh(); } }
+}
