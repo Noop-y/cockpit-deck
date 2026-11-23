@@ -244,3 +244,10 @@ test('veille : l’écran reçoit luminosité et veille, et s’éteint quand le
   assert.match(p, /usb_deck_suspended\(\)/, 'PC en veille ou éteint');
   assert.match(p, /veille_wake\(\)\) \{ s_swallow = true; return; \}/, 'l’appui qui réveille ne déclenche rien');
 });
+
+test('veille : les réglages ne repartent pas à chaque « bonjour » (sinon l’écran ne s’endort jamais)', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.js'), 'utf8');
+  const line = app.split('\n').find(l => l.includes('if (v !== ui.deckFw)'));
+  assert.ok(line, 'ligne du bonjour trouvée');
+  assert.match(line, /if \(v !== ui\.deckFw\) \{[^}]*devSync\(\); \}/, 'devSync seulement quand l’écran vient d’être relié');
+});

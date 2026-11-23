@@ -142,4 +142,4 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 ## Veille de l'écran et PC éteint (22/11/2026, écran 0.5.6)
 - **Ce que ça fait** : Appareil › « Mise en veille après » : Jamais, 15 s, 30 s, 1 min, 2 min, 5 min, 30 min sans toucher l'écran → il s'éteint ; un appui le rallume (cet appui ne déclenche aucune case). La luminosité s'applique tout de suite. Quand le PC s'éteint ou se met en veille (l'USB reste alimenté), l'écran s'éteint ; il se rallume quand le PC revient.
 - **Comment** : logiciel : `devSync()` et `SLEEP_CHOICES` (`app.js`), message `dev`, `cfg.device.sleepSec` (l'ancien `sleepMin` est repris au plus proche). Écran : `veille_tick` (toutes les 0,5 s : `lv_display_get_inactive_time`, `tud_mounted` / `tud_suspended`), `veille_wake` dans `touch_cb`, `pages_device` (`pages.c`).
-
+- **Correction (23/11/2026)** : les réglages partaient à chaque « bonjour » (toutes les 3 s), ce qui remettait à zéro le compte de la veille : l'écran ne s'endormait jamais. Ils partent maintenant une fois au branchement, puis à chaque changement.
