@@ -831,7 +831,7 @@ function viewAudio() {
         <label class="chk"><input type="checkbox" data-act="aud-pass" ${A.passMic ? 'checked' : ''}>Ma voix passe aussi par le micro virtuel</label>
         <select class="inp" data-field="aud-mic" ${A.passMic ? '' : 'disabled'}>${mics.map(o => `<option value="${esc(o.id)}" ${micSel === o.id ? 'selected' : ''}>${esc(o.label)}${!A.micIn && o.id === micSel ? ' (détecté)' : ''}</option>`).join('') || '<option>Aucun micro trouvé</option>'}</select>
         <div class="small muted">Ainsi, vos amis vous entendent toujours, avec les sons par-dessus.</div>
-        ${st.error ? `<div class="warn" style="margin-top:6px">${esc(st.error)}</div>` : ''}
+        ${st.error ? `<div class="warn" style="margin-top:6px">${esc(st.error)}<div style="margin-top:8px"><button class="btn sm" data-act="aud-retry">Réessayer</button></div></div>` : ''}
         <div class="row" style="gap:10px;margin-top:6px">${st.monitor ? '<button class="btn sm danger" data-act="aud-mon" data-on="0">Arrêter le test du micro</button><span class="small" style="color:#FFB547">Vous vous entendez comme vos amis vous entendent.</span>' : `<button class="btn sm" data-act="aud-mon" data-on="1" ${cable ? '' : 'disabled'}>Tester mon micro</button><span class="small muted">Vous entendre comme Discord et le jeu vous entendent (voix + sons).</span>`}</div>
         ${(ui.listenOn || []).length ? `<div class="warn" style="margin-top:8px"><b>Vous vous entendez en double ?</b> Windows renvoie ${ui.listenOn.map(n => '« ' + esc(n) + ' »').join(', ')} dans votre casque (case « Écouter ce périphérique » cochée). Ce n\u2019est pas The Deck : dans la fenêtre qui s\u2019ouvre, onglet <b>Enregistrement</b>, double-cliquez sur cet appareil, onglet <b>Écouter</b>, décochez <b>Écouter ce périphérique</b>, puis OK.
           <div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" data-act="aud-open-rec">Ouvrir les réglages du son de Windows</button><button class="btn sm" data-act="aud-listen-check">Revérifier</button></div></div>` : ''}</div>
@@ -1477,6 +1477,7 @@ const ACTIONS = {
     render();
   },
   'aud-open-rec': () => api.audioOpenRecording(),
+  'aud-retry': async () => { await SOUND.micReset(); render(); toast(SOUND.state.micSinkOk ? 'Micro virtuel prêt.' : 'Le micro virtuel ne répond toujours pas.', SOUND.state.micSinkOk ? 'ok' : 'err'); },
   'aud-listen-check': () => audioListenCheck(true),
   'aud-pass': (d, el) => { cfg.audio.passMic = el.checked; commit(); ensureAudio(); },
   'aud-solo': (d, el) => { cfg.audio.solo = el.checked; commit(true); ensureAudio(); },

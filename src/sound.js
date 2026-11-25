@@ -10,6 +10,10 @@ const SOUND = (() => {
   const state = { outputs: [], inputs: [], cableOut: null, cableIn: null, micLabel: '', micOn: false, error: '', ready: false };
   let conf = {};
   let ctxMe = null, ctxMic = null, micStream = null, micSrc = null, micGain = null, meSink = null, micKey = '';
+  // micro virtuel : le canal (ctxMic) ne joue JAMAIS lui-même (rien n'est branché sur sa sortie) ; tout va dans
+  // micOut, qu'un lecteur audio (micEl) envoie sur « CABLE Input ». Si le lecteur ne peut pas viser le câble, il ne
+  // joue pas du tout : votre voix ne peut plus partir dans le casque (l'écho en décalé).
+  let micOut = null, micEl = null, micElSink = '';
   let tap = null;                      // enregistreur de clips : reçoit les sons partis sur « Stream »
   const emit = () => listeners.forEach(fn => { try { fn(state); } catch (e) { /* ignoré */ } });
   const isBrowser = () => !!(window.deck == null);
@@ -41,26 +45,34 @@ const SOUND = (() => {
 
   // ---------- contextes audio ----------
   async function setup(c) {
+    state.error = '';
     conf = Object.assign({ meOut: '', micIn: '', passMic: true, volMe: 80, volMic: 80, volStream: 80, master: 100, solo: false }, c || {});
     if (!ctxMe) ctxMe = new AudioContext({ latencyHint: 'interactive' });
     const wantSink = conf.meOut || '';
     if (wantSink !== meSink && ctxMe.setSinkId) { try { await ctxMe.setSinkId(wantSink); meSink = wantSink; } catch (e) { state.error = 'Sortie « Moi » introuvable : sortie par défaut.'; } }
     // micro virtuel
     if (state.cableOut) {
-      // le canal du micro virtuel naît directement sur « CABLE Input » : il ne passe jamais par le casque
       if (!ctxMic) {
-        try { ctxMic = new AudioContext({ latencyHint: 'interactive', sinkId: state.cableOut.id }); }
-        catch (e) { ctxMic = new AudioContext({ latencyHint: 'interactive' }); }
+        ctxMic = new AudioContext({ latencyHint: 'interactive' });
+        micOut = ctxMic.createMediaStreamDestination();
+        micEl = new Audio(); micEl.srcObject = micOut.stream; micElSink = '';
       }
-      if (ctxMic.sinkId !== state.cableOut.id && ctxMic.setSinkId) { try { await ctxMic.setSinkId(state.cableOut.id); } catch (e) { /* vérifié juste après */ } }
-      state.micSinkOk = ctxMic.sinkId === state.cableOut.id;
+      if (micElSink !== state.cableOut.id || micEl.paused) {
+        try {
+          micEl.pause();
+          await micEl.setSinkId(state.cableOut.id);
+          micElSink = state.cableOut.id;
+          await micEl.play();
+        } catch (e) {
+          micElSink = ''; try { micEl.pause(); } catch (e2) { /* ignoré */ }
+          state.error = 'Le micro virtuel ne répond pas (' + (e && (e.name || e.message) || 'erreur') + ') : votre voix et les sons ne lui sont pas envoyés. Fermez les autres logiciels qui l’utilisent, puis « Réessayer ».';
+        }
+      }
+      state.micSinkOk = !!micElSink && !micEl.paused;
       if (!state.micSinkOk) {
-        // sécurité : sans le câble, votre voix partirait dans votre casque (on s'entendrait en double) → rien n'est branché
-        state.error = 'Le micro virtuel ne répond pas : votre voix et les sons ne lui sont pas envoyés.';
         if (micSrc) { try { micSrc.disconnect(); } catch (e) { /* ignoré */ } micSrc = null; }
         if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
         micKey = ''; state.micOn = false;
-        try { await ctxMic.suspend(); } catch (e) { /* ignoré */ }
         emit(); return;
       }
       const key = conf.passMic ? (conf.micIn || defaultMic()) : '';
@@ -74,7 +86,7 @@ const SOUND = (() => {
             micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: key }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2 } });
             micSrc = ctxMic.createMediaStreamSource(micStream);
             micGain = ctxMic.createGain(); micGain.gain.value = 1;
-            micSrc.connect(micGain).connect(ctxMic.destination);
+            micSrc.connect(micGain).connect(micOut);
             state.micOn = true;
             state.micLabel = (state.inputs.find(d => d.id === key) || {}).label || '';
           } catch (e) { state.error = 'Votre micro n’a pas pu être ouvert.'; }
@@ -146,7 +158,7 @@ const SOUND = (() => {
     const vol = ((a.volume != null ? a.volume : 100) / 100) * ((conf.master != null ? conf.master : 100) / 100);
     const voices = [], used = [];
     if (dests.moi) { voices.push(startVoice(ctxMe, buf, start, end, vol * conf.volMe / 100, a)); used.push('moi'); }
-    if ((dests.discord || dests.jeu) && ctxMic && state.micSinkOk) { voices.push(startVoice(ctxMic, buf, start, end, vol * conf.volMic / 100, a)); if (dests.discord) used.push('discord'); if (dests.jeu) used.push('jeu'); }
+    if ((dests.discord || dests.jeu) && ctxMic && state.micSinkOk) { voices.push(startVoice(ctxMic, buf, start, end, vol * conf.volMic / 100, a, micOut)); if (dests.discord) used.push('discord'); if (dests.jeu) used.push('jeu'); }
     // clips : un son parti sur le stream mais pas dans le casque n'est pas dans le son du PC, on l'ajoute
     if (tap && dests.stream && !dests.moi) { try { voices.push(startVoice(tap.ctx, buf, start, end, vol * conf.volStream / 100, a, tap.node)); } catch (e) { /* ignoré */ } }
     let stream = false;
@@ -171,10 +183,11 @@ const SOUND = (() => {
   // petit bip pour vérifier une sortie : 'moi' ou 'micro'
   function beep(which) {
     const ctx = which === 'moi' ? ctxMe : ctxMic;
-    if (!ctx) return false;
+    if (!ctx || (which !== 'moi' && !state.micSinkOk)) return false;
+    const out = which === 'moi' ? ctx.destination : micOut;
     const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
     o.frequency.value = 880; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-    o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.4);
+    o.connect(g).connect(out); o.start(t); o.stop(t + 0.4);
     return true;
   }
 
@@ -199,9 +212,20 @@ const SOUND = (() => {
     state.monitor = false; emit();
   }
 
+  // repartir de zéro pour le micro virtuel (bouton « Réessayer »)
+  async function micReset() {
+    if (micSrc) { try { micSrc.disconnect(); } catch (e) { /* ignoré */ } micSrc = null; }
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+    if (micEl) { try { micEl.pause(); micEl.srcObject = null; } catch (e) { /* ignoré */ } micEl = null; }
+    if (ctxMic) { try { await ctxMic.close(); } catch (e) { /* ignoré */ } ctxMic = null; }
+    micOut = null; micElSink = ''; micKey = ''; state.micOn = false; state.micSinkOk = false;
+    await refreshDevices();
+    return setup(conf);
+  }
+
   function setTap(ctx, node) { tap = ctx && node ? { ctx, node } : null; }
 
-  return { state, setup, setTap, monitorStart, monitorStop, refreshDevices, defaultMic, load, peaks, play, stop, stopAll, release, progress, preview, forget, beep,
+  return { state, setup, setTap, monitorStart, monitorStop, micReset, refreshDevices, defaultMic, load, peaks, play, stop, stopAll, release, progress, preview, forget, beep,
     isPlaying: (id) => playing.has(id), onChange: (fn) => listeners.push(fn),
     playingToGame: () => Array.from(playing.values()).some(l => l.some(e => e.jeu)) };
 })();
