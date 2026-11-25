@@ -791,7 +791,7 @@ function viewAudio() {
   const cur = dstate.status === 'on' ? (dstate.inputs.find(x => x.id === dstate.inputId) || {}).name || '' : '';
   const discordOk = /cable output/i.test(cur);
   const CABLE = '« CABLE Output (VB-Audio Virtual Cable) »';
-  const outs = st.outputs.filter(o => !/cable input/i.test(o.label) && o.id !== 'default');
+  const outs = st.outputs.filter(o => !/cable in|vb-audio/i.test(o.label) && o.id !== 'default');
   const mics = st.inputs.filter(o => !/cable output/i.test(o.label) && o.id !== 'default');
   const micSel = A.micIn || SOUND.defaultMic();
   const pill = (ok, txt) => `<span class="pill2 ${ok ? 'ok' : 'todo'}">${txt}</span>`;
