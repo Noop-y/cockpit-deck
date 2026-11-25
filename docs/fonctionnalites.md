@@ -143,3 +143,9 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 - **Ce que ça fait** : Appareil › « Mise en veille après » : Jamais, 15 s, 30 s, 1 min, 2 min, 5 min, 30 min sans toucher l'écran → il s'éteint ; un appui le rallume (cet appui ne déclenche aucune case). La luminosité s'applique tout de suite. Quand le PC s'éteint ou se met en veille (l'USB reste alimenté), l'écran s'éteint ; il se rallume quand le PC revient.
 - **Comment** : logiciel : `devSync()` et `SLEEP_CHOICES` (`app.js`), message `dev`, `cfg.device.sleepSec` (l'ancien `sleepMin` est repris au plus proche). Écran : `veille_tick` (toutes les 0,5 s : `lv_display_get_inactive_time`, `tud_mounted` / `tud_suspended`), `veille_wake` dans `touch_cb`, `pages_device` (`pages.c`).
 - **Correction (23/11/2026)** : les réglages partaient à chaque « bonjour » (toutes les 3 s), ce qui remettait à zéro le compte de la veille : l'écran ne s'endormait jamais. Ils partent maintenant une fois au branchement, puis à chaque changement.
+
+## Sorties audio : tester son micro, et « je m'entends en double » (25/11/2026)
+- **Ce que ça fait** : Sorties audio › Ma voix › « Tester mon micro » : vous vous entendez comme Discord et le jeu vous entendent (voix + sons), jusqu'à « Arrêter le test du micro » (arrêt aussi en quittant la page). Si Windows renvoie un micro dans le casque (case « Écouter ce périphérique » cochée sur « CABLE Output » ou sur le micro), un encadré le dit, avec un bouton qui ouvre Windows › Son › Enregistrement et « Revérifier ».
+- **Comment** : `SOUND.monitorStart` / `monitorStop` (`sound.js`) rejouent « CABLE Output » dans « Moi ». `audio:listen-check` (`main.js`) lit le registre (MMDevices › Capture, propriété « Écouter ») sans rien changer ; `audio:open-recording` lance `mmsys.cpl,,1`.
+- **À savoir** : The Deck n'envoie jamais votre voix dans votre casque en dehors du test.
+

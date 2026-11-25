@@ -184,3 +184,7 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 - [ ] Éteindre le PC (The Deck branché) : l'écran s'éteint quelques secondes après. Rallumer le PC : il se rallume.
 - [ ] Mettre le PC en veille : l'écran s'éteint ; réveil du PC : il se rallume.
 
+## Sorties audio : test du micro et écho
+- [ ] Ma voix › « Tester mon micro » : je m'entends (voix + un son lancé) ; « Arrêter le test du micro » : je ne m'entends plus. Changer de page arrête aussi le test.
+- [ ] Si je m'entendais en double : l'encadré « Vous vous entendez en double ? » nomme l'appareil ; « Ouvrir les réglages du son de Windows » ouvre l'onglet Enregistrement ; décocher « Écouter ce périphérique » ; « Revérifier » → « Plus rien ne vous renvoie votre voix », et plus d'écho.
+

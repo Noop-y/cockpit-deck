@@ -489,6 +489,34 @@ function copySounds(paths) {
   return out;
 }
 const insideSounds = (f) => { const r = path.resolve(String(f || '')); return r.startsWith(path.resolve(soundsDir()) + path.sep); };
+// ---------- « Écouter ce périphérique » de Windows ----------
+// Si cette case est cochée sur « CABLE Output » ou sur le micro, Windows renvoie la voix dans le casque, en
+// décalé : on s'entend en double. On lit seulement (registre, sans droits administrateur) ; rien n'est changé.
+const LISTEN_PS = `$r = @()
+Get-ChildItem 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Capture' -ErrorAction SilentlyContinue | ForEach-Object {
+  $st = (Get-ItemProperty -Path $_.PSPath -Name DeviceState -ErrorAction SilentlyContinue).DeviceState
+  if ($st -ne 1) { return }
+  $p = Get-ItemProperty -Path (Join-Path $_.PSPath 'Properties') -ErrorAction SilentlyContinue
+  if (-not $p) { return }
+  $l = $p.'{24dbb0fc-9311-4b3d-9cf0-18ff155639d4},1'
+  if ($l -is [byte[]] -and $l.Length -ge 10 -and $l[8] -eq 255) {
+    $r += ('' + $p.'{a45c254e-df1c-4efd-8020-67d146a850e0},2' + ' (' + $p.'{b3f8fa53-0004-438e-9003-51a46e139bfc},6' + ')')
+  }
+}
+$r -join [char]10`;
+ipcMain.handle('audio:listen-check', () => new Promise((resolve) => {
+  if (process.platform !== 'win32') { resolve([]); return; }
+  const enc = Buffer.from(LISTEN_PS, 'utf16le').toString('base64');
+  const ps = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-EncodedCommand', enc], { windowsHide: true });
+  let out = '';
+  const t = setTimeout(() => { try { ps.kill(); } catch (e) { /* ignoré */ } resolve([]); }, 8000);
+  ps.stdout.on('data', d => { out += d.toString(); });
+  ps.on('close', () => { clearTimeout(t); resolve(out.split(/\r?\n/).map(s => s.trim()).filter(Boolean).slice(0, 10)); });
+  ps.on('error', () => { clearTimeout(t); resolve([]); });
+}));
+// ouvre Windows › Son, onglet « Enregistrement » (là où se trouve la case « Écouter ce périphérique »)
+ipcMain.handle('audio:open-recording', () => { if (process.platform === 'win32') spawn('control.exe', ['mmsys.cpl,,1'], { windowsHide: false, detached: true }).unref(); });
+
 ipcMain.handle('sound:import', async () => {
   const r = await dialog.showOpenDialog(win, { title: 'Ajouter des sons', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Sons', extensions: SOUND_EXT }] });
   return r.canceled ? [] : copySounds(r.filePaths);

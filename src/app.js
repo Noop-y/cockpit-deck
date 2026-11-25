@@ -56,6 +56,7 @@ const api = window.deck || (() => {
     clipsOpenFolder: async () => null, clipsShow: async () => null, clipsCopy: async () => ({ ok: false }), clipsDelete: async () => ({ ok: false }),
     clipsRename: async () => ({ ok: false }), clipsTrim: async () => ({ ok: false }), clipsFileUrl: async () => '', clipsChooseFolder: async () => null,
     onClipsState: () => {}, onClipsSaved: () => {},
+    audioListenCheck: async () => [], audioOpenRecording: async () => {},
     claudeState: async () => ({ found: false, linked: false, browser: true }), claudeLink: async () => ({ ok: false, message: 'Disponible dans le logiciel installé sur Windows.' }), onClaudeAsk: () => {}, claudeAnswer: () => {}
   };
 })();
@@ -392,6 +393,13 @@ function pttSync() {
   if (!PTT.rel) PTT.rel = setTimeout(pttRelease, 300);
 }
 SOUND.onChange(() => pttSync());
+// cases « Écouter ce périphérique » cochées dans Windows (la cause habituelle du « je m'entends en double »)
+async function audioListenCheck(say) {
+  let l = []; try { l = await api.audioListenCheck(); } catch (e) { /* ignoré */ }
+  ui.listenOn = Array.isArray(l) ? l : [];
+  if (say) toast(ui.listenOn.length ? 'Toujours coché : ' + ui.listenOn.join(', ') : 'Plus rien ne vous renvoie votre voix.', ui.listenOn.length ? 'err' : 'ok');
+  if (ui.view === 'audio') render();
+}
 async function ensureAudio() {
   if (!SOUND.state.ready) await SOUND.refreshDevices();
   await SOUND.setup(cfg.audio);
@@ -822,7 +830,10 @@ function viewAudio() {
       <div class="panel"><h2 class="disp">Ma voix</h2>
         <label class="chk"><input type="checkbox" data-act="aud-pass" ${A.passMic ? 'checked' : ''}>Ma voix passe aussi par le micro virtuel</label>
         <select class="inp" data-field="aud-mic" ${A.passMic ? '' : 'disabled'}>${mics.map(o => `<option value="${esc(o.id)}" ${micSel === o.id ? 'selected' : ''}>${esc(o.label)}${!A.micIn && o.id === micSel ? ' (détecté)' : ''}</option>`).join('') || '<option>Aucun micro trouvé</option>'}</select>
-        <div class="small muted">Ainsi, vos amis vous entendent toujours, avec les sons par-dessus.</div></div>
+        <div class="small muted">Ainsi, vos amis vous entendent toujours, avec les sons par-dessus.</div>
+        <div class="row" style="gap:10px;margin-top:6px">${st.monitor ? '<button class="btn sm danger" data-act="aud-mon" data-on="0">Arrêter le test du micro</button><span class="small" style="color:#FFB547">Vous vous entendez comme vos amis vous entendent.</span>' : `<button class="btn sm" data-act="aud-mon" data-on="1" ${cable ? '' : 'disabled'}>Tester mon micro</button><span class="small muted">Vous entendre comme Discord et le jeu vous entendent (voix + sons).</span>`}</div>
+        ${(ui.listenOn || []).length ? `<div class="warn" style="margin-top:8px"><b>Vous vous entendez en double ?</b> Windows renvoie ${ui.listenOn.map(n => '« ' + esc(n) + ' »').join(', ')} dans votre casque (case « Écouter ce périphérique » cochée). Ce n\u2019est pas The Deck : dans la fenêtre qui s\u2019ouvre, onglet <b>Enregistrement</b>, double-cliquez sur cet appareil, onglet <b>Écouter</b>, décochez <b>Écouter ce périphérique</b>, puis OK.
+          <div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" data-act="aud-open-rec">Ouvrir les réglages du son de Windows</button><button class="btn sm" data-act="aud-listen-check">Revérifier</button></div></div>` : ''}</div>
       <div class="panel"><h2 class="disp">Général</h2>
         <div><div class="row" style="justify-content:space-between"><span class="lab" style="margin:0">Volume général des sons</span></div>${vol('aud-master', A.master)}</div>
         <label class="chk"><input type="checkbox" data-act="aud-solo" ${A.solo ? 'checked' : ''}>Un seul son à la fois (le nouveau coupe l\u2019ancien)</label>
@@ -1415,7 +1426,7 @@ const ACTIONS = {
     ui.claude = r.state; render();
     toast(d.on === '1' ? 'Claude est relié. Redémarrez l’application Claude pour qu’elle le voie.' : 'Claude n’est plus relié.', 'ok', 7000);
   },
-  nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'audio' && !api.browser) ensureAudio().then(render); if (d.view === 'clips' && !api.browser && !SOUND.state.ready) SOUND.refreshDevices().then(() => { if (ui.view === 'clips') render(); }); if (d.view === 'clips' && ui.clipsTab === 'biblio') loadClipsLib(); if (d.view === 'parametres') { api.listBackups().then(b => { ui.backups = b; render(); }); api.claudeState().then(c => { ui.claude = c; render(); }); } render(); },
+  nav: (d) => { ui.view = d.view; ui.menu = null; if (d.view === 'audio' && !api.browser) { ensureAudio().then(render); audioListenCheck(false); } if (d.view !== 'audio' && SOUND.state.monitor) SOUND.monitorStop(); if (d.view === 'clips' && !api.browser && !SOUND.state.ready) SOUND.refreshDevices().then(() => { if (ui.view === 'clips') render(); }); if (d.view === 'clips' && ui.clipsTab === 'biblio') loadClipsLib(); if (d.view === 'parametres') { api.listBackups().then(b => { ui.backups = b; render(); }); api.claudeState().then(c => { ui.claude = c; render(); }); } render(); },
   'cat-new': () => { ui.modal = { type: 'cat', id: null, label: '', icon: 'etoile', color: '#B79CFF' }; renderModal(); setTimeout(() => { const el = $('#f-catname'); if (el) el.focus(); }, 0); },
   'cat-edit': (d) => { const c = cfg.cats.find(x => x.id === d.id); ui.modal = { type: 'cat', id: c.id, label: c.label, icon: c.icon, color: c.color }; renderModal(); },
   'cat-color': (d) => { ui.modal.color = d.v; renderModal(); },
@@ -1458,6 +1469,14 @@ const ACTIONS = {
   'snd-dest': (d) => { const a = curCell().action; a.dests[d.k] = !a.dests[d.k]; commit(); },
   'aud-recheck': async () => { await SOUND.refreshDevices(); await ensureAudio(); render(); toast(SOUND.state.cableOut ? 'Micro virtuel trouvé.' : 'Micro virtuel introuvable. Redémarrez le PC après l\u2019installation.', SOUND.state.cableOut ? 'ok' : 'err'); },
   'aud-download': () => { if (api.openLink) api.openLink('https://vb-audio.com/Cable/'); else window.open('https://vb-audio.com/Cable/'); },
+  'aud-mon': async (d) => {
+    if (api.browser) { toast('Disponible dans le logiciel installé sur Windows.'); return; }
+    if (d.on === '1') { await ensureAudio(); if (!(await SOUND.monitorStart())) toast('Le micro virtuel ne répond pas.', 'err'); }
+    else SOUND.monitorStop();
+    render();
+  },
+  'aud-open-rec': () => api.audioOpenRecording(),
+  'aud-listen-check': () => audioListenCheck(true),
   'aud-pass': (d, el) => { cfg.audio.passMic = el.checked; commit(); ensureAudio(); },
   'aud-solo': (d, el) => { cfg.audio.solo = el.checked; commit(true); ensureAudio(); },
   'aud-folder': () => { if (api.soundOpenFolder) api.soundOpenFolder(); },

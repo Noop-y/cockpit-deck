@@ -168,9 +168,28 @@ const SOUND = (() => {
 
   if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', () => { refreshDevices().then(() => setup(conf)); });
 
+  // ---------- test du micro : écouter ce que Discord et le jeu entendent (votre voix + les sons) ----------
+  // Ce qui sort de « CABLE Output » est rejoué dans « Moi » jusqu'à « Arrêter le test ». Jamais lancé tout seul.
+  let monStream = null, monSrc = null;
+  async function monitorStart() {
+    if (monStream) return true;
+    if (!state.cableIn || !ctxMe) return false;
+    try {
+      monStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: state.cableIn.id }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      monSrc = ctxMe.createMediaStreamSource(monStream);
+      monSrc.connect(ctxMe.destination);
+      state.monitor = true; emit(); return true;
+    } catch (e) { monitorStop(); return false; }
+  }
+  function monitorStop() {
+    if (monSrc) { try { monSrc.disconnect(); } catch (e) { /* ignoré */ } monSrc = null; }
+    if (monStream) { monStream.getTracks().forEach(t => t.stop()); monStream = null; }
+    state.monitor = false; emit();
+  }
+
   function setTap(ctx, node) { tap = ctx && node ? { ctx, node } : null; }
 
-  return { state, setup, setTap, refreshDevices, defaultMic, load, peaks, play, stop, stopAll, release, progress, preview, forget, beep,
+  return { state, setup, setTap, monitorStart, monitorStop, refreshDevices, defaultMic, load, peaks, play, stop, stopAll, release, progress, preview, forget, beep,
     isPlaying: (id) => playing.has(id), onChange: (fn) => listeners.push(fn),
     playingToGame: () => Array.from(playing.values()).some(l => l.some(e => e.jeu)) };
 })();
