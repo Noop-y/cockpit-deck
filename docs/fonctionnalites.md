@@ -148,4 +148,5 @@ Une section par fonctionnalité terminée. À mettre à jour quand le code chang
 - **Ce que ça fait** : Sorties audio › Ma voix › « Tester mon micro » : vous vous entendez comme Discord et le jeu vous entendent (voix + sons), jusqu'à « Arrêter le test du micro » (arrêt aussi en quittant la page). Si Windows renvoie un micro dans le casque (case « Écouter ce périphérique » cochée sur « CABLE Output » ou sur le micro), un encadré le dit, avec un bouton qui ouvre Windows › Son › Enregistrement et « Revérifier ».
 - **Comment** : `SOUND.monitorStart` / `monitorStop` (`sound.js`) rejouent « CABLE Output » dans « Moi ». `audio:listen-check` (`main.js`) lit le registre (MMDevices › Capture, propriété « Écouter ») sans rien changer ; `audio:open-recording` lance `mmsys.cpl,,1`.
 - **À savoir** : The Deck n'envoie jamais votre voix dans votre casque en dehors du test.
+- **Sécurité anti-écho (25/11/2026)** : le canal du micro virtuel est créé directement sur « CABLE Input » (`new AudioContext({ sinkId })`). Si le câble ne répond pas, la voix n'est pas branchée (sinon elle partirait dans le casque, en décalé) et un message le dit (`SOUND.state.micSinkOk`).
 

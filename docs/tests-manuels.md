@@ -187,4 +187,5 @@ Ces parties dépendent de Windows, de l'USB ou d'autres logiciels : elles ne peu
 ## Sorties audio : test du micro et écho
 - [ ] Ma voix › « Tester mon micro » : je m'entends (voix + un son lancé) ; « Arrêter le test du micro » : je ne m'entends plus. Changer de page arrête aussi le test.
 - [ ] Si je m'entendais en double : l'encadré « Vous vous entendez en double ? » nomme l'appareil ; « Ouvrir les réglages du son de Windows » ouvre l'onglet Enregistrement ; décocher « Écouter ce périphérique » ; « Revérifier » → « Plus rien ne vous renvoie votre voix », et plus d'écho.
+- [ ] Écho : lancer un son, parler → je ne m'entends pas en double. Si si : décocher « Ma voix passe aussi par le micro virtuel » ; si l'écho s'arrête, le noter (c'est The Deck), sinon c'est un autre logiciel (Sonar…).
 
